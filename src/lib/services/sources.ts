@@ -11,7 +11,7 @@ import { probeAppStore } from "../sources/appstore";
 import { probeMixpanel } from "../sources/mixpanel";
 import { parsePriceMap, probePostgres } from "../sources/postgres";
 import { ProviderError } from "../checkout/provider";
-import { fetchGa4Campaigns, fetchGa4Installs, ga4Adapter, type CampaignScope } from "../sources/ga4";
+import { fetchGa4Campaigns, fetchGa4Installs, ga4Adapter, type AdReadNote, type CampaignScope } from "../sources/ga4";
 import type { CampaignAdRow, CampaignEventRow } from "../domain/campaigns";
 import { validateLemonSqueezyKey } from "../sources/lemonsqueezy";
 import { validatePaddleKey } from "../sources/paddle";
@@ -306,19 +306,21 @@ export type CampaignsRead = {
   propertyId: string | null;
   from: Date | null;
   eventSettings: EventSettings | null;
+  /** What GA4 said about any ad-cost request it refused. Never fatal — the funnel still renders. */
+  notes: AdReadNote[];
 };
 
 export async function fetchCampaigns(app: App, now = new Date()): Promise<CampaignsRead> {
   const db = await getDb();
   const [row] = await db.select().from(schema.revenueSources).where(and(eq(schema.revenueSources.appId, app.id), eq(schema.revenueSources.type, "ga4"))).limit(1);
-  const empty: CampaignsRead = { connected: false, ads: [], events: [], scope: null, days: INSTALLS_DAYS, error: null, propertyId: null, from: null, eventSettings: null };
+  const empty: CampaignsRead = { connected: false, ads: [], events: [], scope: null, days: INSTALLS_DAYS, error: null, propertyId: null, from: null, eventSettings: null, notes: [] };
   if (!row) return empty;
   const eventSettings = parseEventSettings(row.meta);
   const from = readFrom(eventSettings, INSTALLS_DAYS, now);
   try {
     const creds = decryptJson(row.credentialsEnc) as Ga4Credentials;
-    const { ads, events, scope } = await fetchGa4Campaigns(creds, INSTALLS_DAYS, { events: eventSettings }, now);
-    return { ...empty, connected: true, ads, events, scope, propertyId: creds.propertyId, from, eventSettings };
+    const { ads, events, scope, notes } = await fetchGa4Campaigns(creds, INSTALLS_DAYS, { events: eventSettings }, now);
+    return { ...empty, connected: true, ads, events, scope, notes, propertyId: creds.propertyId, from, eventSettings };
   } catch (err) {
     return { ...empty, connected: true, error: err instanceof Error ? err.message : String(err), propertyId: row.externalId, from, eventSettings };
   }

@@ -1,7 +1,7 @@
 import { createSign } from "node:crypto";
-import { jsonFetch } from "../checkout/provider";
+import { jsonFetch, ProviderError } from "../checkout/provider";
 import type { InstallRow } from "../domain/attribution";
-import { CAMPAIGN_FUNNEL_EVENTS, pickAdRows, type AdRowScope, type CampaignAdRow, type CampaignEventRow } from "../domain/campaigns";
+import { CAMPAIGN_FUNNEL_EVENTS, pickAdRows, TOTAL_SCOPE, type AdRowScope, type CampaignAdRow, type CampaignEventRow } from "../domain/campaigns";
 import { ga4Date, isEventAllowed, readFrom } from "../domain/eventSettings";
 import type { CatalogEvent } from "../services/eventCatalog";
 import type { AnalyticsAdapter, Ga4Credentials, ReadOpts } from "./types";
@@ -127,52 +127,48 @@ export function campaignEventRowsFromReport(report: RunReport): CampaignEventRow
 
 export type CampaignScope = AdRowScope;
 
-/** Ad-cost metrics are SESSION-scoped in GA4. Paired with a user-scoped dimension the API returns 200 with
- *  blank cost rather than an error, so both candidates are tried and `pickAdRows` judges which to trust. */
-const AD_DIMENSION: Record<"session" | "firstUser", string> = {
-  session: "sessionGoogleAdsCampaignName",
-  firstUser: "firstUserGoogleAdsCampaignName",
-};
+/**
+ * Dimensions to try for ad cost, best first. Cost is SESSION-scoped in GA4:
+ * paired with a user-scoped dimension the API answers 200 with blank cost
+ * instead of an error, and some combinations are rejected outright with 400,
+ * so the only reliable approach is to try each and keep the one that reports
+ * cost. `sessionCampaignName` is included because GA4 commonly serves
+ * advertiser cost against the plain session campaign rather than the
+ * Google-Ads-specific dimension.
+ */
+const AD_DIMENSIONS = ["sessionGoogleAdsCampaignName", "sessionCampaignName", "firstUserGoogleAdsCampaignName"] as const;
+
+/** Google's own explanation of a rejected report, which is what says why a dimension/metric pair is invalid. */
+export function ga4ErrorText(err: unknown): string {
+  const google = err instanceof ProviderError ? (err.body as { error?: { message?: string } } | null)?.error?.message : undefined;
+  const status = err instanceof ProviderError && err.status ? `HTTP ${err.status}` : "";
+  const fallback = err instanceof Error ? err.message : String(err);
+  return google ? `${status ? `${status}: ` : ""}${google}` : fallback;
+}
+
+export type AdReadNote = { request: string; message: string };
 
 /**
  * Ad spend per Google Ads campaign plus the funnel events GA4 attributes to
  * each campaign's first touch.
  *
- * Scope matters and GA4 fails softly: `advertiserAdCost` is session-scoped,
- * and pairing it with `firstUserGoogleAdsCampaignName` returns zeros with a
- * 200, not an error. So every candidate dimension is tried until one
- * actually reports cost, and when none does (common for iOS App campaigns,
- * where per-user campaign attribution never reaches GA4) the property-wide
- * total is read with no dimension at all and returned as a single
- * unattributed row — spend is never silently zero when Google has it.
+ * The funnel events are the card's backbone, so they are read first and are
+ * the only failure that propagates. Every ad-cost attempt is best-effort:
+ * each candidate dimension is tried, then the property-wide total with no
+ * dimension at all, and whatever GA4 says about a rejected combination is
+ * returned in `notes` so the page can show it instead of dying. A card with
+ * installs and purchases but unknown spend is far more useful than an error.
  */
-export async function fetchGa4Campaigns(credentials: Ga4Credentials, days = 30, opts?: ReadOpts, now = new Date()): Promise<{ ads: CampaignAdRow[]; events: CampaignEventRow[]; scope: CampaignScope }> {
+export async function fetchGa4Campaigns(
+  credentials: Ga4Credentials,
+  days = 30,
+  opts?: ReadOpts,
+  now = new Date(),
+): Promise<{ ads: CampaignAdRow[]; events: CampaignEventRow[]; scope: CampaignScope; notes: AdReadNote[] }> {
   const run = await reportClient(credentials);
   const ranges = dateRanges(opts, days, now);
   const funnelEvents = CAMPAIGN_FUNNEL_EVENTS.filter((e) => isEventAllowed(opts?.events ?? null, e));
   const adMetrics = [{ name: "advertiserAdClicks" }, { name: "advertiserAdImpressions" }, { name: "advertiserAdCost" }];
-
-  const attempts: Array<{ scope: "session" | "firstUser"; rows: CampaignAdRow[] }> = [];
-  let firstError: unknown = null;
-  for (const candidate of ["session", "firstUser"] as const) {
-    try {
-      const rows = campaignAdRowsFromReport(
-        await run({ dateRanges: ranges, dimensions: [{ name: AD_DIMENSION[candidate] }], metrics: adMetrics, orderBys: [{ metric: { metricName: "advertiserAdCost" }, desc: true }], limit: 100 }),
-      );
-      attempts.push({ scope: candidate, rows });
-    } catch (err) {
-      firstError = firstError ?? err;
-    }
-  }
-  // No dimension can be scope-mismatched, so this is the last word on whether spend exists at all.
-  let totals: CampaignAdRow | null = null;
-  try {
-    totals = campaignAdRowsFromReport(await run({ dateRanges: ranges, metrics: adMetrics }))[0] ?? null;
-  } catch (err) {
-    firstError = firstError ?? err;
-  }
-  const { ads, scope } = pickAdRows(attempts, totals);
-  if (ads.length === 0 && firstError) throw firstError;
 
   const eventsReport = funnelEvents.length
     ? await run({
@@ -183,5 +179,26 @@ export async function fetchGa4Campaigns(credentials: Ga4Credentials, days = 30, 
         limit: 500,
       })
     : {};
-  return { ads, events: campaignEventRowsFromReport(eventsReport), scope };
+
+  const attempts: Array<{ scope: string; rows: CampaignAdRow[] }> = [];
+  const notes: AdReadNote[] = [];
+  for (const dimension of AD_DIMENSIONS) {
+    try {
+      const rows = campaignAdRowsFromReport(
+        await run({ dateRanges: ranges, dimensions: [{ name: dimension }], metrics: adMetrics, orderBys: [{ metric: { metricName: "advertiserAdCost" }, desc: true }], limit: 100 }),
+      );
+      attempts.push({ scope: dimension, rows });
+    } catch (err) {
+      notes.push({ request: dimension, message: ga4ErrorText(err) });
+    }
+  }
+  let totals: CampaignAdRow | null = null;
+  try {
+    totals = campaignAdRowsFromReport(await run({ dateRanges: ranges, metrics: adMetrics }))[0] ?? null;
+  } catch (err) {
+    notes.push({ request: "property-wide total (no dimension)", message: ga4ErrorText(err) });
+  }
+
+  const { ads, scope } = pickAdRows(attempts, totals);
+  return { ads, events: campaignEventRowsFromReport(eventsReport), scope, notes };
 }

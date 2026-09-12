@@ -26,8 +26,9 @@ export type CampaignSummary = {
   paybackMonths: number | null;
 };
 
-/** Which dimension produced the ad rows; "total" = property-wide spend with no per-campaign split. */
-export type AdRowScope = "session" | "firstUser" | "total";
+/** The dimension name that produced the ad rows, or "total" for property-wide spend with no per-campaign split. */
+export type AdRowScope = string;
+export const TOTAL_SCOPE = "total";
 
 export function adRowsHaveSpend(rows: CampaignAdRow[]): boolean {
   return rows.some((r) => r.costCents > 0 || r.clicks > 0);
@@ -40,12 +41,12 @@ export function adRowsHaveSpend(rows: CampaignAdRow[]): boolean {
  * that actually carries cost, and otherwise fall back to the property-wide
  * total, which no scope can distort.
  */
-export function pickAdRows(attempts: Array<{ scope: "session" | "firstUser"; rows: CampaignAdRow[] }>, totals: CampaignAdRow | null): { ads: CampaignAdRow[]; scope: AdRowScope } {
+export function pickAdRows(attempts: Array<{ scope: string; rows: CampaignAdRow[] }>, totals: CampaignAdRow | null): { ads: CampaignAdRow[]; scope: AdRowScope } {
   for (const a of attempts) {
     if (adRowsHaveSpend(a.rows)) return { ads: a.rows, scope: a.scope };
   }
-  if (totals && (totals.costCents > 0 || totals.clicks > 0)) return { ads: [{ ...totals, campaign: "(not set)" }], scope: "total" };
-  return { ads: attempts[0]?.rows ?? [], scope: "total" };
+  if (totals && (totals.costCents > 0 || totals.clicks > 0)) return { ads: [{ ...totals, campaign: "(not set)" }], scope: TOTAL_SCOPE };
+  return { ads: attempts[0]?.rows ?? [], scope: TOTAL_SCOPE };
 }
 
 export const CAMPAIGN_FUNNEL_EVENTS = ["first_open", "sign_up", "trial_start", "purchase"] as const;

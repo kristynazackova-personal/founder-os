@@ -165,7 +165,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
             {campaigns.total.spendCents === 0 ? (
               <div className="mt-3">
                 <Alert kind="warn">
-                  GA4 reported no ad cost for property <span className="font-mono">{campaignsRaw.propertyId}</span>, on any campaign dimension or as a property-wide total ({campaignsRaw.ads.length} ad row{campaignsRaw.ads.length === 1 ? "" : "s"}, all zero). If the Google Ads link is in place, check that the linked account is the one running these campaigns and that the window overlaps days after the link was created. Cost per install, CAC and payback stay unknown rather than $0.
+                  GA4 reported no ad cost for property <span className="font-mono">{campaignsRaw.propertyId}</span>, on any campaign dimension or as a property-wide total. The funnel below is real; only spend is missing, so cost per install, CAC and payback stay unknown rather than $0.{campaignsRaw.notes.length ? " What GA4 said about each query it refused is listed under the table." : " If the Google Ads link is in place, check that the linked account runs these campaigns and that the window covers days after the link was created."}
                 </Alert>
               </div>
             ) : null}
@@ -206,16 +206,28 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
             </table>
             {campaignsRaw.scope === "total" ? (
               <p className="help mt-2">GA4 would not break this spend down by campaign, so it is shown as one unattributed total. That is normal for iOS App campaigns, where per-user campaign attribution never reaches GA4.</p>
-            ) : campaignsRaw.scope === "firstUser" ? (
-              <p className="help mt-2">Spend is read on first-touch scope; GA4 reports ad cost on session scope, so these figures may lag the Google Ads console.</p>
+            ) : campaignsRaw.scope ? (
+              <p className="help mt-2">
+                Spend read on <span className="font-mono">{campaignsRaw.scope}</span>.
+              </p>
             ) : null}
+            {campaignsRaw.notes.map((n) => (
+              <p key={n.request} className="help mt-2">
+                GA4 refused the spend query on <span className="font-mono">{n.request}</span>: {n.message}
+              </p>
+            ))}
           </>
         ) : (
           <div className="mt-3 space-y-2 text-sm text-[var(--muted)]">
             <p>
               GA4 property <span className="font-mono">{campaignsRaw.propertyId}</span> returned {campaignsRaw.ads.length} ad row{campaignsRaw.ads.length === 1 ? "" : "s"} and {campaignsRaw.events.length} event row{campaignsRaw.events.length === 1 ? "" : "s"} for {campaignsRaw.from ? fmtDay(campaignsRaw.from) : "—"} → today
-              {campaignsRaw.scope ? ` (${campaignsRaw.scope === "firstUser" ? "first-touch" : "session"} scope)` : ""}.
+              {campaignsRaw.scope && campaignsRaw.scope !== "total" ? ` (spend read on ${campaignsRaw.scope})` : ""}.
             </p>
+            {campaignsRaw.notes.map((n) => (
+              <p key={n.request}>
+                GA4 refused the spend query on <span className="font-mono">{n.request}</span>: {n.message}
+              </p>
+            ))}
             <p>
               {campaignsRaw.eventSettings?.history === "forward"
                 ? `Your event settings read only from ${fmtDay(new Date(campaignsRaw.eventSettings.since))} on — earlier spend is deliberately ignored. Change that under Connect → GA4 → Change.`
