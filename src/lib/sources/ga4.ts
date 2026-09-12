@@ -169,19 +169,45 @@ export async function fetchGa4Campaigns(
   const ranges = dateRanges(opts, days, now);
   const funnelEvents = CAMPAIGN_FUNNEL_EVENTS.filter((e) => isEventAllowed(opts?.events ?? null, e));
   const adMetrics = [{ name: "advertiserAdClicks" }, { name: "advertiserAdImpressions" }, { name: "advertiserAdCost" }];
+  const notes: AdReadNote[] = [];
 
-  const eventsReport = funnelEvents.length
-    ? await run({
-        dateRanges: ranges,
-        dimensions: [{ name: "firstUserGoogleAdsCampaignName" }, { name: "eventName" }],
-        metrics: [{ name: "totalUsers" }],
-        dimensionFilter: { filter: { fieldName: "eventName", inListFilter: { values: funnelEvents } } },
-        limit: 500,
-      })
-    : {};
+  const eventFilter = { filter: { fieldName: "eventName", inListFilter: { values: funnelEvents } } };
+  let events: CampaignEventRow[] = [];
+  if (funnelEvents.length) {
+    try {
+      events = campaignEventRowsFromReport(
+        await run({ dateRanges: ranges, dimensions: [{ name: "firstUserGoogleAdsCampaignName" }, { name: "eventName" }], metrics: [{ name: "totalUsers" }], dimensionFilter: eventFilter, limit: 500 }),
+      );
+    } catch (err) {
+      notes.push({ request: "funnel by campaign", message: ga4ErrorText(err) });
+    }
+    // Property-wide funnel: no campaign dimension, so nothing to reject and
+    // nothing for GA4's low-volume thresholding to withhold. Used when the
+    // campaign-scoped read failed or returned fewer users than the property
+    // actually has, which is exactly what thresholding looks like.
+    try {
+      const wide = campaignEventRowsFromReport(await run({ dateRanges: ranges, dimensions: [{ name: "eventName" }], metrics: [{ name: "totalUsers" }], dimensionFilter: eventFilter, limit: 100 })).map((r) => ({
+        // eventName is the only dimension, so it lands in `campaign`; re-read it into the right field.
+        campaign: "(not set)",
+        event: r.campaign,
+        users: r.users,
+      }));
+      const wideTotal = wide.reduce((n, r) => n + r.users, 0);
+      const narrowTotal = events.reduce((n, r) => n + r.users, 0);
+      if (wideTotal > narrowTotal) {
+        if (narrowTotal > 0) notes.push({ request: "funnel by campaign", message: `GA4 returned ${narrowTotal} users split by campaign but ${wideTotal} property-wide, so the split is being withheld for low volume. Showing the property-wide figures.` });
+        events = wide;
+      }
+    } catch (err) {
+      if (events.length === 0) notes.push({ request: "funnel property-wide", message: ga4ErrorText(err) });
+    }
+  }
+  if (funnelEvents.length && events.length === 0 && notes.length) {
+    // Nothing about the funnel could be read; that is the card's backbone, so say so loudly.
+    throw new Error(notes.map((n) => `${n.request}: ${n.message}`).join(" · "));
+  }
 
   const attempts: Array<{ scope: string; rows: CampaignAdRow[] }> = [];
-  const notes: AdReadNote[] = [];
   for (const dimension of AD_DIMENSIONS) {
     try {
       const rows = campaignAdRowsFromReport(
@@ -200,5 +226,5 @@ export async function fetchGa4Campaigns(
   }
 
   const { ads, scope } = pickAdRows(attempts, totals);
-  return { ads, events: campaignEventRowsFromReport(eventsReport), scope, notes };
+  return { ads, events, scope, notes };
 }

@@ -11,7 +11,7 @@ import { probeAppStore } from "../sources/appstore";
 import { probeMixpanel } from "../sources/mixpanel";
 import { parsePriceMap, probePostgres } from "../sources/postgres";
 import { ProviderError } from "../checkout/provider";
-import { fetchGa4Campaigns, fetchGa4Installs, ga4Adapter, type AdReadNote, type CampaignScope } from "../sources/ga4";
+import { fetchGa4Campaigns, fetchGa4Installs, ga4ErrorText, ga4Adapter, type AdReadNote, type CampaignScope } from "../sources/ga4";
 import type { CampaignAdRow, CampaignEventRow } from "../domain/campaigns";
 import { validateLemonSqueezyKey } from "../sources/lemonsqueezy";
 import { validatePaddleKey } from "../sources/paddle";
@@ -290,7 +290,7 @@ export async function fetchInstalls(app: App): Promise<{ connected: boolean; row
     const rows = aggregateInstalls(await fetchGa4Installs(creds, INSTALLS_DAYS, { events: parseEventSettings(row.meta) }));
     return { connected: true, rows, total: rows.reduce((n, r) => n + r.installs, 0), days: INSTALLS_DAYS, error: null };
   } catch (err) {
-    return { connected: true, rows: [], total: 0, days: INSTALLS_DAYS, error: err instanceof Error ? err.message : String(err) };
+    return { connected: true, rows: [], total: 0, days: INSTALLS_DAYS, error: ga4ErrorText(err) };
   }
 }
 
@@ -322,6 +322,6 @@ export async function fetchCampaigns(app: App, now = new Date()): Promise<Campai
     const { ads, events, scope, notes } = await fetchGa4Campaigns(creds, INSTALLS_DAYS, { events: eventSettings }, now);
     return { ...empty, connected: true, ads, events, scope, notes, propertyId: creds.propertyId, from, eventSettings };
   } catch (err) {
-    return { ...empty, connected: true, error: err instanceof Error ? err.message : String(err), propertyId: row.externalId, from, eventSettings };
+    return { ...empty, connected: true, error: ga4ErrorText(err), propertyId: row.externalId, from, eventSettings };
   }
 }
