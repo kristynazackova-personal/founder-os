@@ -165,7 +165,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
             {campaigns.total.spendCents === 0 ? (
               <div className="mt-3">
                 <Alert kind="warn">
-                  GA4 reported no ad cost for property <span className="font-mono">{campaignsRaw.propertyId}</span> ({campaignsRaw.ads.length} ad row{campaignsRaw.ads.length === 1 ? "" : "s"}, all zero), and attributed every install to no campaign. Both point at the same thing: this property has no Google Ads link, so spend and campaign names never reach it. Link it in GA4 → Admin → Product links → Google Ads links, using the property behind your Firebase project. Until then cost per install, CAC and payback stay unknown rather than $0.
+                  GA4 reported no ad cost for property <span className="font-mono">{campaignsRaw.propertyId}</span>, on any campaign dimension or as a property-wide total ({campaignsRaw.ads.length} ad row{campaignsRaw.ads.length === 1 ? "" : "s"}, all zero). If the Google Ads link is in place, check that the linked account is the one running these campaigns and that the window overlaps days after the link was created. Cost per install, CAC and payback stay unknown rather than $0.
                 </Alert>
               </div>
             ) : null}
@@ -204,7 +204,11 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
                 ))}
               </tbody>
             </table>
-            {campaignsRaw.scope === "session" ? <p className="help mt-2">Spend is read on session scope (the property rejected first-touch scope for cost metrics); installs and purchases stay first-touch.</p> : null}
+            {campaignsRaw.scope === "total" ? (
+              <p className="help mt-2">GA4 would not break this spend down by campaign, so it is shown as one unattributed total. That is normal for iOS App campaigns, where per-user campaign attribution never reaches GA4.</p>
+            ) : campaignsRaw.scope === "firstUser" ? (
+              <p className="help mt-2">Spend is read on first-touch scope; GA4 reports ad cost on session scope, so these figures may lag the Google Ads console.</p>
+            ) : null}
           </>
         ) : (
           <div className="mt-3 space-y-2 text-sm text-[var(--muted)]">

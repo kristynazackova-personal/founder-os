@@ -26,6 +26,28 @@ export type CampaignSummary = {
   paybackMonths: number | null;
 };
 
+/** Which dimension produced the ad rows; "total" = property-wide spend with no per-campaign split. */
+export type AdRowScope = "session" | "firstUser" | "total";
+
+export function adRowsHaveSpend(rows: CampaignAdRow[]): boolean {
+  return rows.some((r) => r.costCents > 0 || r.clicks > 0);
+}
+
+/**
+ * Choose which ad rows to trust. GA4 reports ad cost on SESSION scope and
+ * answers a user-scoped request with blank cost and a 200, so a zero result
+ * is indistinguishable from a wrong-scope result: prefer the first attempt
+ * that actually carries cost, and otherwise fall back to the property-wide
+ * total, which no scope can distort.
+ */
+export function pickAdRows(attempts: Array<{ scope: "session" | "firstUser"; rows: CampaignAdRow[] }>, totals: CampaignAdRow | null): { ads: CampaignAdRow[]; scope: AdRowScope } {
+  for (const a of attempts) {
+    if (adRowsHaveSpend(a.rows)) return { ads: a.rows, scope: a.scope };
+  }
+  if (totals && (totals.costCents > 0 || totals.clicks > 0)) return { ads: [{ ...totals, campaign: "(not set)" }], scope: "total" };
+  return { ads: attempts[0]?.rows ?? [], scope: "total" };
+}
+
 export const CAMPAIGN_FUNNEL_EVENTS = ["first_open", "sign_up", "trial_start", "purchase"] as const;
 
 /** GA4's bucket for spend or users it can't tie to a named campaign at this scope — kept as one row, never dropped. */
