@@ -280,7 +280,7 @@ GRANT SELECT ON public.subscriptions TO founder_os_ro;`}</pre>
               </li>
             </ol>
             <p className="mt-3">
-              If the token stops working after about a week with an <code>invalid_grant</code> error, the OAuth client&apos;s consent screen is still in <em>Testing</em>: Google revokes those refresh tokens after 7 days. Publishing the client fixes it permanently.
+              <strong>&quot;Error 403: access_denied&quot;</strong>, saying the app has not completed verification and only approved testers can use it, means the OAuth client&apos;s consent screen is still in <em>Testing</em>. Publish it: Google Cloud console → <em>APIs &amp; Services</em> → <em>OAuth consent screen</em> (or <em>Google Auth Platform → Audience</em>) → <em>Publish app</em>. The &quot;Google hasn&apos;t verified this app&quot; screen that follows is expected — <em>Advanced</em> → <em>Go to …</em> — and needs no audit. The same <em>Testing</em> status is why a token that did work stops after about a week with <code>invalid_grant</code>: Google revokes those refresh tokens after 7 days.
             </p>
             <p className="mt-3">
               <strong>Two scopes that look right and are not:</strong> <code>analytics.readonly</code> is Google Analytics, and <code>datamanager</code> is for uploading conversions. A token minted for either is rejected here, so a refresh token you already use elsewhere almost certainly needs re-minting for the scope above. You can reuse the same OAuth client, just not the same token.

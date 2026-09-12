@@ -106,6 +106,17 @@ Enabling the API is not optional: without it the Ads API answers
 `PERMISSION_DENIED` / `SERVICE_DISABLED` saying it "has not been used in
 project … before or it is disabled", whatever the developer token says.
 
+**"Error 403: access_denied — Founder-OS has not completed the Google
+verification process … can only be accessed by developer-approved
+testers"** — the consent screen is still in *Testing* and the account
+signing in is not on its test-user list. Publish the app (*OAuth consent
+screen* / *Google Auth Platform → Audience* → *Publish app*), which also
+removes the 7-day expiry below, then redo the grant. The "Google hasn't
+verified this app" screen that follows is expected: *Advanced* → *Go to …*.
+If publishing demands an app homepage, privacy policy and terms URL, the
+deployment URL serves for all three. Adding yourself as a test user also
+clears the 403 but reinstates the 7-day expiry, so it is a stopgap only.
+
 ## ⚠️ The 7-day trap
 
 A consent screen with user type **External** and publishing status
