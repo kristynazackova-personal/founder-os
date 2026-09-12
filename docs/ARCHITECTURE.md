@@ -126,3 +126,25 @@ Three sources, in precedence order, merged by `summarizeCampaigns`:
 
 A reported figure always beats a typed one. Pure parts live in
 `domain/googleAds.ts` and `domain/campaigns.ts` and are unit-tested.
+
+## The deployment URL is load-bearing
+
+`APP_URL` (`env.appUrl`) is baked into things that outlive it, so moving the
+deployment to a new domain — e.g. `completefounder.com` — is not just a DNS
+change:
+
+- **The snippet a founder already pasted** carries the old host in its
+  `src`, and so does the `fetch` in the app-install instructions. Those
+  installs keep reporting to the old host or stop reporting at all. The old
+  host must therefore keep serving `/fos.js` and `/api/collect`
+  indefinitely, even after every page redirects.
+- **Hosted pay links** (`/pay/<slug>`) already shared with a founder's
+  customers have the old host in them; same requirement.
+- **Stripe Connect's OAuth callback** is `${APP_URL}/api/connect/stripe/callback`
+  and has to be re-registered on the Stripe app for the new domain.
+- **Google's OAuth client** needs any new callback URI added before a
+  click-through Google flow can work from the new domain.
+
+So a cutover is: point the new domain at the service, set `APP_URL`, keep
+the old host alive and un-redirected for those paths, and re-register the
+callbacks. Anything else silently drops a customer's data.

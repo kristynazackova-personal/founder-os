@@ -113,8 +113,14 @@ signing in is not on its test-user list. Publish the app (*OAuth consent
 screen* / *Google Auth Platform → Audience* → *Publish app*), which also
 removes the 7-day expiry below, then redo the grant. The "Google hasn't
 verified this app" screen that follows is expected: *Advanced* → *Go to …*.
-If publishing demands an app homepage, privacy policy and terms URL, the
-deployment URL serves for all three. Adding yourself as a test user also
+If publishing demands an app homepage, privacy policy and terms URL, use
+the product domain (`completefounder.com`) — links have to sit on an
+**authorized domain**, and a `*.up.railway.app` host cannot be one because
+you do not own it. Verify the domain in
+[Search Console](https://search.google.com/search-console) by **DNS TXT
+record**, which works before any site exists there, then add it as an
+authorized domain. The pages may 404 for now; Google does not fetch them to
+publish, only to verify later. Adding yourself as a test user also
 clears the 403 but reinstates the 7-day expiry, so it is a stopgap only.
 
 ## ⚠️ The 7-day trap
