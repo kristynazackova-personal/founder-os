@@ -7,6 +7,7 @@ import { getChecklist, getDraft } from "@/lib/services/connectChecklists";
 import { getEventSettings, isEventSource } from "@/lib/services/eventCatalog";
 import { describeEventSettings } from "@/lib/domain/eventSettings";
 import { stripeConnectConfigured } from "@/lib/env";
+import { googleAdsConfigured } from "@/lib/sources/googleads";
 import { disconnectSourceAction } from "@/app/actions/sources";
 import { CONNECT_GUIDES, isSourceType, SourceIcon } from "@/components/connect/guides";
 import { ConnectChecklist } from "@/components/connect/Checklist";
@@ -83,6 +84,12 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
         </Alert>
       ) : null}
       {q.disconnected ? <Alert kind="info">{guide.name} disconnected.</Alert> : null}
+      {source === "googleads" && !googleAdsConfigured() ? (
+        <Alert kind="warn">
+          Google Ads is not switched on for this deployment yet, so connecting will fail however good your token is. Three variables have to be set on the server first —{" "}
+          <code>GOOGLE_ADS_DEVELOPER_TOKEN</code>, <code>GOOGLE_OAUTH_CLIENT_ID</code> and <code>GOOGLE_OAUTH_CLIENT_SECRET</code> — and the client id and secret must be the same pair you used to mint the refresh token, or Google rejects it as <code>invalid_grant</code>. The developer token comes from a Google Ads manager account under <em>Admin → API Center</em>.
+        </Alert>
+      ) : null}
       {q.events ? <Alert kind="good">Event settings saved. Your diagnosis has been refreshed.</Alert> : null}
       {q.draft ? <Alert kind="info">Draft saved. Keys and secrets are stored encrypted and never shown again — leave those fields blank when you finish, or paste a new one to replace what&apos;s on file.</Alert> : null}
       {!q.draft && hasDraft && !connected ? <Alert kind="info">You have a saved draft; the fields below are filled from it{secretsOnFile.length ? ", and the secret is on file" : ""}.</Alert> : null}
