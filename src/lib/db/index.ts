@@ -57,6 +57,9 @@ async function connect(): Promise<Db> {
   }
 
   // Zero-setup local database: embedded Postgres (PGlite) persisted in ./.data.
+  if (env.isProd && process.env.ALLOW_PGLITE_IN_PRODUCTION !== "true") {
+    throw new Error("DATABASE_URL is not set. Production needs a Postgres database (Railway Postgres or Neon); the embedded database is for local development only.");
+  }
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");
   const { migrate } = await import("drizzle-orm/pglite/migrator");
