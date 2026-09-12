@@ -18,8 +18,10 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
   const app = await getAppForUser(appId, user.id);
   if (!app || !isSourceType(source)) notFound();
   const guide = CONNECT_GUIDES[source];
-  const [sources, done, draft] = await Promise.all([listSources(app.id), getChecklist(app.id, source), getDraft(app.id, source)]);
-  const hasDraft = Object.keys(draft).length > 0;
+  const [sources, done, draftView] = await Promise.all([listSources(app.id), getChecklist(app.id, source), getDraft(app.id, source)]);
+  const draft = draftView.fields;
+  const secretsOnFile = draftView.secretsOnFile;
+  const hasDraft = Object.keys(draft).length > 0 || secretsOnFile.length > 0;
   const row = sources.find((s) => s.type === source) ?? null;
   const connected = Boolean(row) && !q.replace;
   const base = `/app/${app.id}/connect/${source}`;
@@ -27,7 +29,7 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
   const form =
     source === "stripe" ? (
       <div className="space-y-4">
-        <StripeKeyForm appId={app.id} />
+        <StripeKeyForm appId={app.id} secretsOnFile={secretsOnFile} />
         {stripeConnectConfigured() ? (
           <div className="border-t border-stone-200 pt-4 text-sm">
             <div className="font-semibold">Prefer not to handle a key?</div>
@@ -39,17 +41,17 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
         ) : null}
       </div>
     ) : source === "lemonsqueezy" ? (
-      <LemonSqueezyForm appId={app.id} draft={draft} />
+      <LemonSqueezyForm appId={app.id} draft={draft} secretsOnFile={secretsOnFile} />
     ) : source === "paddle" ? (
-      <PaddleForm appId={app.id} />
+      <PaddleForm appId={app.id} secretsOnFile={secretsOnFile} />
     ) : source === "appstore" ? (
-      <AppStoreForm appId={app.id} draft={draft} />
+      <AppStoreForm appId={app.id} draft={draft} secretsOnFile={secretsOnFile} />
     ) : source === "mixpanel" ? (
-      <MixpanelForm appId={app.id} draft={draft} />
+      <MixpanelForm appId={app.id} draft={draft} secretsOnFile={secretsOnFile} />
     ) : source === "postgres" ? (
-      <PostgresForm appId={app.id} draft={draft} />
+      <PostgresForm appId={app.id} draft={draft} secretsOnFile={secretsOnFile} />
     ) : (
-      <Ga4Form appId={app.id} draft={draft} />
+      <Ga4Form appId={app.id} draft={draft} secretsOnFile={secretsOnFile} />
     );
 
   return (
@@ -76,8 +78,8 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
         </Alert>
       ) : null}
       {q.disconnected ? <Alert kind="info">{guide.name} disconnected.</Alert> : null}
-      {q.draft ? <Alert kind="info">Draft saved. Keys, secrets and passwords are never kept in a draft — paste them again when you finish.</Alert> : null}
-      {!q.draft && hasDraft && !connected ? <Alert kind="info">You have a saved draft; the fields below are filled from it.</Alert> : null}
+      {q.draft ? <Alert kind="info">Draft saved. Keys and secrets are stored encrypted and never shown again — leave those fields blank when you finish, or paste a new one to replace what&apos;s on file.</Alert> : null}
+      {!q.draft && hasDraft && !connected ? <Alert kind="info">You have a saved draft; the fields below are filled from it{secretsOnFile.length ? ", and the secret is on file" : ""}.</Alert> : null}
       {q.stripe === "connected" ? <Alert kind="good">Stripe connected. Your diagnosis has been refreshed.</Alert> : null}
       {q.error ? <Alert kind="bad">{q.error}</Alert> : null}
 

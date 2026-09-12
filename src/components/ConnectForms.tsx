@@ -5,6 +5,12 @@ import { connectAppStoreAction, connectGa4Action, connectLemonSqueezyAction, con
 
 export type Draft = Record<string, string>;
 
+/** Shown under a secret input when a draft holds a value for it. */
+function SecretOnFile({ name, secretsOnFile }: { name: string; secretsOnFile: string[] }) {
+  if (!secretsOnFile.includes(name)) return null;
+  return <p className="help text-emerald-700">Saved from your draft (stored encrypted, never shown). Leave blank to use it, or paste a new one to replace it.</p>;
+}
+
 /** Secondary submit that stores the non-secret fields without connecting. */
 function SaveForLater({ appId, source }: { appId: string; source: string }) {
   return (
@@ -21,31 +27,36 @@ function Status({ state }: { state: FormState }) {
   return null;
 }
 
-export function StripeKeyForm({ appId }: { appId: string }) {
+export function StripeKeyForm({ appId, secretsOnFile = [] }: { appId: string; secretsOnFile?: string[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(connectStripeKeyAction.bind(null, appId), undefined);
   return (
     <form action={action} className="space-y-3">
       <div>
         <label className="label">Restricted key</label>
-        <input name="apiKey" className="input" type="password" required placeholder="rk_live_…" autoComplete="off" />
+        <input name="apiKey" className="input" type="password" required={!secretsOnFile.includes("apiKey")} placeholder="rk_live_…" autoComplete="off" />
         <p className="help">Starts with rk_live_ (or rk_test_ for a sandbox). Secret keys (sk_…) are refused.</p>
+        <SecretOnFile name="apiKey" secretsOnFile={secretsOnFile} />
       </div>
       <Status state={state} />
-      <button type="submit" className="btn btn-primary" disabled={pending}>
-        {pending ? "Checking…" : "Connect Stripe"}
-      </button>
+      <div className="flex gap-2">
+        <button type="submit" className="btn btn-primary" disabled={pending}>
+          {pending ? "Checking…" : "Connect Stripe"}
+        </button>
+        <SaveForLater appId={appId} source="stripe" />
+      </div>
     </form>
   );
 }
 
-export function LemonSqueezyForm({ appId, draft = {} }: { appId: string; draft?: Draft }) {
+export function LemonSqueezyForm({ appId, draft = {}, secretsOnFile = [] }: { appId: string; draft?: Draft; secretsOnFile?: string[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(connectLemonSqueezyAction.bind(null, appId), undefined);
   return (
     <form action={action} className="space-y-3">
       <div>
         <label className="label">API key</label>
-        <input name="apiKey" className="input" type="password" required placeholder="eyJ…" autoComplete="off" />
+        <input name="apiKey" className="input" type="password" required={!secretsOnFile.includes("apiKey")} placeholder="eyJ…" autoComplete="off" />
         <p className="help">Settings → API → create a key. It is stored encrypted and only ever used to read.</p>
+        <SecretOnFile name="apiKey" secretsOnFile={secretsOnFile} />
       </div>
       <div>
         <label className="label">Store id (optional)</label>
@@ -62,24 +73,28 @@ export function LemonSqueezyForm({ appId, draft = {} }: { appId: string; draft?:
   );
 }
 
-export function PaddleForm({ appId }: { appId: string }) {
+export function PaddleForm({ appId, secretsOnFile = [] }: { appId: string; secretsOnFile?: string[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(connectPaddleAction.bind(null, appId), undefined);
   return (
     <form action={action} className="space-y-3">
       <div>
         <label className="label">API key</label>
-        <input name="apiKey" className="input" type="password" required placeholder="pdl_live_… or pdl_sdbx_…" autoComplete="off" />
+        <input name="apiKey" className="input" type="password" required={!secretsOnFile.includes("apiKey")} placeholder="pdl_live_… or pdl_sdbx_…" autoComplete="off" />
         <p className="help">Developer tools → Authentication. Read permission on subscriptions, transactions and prices is enough.</p>
+        <SecretOnFile name="apiKey" secretsOnFile={secretsOnFile} />
       </div>
       <Status state={state} />
-      <button type="submit" className="btn btn-primary" disabled={pending}>
-        {pending ? "Checking…" : "Connect Paddle"}
-      </button>
+      <div className="flex gap-2">
+        <button type="submit" className="btn btn-primary" disabled={pending}>
+          {pending ? "Checking…" : "Connect Paddle"}
+        </button>
+        <SaveForLater appId={appId} source="paddle" />
+      </div>
     </form>
   );
 }
 
-export function Ga4Form({ appId, draft = {} }: { appId: string; draft?: Draft }) {
+export function Ga4Form({ appId, draft = {}, secretsOnFile = [] }: { appId: string; draft?: Draft; secretsOnFile?: string[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(connectGa4Action.bind(null, appId), undefined);
   return (
     <form action={action} className="space-y-3">
@@ -90,7 +105,8 @@ export function Ga4Form({ appId, draft = {} }: { appId: string; draft?: Draft })
       </div>
       <div>
         <label className="label">Service account JSON</label>
-        <textarea name="serviceAccountJson" className="textarea h-28 font-mono text-xs" required placeholder='{"type":"service_account", "client_email": "…@….iam.gserviceaccount.com", …}' />
+        <textarea name="serviceAccountJson" className="textarea h-28 font-mono text-xs" required={!secretsOnFile.includes("serviceAccountJson")} placeholder='{"type":"service_account", "client_email": "…@….iam.gserviceaccount.com", …}' />
+        <SecretOnFile name="serviceAccountJson" secretsOnFile={secretsOnFile} />
         <p className="help">The whole key file. It must contain <code>&quot;type&quot;: &quot;service_account&quot;</code>, a <code>client_email</code> and a <code>private_key</code>.</p>
       </div>
       <Status state={state} />
@@ -104,7 +120,7 @@ export function Ga4Form({ appId, draft = {} }: { appId: string; draft?: Draft })
   );
 }
 
-export function AppStoreForm({ appId, draft = {} }: { appId: string; draft?: Draft }) {
+export function AppStoreForm({ appId, draft = {}, secretsOnFile = [] }: { appId: string; draft?: Draft; secretsOnFile?: string[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(connectAppStoreAction.bind(null, appId), undefined);
   return (
     <form action={action} className="space-y-3">
@@ -124,8 +140,9 @@ export function AppStoreForm({ appId, draft = {} }: { appId: string; draft?: Dra
       </div>
       <div>
         <label className="label">Private key (.p8 contents)</label>
-        <textarea name="privateKey" className="textarea h-28 font-mono text-xs" required placeholder={"-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----"} />
+        <textarea name="privateKey" className="textarea h-28 font-mono text-xs" required={!secretsOnFile.includes("privateKey")} placeholder={"-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----"} />
         <p className="help">The whole file, BEGIN and END lines included. Stored encrypted; used only to sign report requests.</p>
+        <SecretOnFile name="privateKey" secretsOnFile={secretsOnFile} />
       </div>
       <Status state={state} />
       <div className="flex gap-2">
@@ -138,7 +155,7 @@ export function AppStoreForm({ appId, draft = {} }: { appId: string; draft?: Dra
   );
 }
 
-export function MixpanelForm({ appId, draft = {} }: { appId: string; draft?: Draft }) {
+export function MixpanelForm({ appId, draft = {}, secretsOnFile = [] }: { appId: string; draft?: Draft; secretsOnFile?: string[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(connectMixpanelAction.bind(null, appId), undefined);
   return (
     <form action={action} className="space-y-3">
@@ -161,7 +178,8 @@ export function MixpanelForm({ appId, draft = {} }: { appId: string; draft?: Dra
         </div>
         <div>
           <label className="label">Service account secret</label>
-          <input name="serviceSecret" className="input" type="password" required autoComplete="off" />
+          <input name="serviceSecret" className="input" type="password" required={!secretsOnFile.includes("serviceSecret")} autoComplete="off" />
+          <SecretOnFile name="serviceSecret" secretsOnFile={secretsOnFile} />
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
@@ -190,14 +208,15 @@ export function MixpanelForm({ appId, draft = {} }: { appId: string; draft?: Dra
   );
 }
 
-export function PostgresForm({ appId, draft = {} }: { appId: string; draft?: Draft }) {
+export function PostgresForm({ appId, draft = {}, secretsOnFile = [] }: { appId: string; draft?: Draft; secretsOnFile?: string[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(connectPostgresAction.bind(null, appId), undefined);
   return (
     <form action={action} className="space-y-3">
       <div>
         <label className="label">Read-only connection string</label>
         <input name="connectionString" className="input" type="password" required placeholder="postgresql://founder_os_ro:…@host:5432/db?sslmode=require" autoComplete="off" defaultValue={draft.connectionString} />
-        <p className="help">A role that can only SELECT. Every query runs read-only with a 15-second limit.{draft.connectionString ? " Your draft kept the host, user and database — add the password back." : ""}</p>
+        <p className="help">A role that can only SELECT. Every query runs read-only with a 15-second limit.{draft.connectionString && !secretsOnFile.includes("connectionString") ? " Your draft kept the host, user and database — add the password back." : ""}</p>
+        <SecretOnFile name="connectionString" secretsOnFile={secretsOnFile} />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>

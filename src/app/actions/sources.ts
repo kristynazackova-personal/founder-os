@@ -5,17 +5,15 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
 import { connectAppStore, connectGa4, connectLemonSqueezy, connectMixpanel, connectPaddle, connectPostgres, connectStripeKey, removeSource } from "@/lib/services/sources";
-import { clearDraft, saveDraft, setChecklistStep } from "@/lib/services/connectChecklists";
+import { clearDraft, saveDraft, setChecklistStep, withDraftSecrets } from "@/lib/services/connectChecklists";
 import { runAssessment } from "@/lib/services/diagnosis";
 import type { SourceType } from "@/lib/sources";
 import { isSourceType } from "@/components/connect/guides";
 import type { FormState } from "./apps";
 
 /** A failed attempt still keeps the non-secret fields, so nothing typed so far is lost. */
-async function keepDraft(appId: string, source: string, formData: FormData): Promise<void> {
-  const raw: Record<string, string> = {};
-  for (const [k, v] of formData.entries()) if (typeof v === "string") raw[k] = v;
-  await saveDraft(appId, source, raw).catch(() => undefined);
+async function keepDraft(appId: string, source: string, data: Record<string, string>): Promise<void> {
+  await saveDraft(appId, source, data).catch(() => undefined);
 }
 
 async function afterConnect(appId: string, source?: string) {
@@ -30,9 +28,10 @@ export async function connectStripeKeyAction(appId: string, _prev: FormState, fo
   const user = await requireUser();
   const app = await getAppForUser(appId, user.id);
   if (!app) return { error: "App not found." };
-  const res = await connectStripeKey(app, String(formData.get("apiKey") ?? ""));
+  const data = await withDraftSecrets(app.id, "stripe", formData);
+  const res = await connectStripeKey(app, String(data["apiKey"] ?? ""));
   if (!res.ok) {
-    await keepDraft(appId, "stripe", formData);
+    await keepDraft(appId, "stripe", data);
     return { error: res.error };
   }
   await afterConnect(appId, "stripe");
@@ -43,9 +42,10 @@ export async function connectLemonSqueezyAction(appId: string, _prev: FormState,
   const user = await requireUser();
   const app = await getAppForUser(appId, user.id);
   if (!app) return { error: "App not found." };
-  const res = await connectLemonSqueezy(app, String(formData.get("apiKey") ?? ""), String(formData.get("storeId") ?? "") || null);
+  const data = await withDraftSecrets(app.id, "lemonsqueezy", formData);
+  const res = await connectLemonSqueezy(app, String(data["apiKey"] ?? ""), String(data["storeId"] ?? "") || null);
   if (!res.ok) {
-    await keepDraft(appId, "lemonsqueezy", formData);
+    await keepDraft(appId, "lemonsqueezy", data);
     return { error: res.error };
   }
   await afterConnect(appId, "lemonsqueezy");
@@ -56,9 +56,10 @@ export async function connectPaddleAction(appId: string, _prev: FormState, formD
   const user = await requireUser();
   const app = await getAppForUser(appId, user.id);
   if (!app) return { error: "App not found." };
-  const res = await connectPaddle(app, String(formData.get("apiKey") ?? ""));
+  const data = await withDraftSecrets(app.id, "paddle", formData);
+  const res = await connectPaddle(app, String(data["apiKey"] ?? ""));
   if (!res.ok) {
-    await keepDraft(appId, "paddle", formData);
+    await keepDraft(appId, "paddle", data);
     return { error: res.error };
   }
   await afterConnect(appId, "paddle");
@@ -69,24 +70,26 @@ export async function connectGa4Action(appId: string, _prev: FormState, formData
   const user = await requireUser();
   const app = await getAppForUser(appId, user.id);
   if (!app) return { error: "App not found." };
-  const res = await connectGa4(app, String(formData.get("propertyId") ?? ""), String(formData.get("serviceAccountJson") ?? ""));
+  const data = await withDraftSecrets(app.id, "ga4", formData);
+  const res = await connectGa4(app, String(data["propertyId"] ?? ""), String(data["serviceAccountJson"] ?? ""));
   if (!res.ok) {
-    await keepDraft(appId, "ga4", formData);
+    await keepDraft(appId, "ga4", data);
     return { error: res.error };
   }
   await afterConnect(appId, "ga4");
   redirect(`/app/${appId}/connect/ga4?connected=1`);
 }
 
-const f = (formData: FormData, k: string) => String(formData.get(k) ?? "");
+const f = (data: Record<string, string>, k: string) => data[k] ?? "";
 
 export async function connectAppStoreAction(appId: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   const app = await getAppForUser(appId, user.id);
   if (!app) return { error: "App not found." };
-  const res = await connectAppStore(app, { issuerId: f(formData, "issuerId"), keyId: f(formData, "keyId"), privateKey: f(formData, "privateKey"), vendorNumber: f(formData, "vendorNumber") });
+  const data = await withDraftSecrets(app.id, "appstore", formData);
+  const res = await connectAppStore(app, { issuerId: f(data, "issuerId"), keyId: f(data, "keyId"), privateKey: f(data, "privateKey"), vendorNumber: f(data, "vendorNumber") });
   if (!res.ok) {
-    await keepDraft(appId, "appstore", formData);
+    await keepDraft(appId, "appstore", data);
     return { error: res.error };
   }
   await afterConnect(appId, "appstore");
@@ -97,9 +100,10 @@ export async function connectMixpanelAction(appId: string, _prev: FormState, for
   const user = await requireUser();
   const app = await getAppForUser(appId, user.id);
   if (!app) return { error: "App not found." };
-  const res = await connectMixpanel(app, { projectId: f(formData, "projectId"), serviceUser: f(formData, "serviceUser"), serviceSecret: f(formData, "serviceSecret"), region: f(formData, "region"), signupEvent: f(formData, "signupEvent"), activationEvent: f(formData, "activationEvent"), visitorEvent: f(formData, "visitorEvent") });
+  const data = await withDraftSecrets(app.id, "mixpanel", formData);
+  const res = await connectMixpanel(app, { projectId: f(data, "projectId"), serviceUser: f(data, "serviceUser"), serviceSecret: f(data, "serviceSecret"), region: f(data, "region"), signupEvent: f(data, "signupEvent"), activationEvent: f(data, "activationEvent"), visitorEvent: f(data, "visitorEvent") });
   if (!res.ok) {
-    await keepDraft(appId, "mixpanel", formData);
+    await keepDraft(appId, "mixpanel", data);
     return { error: res.error };
   }
   await afterConnect(appId, "mixpanel");
@@ -110,19 +114,20 @@ export async function connectPostgresAction(appId: string, _prev: FormState, for
   const user = await requireUser();
   const app = await getAppForUser(appId, user.id);
   if (!app) return { error: "App not found." };
+  const data = await withDraftSecrets(app.id, "postgres", formData);
   const res = await connectPostgres(app, {
-    connectionString: f(formData, "connectionString"),
-    usersTable: f(formData, "usersTable"),
-    usersCreatedAt: f(formData, "usersCreatedAt"),
-    subsTable: f(formData, "subsTable"),
-    subsCustomer: f(formData, "subsCustomer"),
-    subsStartedAt: f(formData, "subsStartedAt"),
-    subsEndedAt: f(formData, "subsEndedAt"),
-    subsPlan: f(formData, "subsPlan"),
-    priceMap: f(formData, "priceMap"),
+    connectionString: f(data, "connectionString"),
+    usersTable: f(data, "usersTable"),
+    usersCreatedAt: f(data, "usersCreatedAt"),
+    subsTable: f(data, "subsTable"),
+    subsCustomer: f(data, "subsCustomer"),
+    subsStartedAt: f(data, "subsStartedAt"),
+    subsEndedAt: f(data, "subsEndedAt"),
+    subsPlan: f(data, "subsPlan"),
+    priceMap: f(data, "priceMap"),
   });
   if (!res.ok) {
-    await keepDraft(appId, "postgres", formData);
+    await keepDraft(appId, "postgres", data);
     return { error: res.error };
   }
   await afterConnect(appId, "postgres");

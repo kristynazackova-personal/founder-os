@@ -1,0 +1,1 @@
+ALTER TABLE "connect_checklists" ADD COLUMN "draft_secrets_enc" text;

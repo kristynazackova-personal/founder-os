@@ -77,6 +77,8 @@ export const connectChecklists = pgTable(
     done: jsonb("done").$type<string[]>().notNull().default([]),
     /** Non-secret form fields saved for later (never keys, passwords or tokens). */
     draft: jsonb("draft").$type<Record<string, string>>().notNull().default({}),
+    /** Secret draft fields (keys, passwords), AES-256-GCM encrypted JSON. Used on connect, never displayed. */
+    draftSecretsEnc: text("draft_secrets_enc"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("connect_checklists_app_source_idx").on(t.appId, t.source)],
