@@ -43,3 +43,29 @@ describe("draft secrets round trip", () => {
     expect((await getDraft(appId, "appstore")).secretsOnFile).toEqual([]);
   });
 });
+
+describe("connect checklist round trip", () => {
+  let appId: string;
+  beforeAll(async () => {
+    const { getDb, schema } = await import("@/lib/db");
+    const db = await getDb();
+    const [user] = await db.insert(schema.users).values({ email: "chk@x.co", passwordHash: "x" }).returning();
+    const [app] = await db.insert(schema.apps).values({ userId: user.id, name: "C", siteKey: "fos_chk" }).returning();
+    appId = app.id;
+  });
+
+  it("keeps ticked steps and drops unticked ones, per source", async () => {
+    const { setChecklistStep, getChecklist } = await import("@/lib/services/connectChecklists");
+    expect(await getChecklist(appId, "googleads")).toEqual([]);
+    await setChecklistStep(appId, "googleads", "customer-id", true);
+    await setChecklistStep(appId, "googleads", "oauth", true);
+    expect((await getChecklist(appId, "googleads")).sort()).toEqual(["customer-id", "oauth"]);
+    // ticking the same step twice must not duplicate it
+    await setChecklistStep(appId, "googleads", "oauth", true);
+    expect((await getChecklist(appId, "googleads")).filter((s) => s === "oauth")).toHaveLength(1);
+    await setChecklistStep(appId, "googleads", "oauth", false);
+    expect(await getChecklist(appId, "googleads")).toEqual(["customer-id"]);
+    // another source keeps its own list
+    expect(await getChecklist(appId, "stripe")).toEqual([]);
+  });
+});

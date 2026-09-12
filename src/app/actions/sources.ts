@@ -150,6 +150,11 @@ export async function toggleConnectStepAction(appId: string, source: string, ste
   const app = await getAppForUser(appId, user.id);
   if (!app || !isSourceType(source) || !/^[a-z-]{1,40}$/.test(step)) return;
   await setChecklistStep(app.id, source, step, done);
+  // Without this the tick does not stick: ConnectChecklist shows the new
+  // state optimistically, React discards that once the action settles, and
+  // the page's `done` prop is still the pre-click render — so the box
+  // visually unchecks even though the write succeeded.
+  revalidatePath(`/app/${appId}/connect/${source}`);
 }
 
 /** "Save for later": keeps the non-secret fields of a half-finished setup. */
