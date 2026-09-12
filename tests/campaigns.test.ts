@@ -42,6 +42,17 @@ describe("summarizeCampaigns", () => {
     expect(rows[0].costPerInstallCents).toBe(150);
     expect(total.spendCents).toBe(4_500);
   });
+  it("leaves every cost unknown when no spend was reported, instead of claiming $0", () => {
+    const { rows, total } = summarizeCampaigns([], [{ campaign: "(not set)", event: "first_open", users: 34 }, { campaign: "(not set)", event: "purchase", users: 1 }], { monthlyRevenuePerPayingCents: 2_349 });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].installs).toBe(34);
+    expect(rows[0].paid).toBe(1);
+    expect(rows[0].spendCents).toBe(0);
+    expect(rows[0].costPerInstallCents).toBeNull();
+    expect(rows[0].cacCents).toBeNull();
+    expect(rows[0].paybackMonths).toBeNull();
+    expect(total.cacCents).toBeNull();
+  });
   it("has no payback without a known price", () => {
     const { rows } = summarizeCampaigns([{ campaign: "A", clicks: 1, impressions: 1, costCents: 100 }], [{ campaign: "A", event: "purchase", users: 1 }], { monthlyRevenuePerPayingCents: null });
     expect(rows[0].cacCents).toBe(100);

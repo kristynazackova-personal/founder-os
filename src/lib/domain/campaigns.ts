@@ -36,8 +36,14 @@ export function isUnsetCampaign(name: string | null | undefined): boolean {
   return UNSET.has((name ?? "").trim().toLowerCase());
 }
 
+/**
+ * Unit cost, or null when it can't be known. Spend of exactly zero means
+ * "no cost reported" — Founder OS cannot tell that apart from "genuinely
+ * free" — and reporting $0 CAC would read as free customers, so every
+ * derived cost stays unknown until real spend arrives.
+ */
 function ratio(cents: number, n: number): number | null {
-  return n > 0 ? Math.round(cents / n) : null;
+  return cents > 0 && n > 0 ? Math.round(cents / n) : null;
 }
 
 /**

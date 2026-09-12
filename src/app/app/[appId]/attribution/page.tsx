@@ -162,6 +162,13 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
           </div>
         ) : campaigns.rows.length ? (
           <>
+            {campaigns.total.spendCents === 0 ? (
+              <div className="mt-3">
+                <Alert kind="warn">
+                  GA4 reported no ad cost for property <span className="font-mono">{campaignsRaw.propertyId}</span> ({campaignsRaw.ads.length} ad row{campaignsRaw.ads.length === 1 ? "" : "s"}, all zero), and attributed every install to no campaign. Both point at the same thing: this property has no Google Ads link, so spend and campaign names never reach it. Link it in GA4 → Admin → Product links → Google Ads links, using the property behind your Firebase project. Until then cost per install, CAC and payback stay unknown rather than $0.
+                </Alert>
+              </div>
+            ) : null}
             <p className="mt-3 text-sm">
               <span className="text-2xl font-bold tracking-tight">{formatMoney(campaigns.total.spendCents)}</span> <span className="text-[var(--muted)]">spent · {campaigns.total.installs} installs · {campaigns.total.paid} paid · CAC {money(campaigns.total.cacCents)}</span>
             </p>
