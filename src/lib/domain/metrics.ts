@@ -42,6 +42,8 @@ export type AnalyticsSignals = {
   visitors30d: number | null;
   checkoutViews30d: number | null;
   activations30d: number | null;
+  /** Mobile app installs in the last 30 days (GA4 / Firebase `first_open`, else the app's own `install` calls). */
+  installs30d: number | null;
 };
 
 export type Metrics = {
@@ -66,6 +68,7 @@ export type Metrics = {
   visitors30d: number | null;
   checkoutViews30d: number | null;
   activations30d: number | null;
+  installs30d: number | null;
   /** signups → purchase in 30d, null when no signups known */
   signupToPaid30d: number | null;
   /** checkout view → purchase in 30d */
@@ -151,13 +154,14 @@ export function computeMetrics(
     visitors30d: signals.visitors30d,
     checkoutViews30d: signals.checkoutViews30d,
     activations30d: signals.activations30d,
+    installs30d: signals.installs30d,
     signupToPaid30d,
     checkoutConversion30d,
   };
 }
 
 export const EMPTY_REVENUE: NormalizedRevenueData = { subscriptions: [], charges: [], dataSince: null };
-export const EMPTY_SIGNALS: AnalyticsSignals = { signups30d: null, visitors30d: null, checkoutViews30d: null, activations30d: null };
+export const EMPTY_SIGNALS: AnalyticsSignals = { signups30d: null, visitors30d: null, checkoutViews30d: null, activations30d: null, installs30d: null };
 
 /** Merge several sources' normalised data (e.g. Stripe + wrapped checkout). */
 export function mergeRevenueData(parts: NormalizedRevenueData[]): NormalizedRevenueData {

@@ -48,9 +48,21 @@ export const ga4Adapter: AnalyticsAdapter = {
         dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: "sign_up" } } },
       }),
     });
+    // Firebase's automatic first_open = one per app install. A web-only
+    // property never has it, so "no rows" stays null rather than 0.
+    const installs = await jsonFetch<RunReport>(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
+        metrics: [{ name: "eventCount" }],
+        dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: "first_open" } } },
+      }),
+    });
     return {
       visitors30d: Number(users.rows?.[0]?.metricValues?.[0]?.value ?? 0),
       signups30d: signups.rows?.length ? Number(signups.rows[0].metricValues[0].value) : null,
+      installs30d: installs.rows?.length ? Number(installs.rows[0].metricValues[0].value) : null,
     };
   },
 };

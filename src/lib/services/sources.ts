@@ -258,7 +258,7 @@ export async function fetchAnalyticsSignals(app: App): Promise<{ signals: Partia
     if (!row || !adapter) continue;
     try {
       const part = await adapter.fetchSignals(decryptJson(row.credentialsEnc));
-      for (const key of ["visitors30d", "signups30d", "checkoutViews30d", "activations30d"] as const) {
+      for (const key of ["visitors30d", "signups30d", "checkoutViews30d", "activations30d", "installs30d"] as const) {
         if (signals[key] == null && part[key] != null) signals[key] = part[key];
       }
       used.push(type);

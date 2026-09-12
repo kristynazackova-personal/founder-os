@@ -80,9 +80,9 @@ export async function snippetSignals(appId: string, now = new Date()): Promise<A
     .select({ anonId: schema.attributionEvents.anonId, event: schema.attributionEvents.event })
     .from(schema.attributionEvents)
     .where(and(eq(schema.attributionEvents.appId, appId), gt(schema.attributionEvents.occurredAt, since)));
-  if (rows.length === 0) return { hasAny: false, signups30d: null, visitors30d: null, checkoutViews30d: null, activations30d: null };
+  if (rows.length === 0) return { hasAny: false, signups30d: null, visitors30d: null, checkoutViews30d: null, activations30d: null, installs30d: null };
   const by = (ev: string) => new Set(rows.filter((r) => r.event === ev).map((r) => r.anonId)).size;
-  return { hasAny: true, visitors30d: new Set(rows.map((r) => r.anonId)).size, signups30d: by("signup"), checkoutViews30d: by("checkout_view"), activations30d: by("activation") };
+  return { hasAny: true, visitors30d: new Set(rows.map((r) => r.anonId)).size, signups30d: by("signup"), checkoutViews30d: by("checkout_view"), activations30d: by("activation"), installs30d: by("install") || null };
 }
 
 export async function channelReport(appId: string, days = 90, now = new Date()): Promise<{ rows: ChannelReport[]; visitors: number; since: Date }> {

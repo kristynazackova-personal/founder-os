@@ -28,6 +28,9 @@ export async function runAssessment(app: App, now = new Date()): Promise<Assessm
     signups30d: snippet.signups30d ?? analytics.signals.signups30d ?? null,
     checkoutViews30d: snippet.checkoutViews30d ?? analytics.signals.checkoutViews30d ?? null,
     activations30d: snippet.activations30d ?? analytics.signals.activations30d ?? null,
+    // GA4 first, not the snippet: Firebase has counted installs since the
+    // app shipped, the app's own install calls only since it started sending them.
+    installs30d: analytics.signals.installs30d ?? snippet.installs30d ?? null,
   };
   const metrics = computeMetrics(data, signals, { launchedAt: app.launchedAt, now });
   const revenueSourceConnected = ext.connected || wrapped.hasAny;
@@ -62,7 +65,7 @@ export async function getOrRunAssessment(app: App, opts: { force?: boolean } = {
   const latest = opts.force ? null : await latestAssessment(app.id);
   if (latest && Date.now() - latest.computedAt.getTime() < ASSESSMENT_MAX_AGE_MS) {
     // Assessments stored before a metric existed lack its key; default it so the UI never renders undefined.
-    return { assessment: latest, metrics: { ...(latest.metrics as Metrics), trialingUsers: (latest.metrics as Partial<Metrics>).trialingUsers ?? 0 }, placement: placementFrom(latest), errors: [] };
+    return { assessment: latest, metrics: { ...(latest.metrics as Metrics), trialingUsers: (latest.metrics as Partial<Metrics>).trialingUsers ?? 0, installs30d: (latest.metrics as Partial<Metrics>).installs30d ?? null }, placement: placementFrom(latest), errors: [] };
   }
   return runAssessment(app);
 }

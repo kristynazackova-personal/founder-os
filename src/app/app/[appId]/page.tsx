@@ -144,6 +144,7 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ appI
             ["One-time buyers, 30d", String(m.oneTimeBuyers30d)],
             ["Visitors, 30d", m.visitors30d === null ? "—" : String(m.visitors30d)],
             ["Signups, 30d", m.signups30d === null ? "—" : String(m.signups30d)],
+            ["App installs, 30d", m.installs30d === null ? "—" : String(m.installs30d)],
             ["Signup → paid", formatPercent(m.signupToPaid30d, 1)],
             ["Checkout → paid", formatPercent(m.checkoutConversion30d, 1)],
             ["Days since launch", m.daysSinceLaunch === null ? "—" : String(m.daysSinceLaunch)],

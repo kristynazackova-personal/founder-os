@@ -67,7 +67,8 @@ describe("computeMetrics", () => {
       ],
       dataSince: null,
     };
-    const m = computeMetrics(data, { signups30d: 40, visitors30d: 500, checkoutViews30d: 20, activations30d: 10 }, { launchedAt: null, now: NOW });
+    const m = computeMetrics(data, { signups30d: 40, visitors30d: 500, checkoutViews30d: 20, activations30d: 10, installs30d: 55 }, { launchedAt: null, now: NOW });
+    expect(m.installs30d).toBe(55);
     expect(m.payingUsers).toBe(2); // subscriber a + one-time buyer x
     expect(m.oneTimeBuyers30d).toBe(1);
     expect(m.revenue30dUsdCents).toBe(4_900 + 2_900);
