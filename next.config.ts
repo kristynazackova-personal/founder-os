@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // PGlite (the zero-setup local database) ships WASM and touches the
   // filesystem; it must not be bundled by Turbopack.
-  serverExternalPackages: ["@electric-sql/pglite"],
+  serverExternalPackages: ["@electric-sql/pglite", "pg"],
   async headers() {
     return [
       {
