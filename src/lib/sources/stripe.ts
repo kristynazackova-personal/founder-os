@@ -83,11 +83,35 @@ export function normalizeStripe(subs: SubLike[], charges: ChargeLike[]): Normali
   return { subscriptions, charges: normalizedCharges, dataSince: null };
 }
 
+/** Only restricted keys are accepted from founders; a secret key would grant far more than reading. */
+export function isRestrictedStripeKey(key: string): boolean {
+  return /^rk_(live|test)_[A-Za-z0-9]+$/.test(key.trim());
+}
+
+/** Validate a restricted key by reading one subscription; returns the account id when the key may read it. */
+export async function probeRestrictedStripeKey(key: string): Promise<{ ok: true; accountId: string | null; livemode: boolean } | { ok: false; error: string }> {
+  const stripe = new Stripe(key);
+  try {
+    await stripe.subscriptions.list({ limit: 1 });
+    await stripe.charges.list({ limit: 1 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: /permission/i.test(msg) ? `The key lacks read permission: ${msg}` : `Stripe rejected the key: ${msg}` };
+  }
+  let accountId: string | null = null;
+  try {
+    accountId = (await stripe.accounts.retrieveCurrent()).id;
+  } catch {
+    /* Account read is optional for a restricted key. */
+  }
+  return { ok: true, accountId, livemode: key.startsWith("rk_live_") };
+}
+
 export const stripeAdapter: RevenueAdapter = {
   async fetchRevenue(credentials) {
-    const { stripeUserId } = credentials as StripeCredentials;
-    const stripe = getStripe();
-    const opts = { stripeAccount: stripeUserId };
+    const { stripeUserId, restrictedKey } = credentials as StripeCredentials;
+    const stripe = restrictedKey ? new Stripe(restrictedKey) : getStripe();
+    const opts = restrictedKey ? {} : { stripeAccount: stripeUserId };
     const subs: SubLike[] = [];
     let page = 0;
     for await (const s of stripe.subscriptions.list({ status: "all", limit: 100 }, opts)) {

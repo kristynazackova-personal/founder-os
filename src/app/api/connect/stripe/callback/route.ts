@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   jar.delete("fos_stripe_state");
   const state = request.nextUrl.searchParams.get("state") ?? "";
   const appId = state.split(".")[0] ?? "";
-  const back = (msg?: string) => NextResponse.redirect(new URL(`/app/${appId || ""}/connect?${msg ? `error=${encodeURIComponent(msg)}` : "stripe=connected"}`, request.url));
+  const back = (msg?: string) => NextResponse.redirect(new URL(`/app/${appId || ""}/connect/stripe?${msg ? `error=${encodeURIComponent(msg)}` : "stripe=connected"}`, request.url));
   if (!state || state !== expected) return back("Stripe connection expired or was tampered with. Try again.");
   const app = await getAppForUser(appId, user.id);
   if (!app) return NextResponse.redirect(new URL("/app", request.url));

@@ -2,7 +2,8 @@ import type { AnalyticsSignals, NormalizedRevenueData } from "../domain/metrics"
 
 export type SourceType = "stripe" | "lemonsqueezy" | "paddle" | "ga4";
 
-export type StripeCredentials = { stripeUserId: string; accessToken?: string; refreshToken?: string };
+/** Either a Connect OAuth grant (platform key + Stripe-Account header) or a founder-pasted restricted read-only key. */
+export type StripeCredentials = { stripeUserId: string; accessToken?: string; refreshToken?: string; restrictedKey?: string };
 export type ApiKeyCredentials = { apiKey: string; storeId?: string };
 export type Ga4Credentials = { propertyId: string; serviceAccountJson: string };
 

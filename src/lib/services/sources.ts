@@ -8,6 +8,7 @@ import { ProviderError } from "../checkout/provider";
 import { ga4Adapter } from "../sources/ga4";
 import { validateLemonSqueezyKey } from "../sources/lemonsqueezy";
 import { validatePaddleKey } from "../sources/paddle";
+import { isRestrictedStripeKey, probeRestrictedStripeKey } from "../sources/stripe";
 import { track } from "../track";
 
 export type SourceView = Pick<RevenueSource, "id" | "type" | "externalId" | "status" | "connectedAt" | "lastSyncedAt" | "lastError" | "meta">;
@@ -17,7 +18,7 @@ export function sourceIdentity(s: Pick<RevenueSource, "type" | "externalId" | "m
   const m = s.meta as Record<string, unknown>;
   switch (s.type) {
     case "stripe":
-      return s.externalId ? `Account ${s.externalId}` : "Connected account";
+      return m.via === "restricted_key" ? `${m.livemode ? "Live" : "Test"} restricted key ····${String(m.keyLast4 ?? "")}${s.externalId ? ` · ${s.externalId}` : ""}` : s.externalId ? `Account ${s.externalId} (OAuth)` : "Connected account";
     case "lemonsqueezy":
       return `${s.externalId ? `Store ${s.externalId} · ` : ""}key ····${String(m.keyLast4 ?? "")}`;
     case "paddle":
@@ -51,6 +52,17 @@ export async function upsertSource(app: App, type: SourceType, credentials: unkn
 export async function removeSource(appId: string, type: SourceType): Promise<void> {
   const db = await getDb();
   await db.delete(schema.revenueSources).where(and(eq(schema.revenueSources.appId, appId), eq(schema.revenueSources.type, type)));
+}
+
+export async function connectStripeKey(app: App, key: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const k = key.trim();
+  if (!k) return { ok: false, error: "Paste your Stripe restricted key." };
+  if (/^sk_/.test(k)) return { ok: false, error: "That is a secret key, which can move money. Create a restricted key with read-only permissions instead (Developers → API keys → Create restricted key)." };
+  if (!isRestrictedStripeKey(k)) return { ok: false, error: "Stripe restricted keys start with rk_live_ or rk_test_." };
+  const probe = await probeRestrictedStripeKey(k);
+  if (!probe.ok) return { ok: false, error: probe.error };
+  await upsertSource(app, "stripe", { stripeUserId: probe.accountId ?? "restricted-key", restrictedKey: k }, probe.accountId, { via: "restricted_key", livemode: probe.livemode, keyLast4: k.slice(-4) });
+  return { ok: true };
 }
 
 export async function connectLemonSqueezy(app: App, apiKey: string, storeId: string | null): Promise<{ ok: true } | { ok: false; error: string }> {

@@ -67,6 +67,19 @@ export const revenueSources = pgTable(
   (t) => [uniqueIndex("revenue_sources_app_type_idx").on(t.appId, t.type)],
 );
 
+/** Which guide steps a founder has ticked off on an integration's connect page. */
+export const connectChecklists = pgTable(
+  "connect_checklists",
+  {
+    id: id(),
+    appId: uuid("app_id").notNull().references(() => apps.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    done: jsonb("done").$type<string[]>().notNull().default([]),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("connect_checklists_app_source_idx").on(t.appId, t.source)],
+);
+
 export const assessments = pgTable(
   "assessments",
   {
