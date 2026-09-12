@@ -28,6 +28,7 @@ export async function GET() {
       encryptionKeySet: Boolean(env.encryptionKey),
       sessionSecretSet: env.sessionSecret !== "dev-session-secret-change-me",
       node: process.version,
+      commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? process.env.GIT_COMMIT_SHA?.slice(0, 7) ?? null,
     },
     { status: db === "ok" ? 200 : 503 },
   );
