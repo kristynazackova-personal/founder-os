@@ -22,6 +22,22 @@ snippet (or GA4 when the snippet is not installed).
 
 Test-mode purchases never count. Refunded charges never count.
 
+**Report-derived sources (App Store) infer lapses.** Apple's reports only
+say what happened; nothing says "this one quietly stopped renewing". So a
+subscription is treated as lapsed (status `canceled`, `canceledAt` = the
+inferred expiry) once its last paid event is older than one billing period
+plus Apple's 16-day billing-retry grace, and an unconverted free trial once
+its offer length (the plan period when the report doesn't carry it) plus the
+same grace has passed. Stripe's own statuses are authoritative and are not
+second-guessed. A free trial ("Start introductory offer" at 0.00) is never a
+paying customer until a paid event follows.
+
+| Metric | Definition |
+|---|---|
+| Free trials | distinct customers currently on a trial |
+| Trial starts 30d / trial → paid | trials started in the window, and the share of them that has reached a paid period so far (recent starts haven't had time) |
+| Lapsed 30d | distinct customers whose subscription ended, cancelled or inferred, in the window |
+
 ## Placement
 
 Evaluated top-down; the first rule that matches wins.

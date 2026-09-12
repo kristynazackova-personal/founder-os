@@ -13,7 +13,7 @@ Status legend: `todo` · `in progress` · `done (commit)`.
 
 ---
 
-## 1. Trial funnel + lapse detection — `todo` — NEXT SESSION
+## 1. Trial funnel + lapse detection — `done` (2026-09-12, session branch claude/trusting-shannon-3wndg6; deploy = fast-forward the default branch)
 
 Why: for a weekly plan with a free trial the business is trial starts →
 trial-to-paid rate → weeks survived. Today Founder OS counts trials
@@ -50,7 +50,7 @@ Done when: Selvenn's diagnosis shows the true paying count (3–4), trial
 starts and trial → paid for the last 30 days, and `npm test`, `check`,
 `lint`, `build` pass.
 
-## 2. Cost per paid user and payback by campaign — `todo`
+## 2. Cost per paid user and payback by campaign — `todo` — NEXT SESSION
 
 Why: Selvenn spends on Google Ads app campaigns and Founder OS has no
 ad-cost data. GA4's Google Ads link exposes clicks and cost per campaign

@@ -1,6 +1,6 @@
 import { createSign } from "node:crypto";
 import { gunzipSync } from "node:zlib";
-import type { NormalizedRevenueData, NormalizedSubscription } from "../domain/metrics";
+import { BILLING_RETRY_GRACE_MS, periodMs, type NormalizedRevenueData, type NormalizedSubscription } from "../domain/metrics";
 import type { AppStoreCredentials, RevenueAdapter } from "./types";
 
 /**
@@ -41,7 +41,24 @@ const DURATION_TO_INTERVAL: Array<[RegExp, NormalizedSubscription["interval"]]> 
   [/month/i, "month"],
 ];
 
-export type SubscriberEvent = { date: Date; subscriberId: string; event: string; priceCents: number; currency: string; interval: NormalizedSubscription["interval"]; intervalCount: number; productId: string };
+export type SubscriberEvent = {
+  date: Date;
+  subscriberId: string;
+  event: string;
+  priceCents: number;
+  currency: string;
+  interval: NormalizedSubscription["interval"];
+  intervalCount: number;
+  productId: string;
+  /** Length of the intro offer / free trial when the report says (e.g. "7 Days"); null when it doesn't. */
+  offerDuration: { interval: NormalizedSubscription["interval"]; count: number } | null;
+};
+
+function parseDuration(dur: string): { interval: NormalizedSubscription["interval"]; count: number } | null {
+  const interval = DURATION_TO_INTERVAL.find(([re]) => re.test(dur))?.[1];
+  if (!interval) return null;
+  return { interval, count: Number(dur.match(/(\d+)/)?.[1] ?? 1) || 1 };
+}
 
 function col(header: string[], ...names: string[]): number {
   for (const n of names) {
@@ -63,6 +80,7 @@ export function parseSubscriberReport(tsv: string): SubscriberEvent[] {
   const iCur = col(header, "Customer Currency");
   const iDur = col(header, "Standard Subscription Duration", "Subscription Duration");
   const iProd = col(header, "Subscription Apple ID", "Subscription Name");
+  const iOffer = col(header, "Subscription Offer Duration", "Introductory Price Duration", "Offer Duration");
   if (iDate < 0 || iSub < 0 || iEvent < 0) return [];
   const out: SubscriberEvent[] = [];
   for (const line of lines.slice(1)) {
@@ -70,8 +88,9 @@ export function parseSubscriberReport(tsv: string): SubscriberEvent[] {
     const sid = f[iSub]?.trim();
     if (!sid) continue;
     const dur = iDur >= 0 ? (f[iDur] ?? "") : "";
-    const count = Number(dur.match(/(\d+)/)?.[1] ?? 1) || 1;
-    const interval = DURATION_TO_INTERVAL.find(([re]) => re.test(dur))?.[1] ?? "month";
+    const plan = parseDuration(dur) ?? { interval: "month" as const, count: 1 };
+    const { interval, count } = plan;
+    const offerDuration = iOffer >= 0 ? parseDuration(f[iOffer] ?? "") : null;
     out.push({
       date: new Date(f[iDate]),
       subscriberId: sid,
@@ -81,13 +100,23 @@ export function parseSubscriberReport(tsv: string): SubscriberEvent[] {
       interval,
       intervalCount: count,
       productId: (f[iProd] ?? "").trim(),
+      offerDuration,
     });
   }
   return out;
 }
 
-/** Replay subscriber events (any order) into one subscription per subscriber. */
-export function normalizeAppStore(events: SubscriberEvent[]): NormalizedRevenueData {
+/**
+ * Replay subscriber events (any order) into one subscription per subscriber.
+ *
+ * Reports only carry what happened; nothing says "this one quietly stopped
+ * renewing". So a subscription is treated as LAPSED once its last paid event
+ * is older than one billing period plus Apple's 16-day billing-retry grace,
+ * and a trial that never reached a paid event is lapsed once its offer
+ * length (the plan period when the report doesn't say) plus the same grace
+ * has passed. `now` is a parameter so this stays pure.
+ */
+export function normalizeAppStore(events: SubscriberEvent[], now = new Date()): NormalizedRevenueData {
   const bySub = new Map<string, SubscriberEvent[]>();
   for (const e of events) {
     if (Number.isNaN(e.date.getTime())) continue;
@@ -102,6 +131,10 @@ export function normalizeAppStore(events: SubscriberEvent[]): NormalizedRevenueD
     let startedAt: Date | null = null;
     let canceledAt: Date | null = null;
     let trialing = false;
+    let trialStartedAt: Date | null = null;
+    let firstPaidAt: Date | null = null;
+    let lastPaidAt: Date | null = null;
+    let offer: SubscriberEvent["offerDuration"] = null;
     let last = list[0];
     for (const e of list) {
       const kind = e.event.toLowerCase();
@@ -109,6 +142,9 @@ export function normalizeAppStore(events: SubscriberEvent[]): NormalizedRevenueD
         if (startedAt === null || canceledAt !== null) {
           startedAt = e.date;
           canceledAt = null;
+          firstPaidAt = null;
+          lastPaidAt = null;
+          trialStartedAt = null;
         }
         // Apple reports a free trial as "Start introductory offer" at 0.00
         // (the trial wording only appears in the offer-type column), so any
@@ -117,8 +153,12 @@ export function normalizeAppStore(events: SubscriberEvent[]): NormalizedRevenueD
         if (e.priceCents > 0) {
           trialing = false;
           last = e;
+          firstPaidAt = firstPaidAt ?? e.date;
+          lastPaidAt = e.date;
         } else {
           trialing = TRIAL_EVENTS.has(kind) || e.priceCents === 0;
+          trialStartedAt = trialStartedAt ?? e.date;
+          offer = e.offerDuration ?? offer;
         }
       } else if (END_EVENTS.has(kind)) {
         canceledAt = e.date;
@@ -126,6 +166,13 @@ export function normalizeAppStore(events: SubscriberEvent[]): NormalizedRevenueD
       if (dataSince === null || e.date < dataSince) dataSince = e.date;
     }
     if (!startedAt) continue;
+    // Lapse inference: no end event, but the renewal that should have come never did.
+    if (canceledAt === null) {
+      const anchor = lastPaidAt ?? trialStartedAt ?? startedAt;
+      const period = lastPaidAt ? periodMs(last.interval, last.intervalCount) : offer ? periodMs(offer.interval, offer.count) : periodMs(last.interval, last.intervalCount);
+      const expiresAt = new Date(anchor.getTime() + period + BILLING_RETRY_GRACE_MS);
+      if (expiresAt <= now) canceledAt = expiresAt;
+    }
     subscriptions.push({
       id: `appstore_${sid}`,
       customerId: sid,
@@ -136,6 +183,8 @@ export function normalizeAppStore(events: SubscriberEvent[]): NormalizedRevenueD
       status: canceledAt ? "canceled" : trialing ? "trialing" : "active",
       startedAt,
       canceledAt,
+      trialStartedAt,
+      firstPaidAt,
     });
   }
   return { subscriptions, charges: [], dataSince };

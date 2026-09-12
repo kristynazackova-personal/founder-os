@@ -24,6 +24,9 @@ describe("computeMetrics", () => {
     const m = computeMetrics({ subscriptions: [], charges: [], dataSince: null }, EMPTY_SIGNALS, { launchedAt: null, now: NOW });
     expect(m.payingUsers).toBe(0);
     expect(m.trialingUsers).toBe(0);
+    expect(m.trialStarts30d).toBe(0);
+    expect(m.trialToPaid30d).toBeNull();
+    expect(m.lapsed30d).toBe(0);
     expect(m.mrrUsdCents).toBe(0);
     expect(m.momGrowth).toBeNull();
     expect(m.churn30d).toBeNull();
@@ -77,5 +80,28 @@ describe("computeMetrics", () => {
     expect(m.signupToPaid30d).toBeCloseTo(0.05, 5);
     expect(m.checkoutConversion30d).toBeCloseTo(0.1, 5);
     expect(m.daysSinceLaunch).toBe(90); // earliest data (sub start) when no launch date
+  });
+});
+
+describe("trial funnel", () => {
+  it("counts trial starts, conversions and lapses in the window", () => {
+    const data: NormalizedRevenueData = {
+      subscriptions: [
+        sub("t1", { status: "trialing", amountCents: 0, startedAt: daysAgo(3), trialStartedAt: daysAgo(3), firstPaidAt: null }), // still on trial
+        sub("t2", { startedAt: daysAgo(20), trialStartedAt: daysAgo(20), firstPaidAt: daysAgo(13) }), // converted
+        sub("t3", { status: "canceled", amountCents: 0, startedAt: daysAgo(25), trialStartedAt: daysAgo(25), firstPaidAt: null, canceledAt: daysAgo(2) }), // lapsed trial
+        sub("t4", { startedAt: daysAgo(60), trialStartedAt: daysAgo(60), firstPaidAt: daysAgo(53) }), // outside the window
+        sub("w1", { status: "canceled", startedAt: daysAgo(80), canceledAt: daysAgo(10) }), // lapsed paid weekly
+      ],
+      charges: [],
+      dataSince: daysAgo(90),
+    };
+    const m = computeMetrics(data, EMPTY_SIGNALS, { launchedAt: null, now: NOW });
+    expect(m.trialStarts30d).toBe(3);
+    expect(m.trialConversions30d).toBe(1);
+    expect(m.trialToPaid30d).toBeCloseTo(1 / 3);
+    expect(m.lapsed30d).toBe(2);
+    expect(m.trialingUsers).toBe(1);
+    expect(m.payingUsers).toBe(2); // t2 + t4
   });
 });

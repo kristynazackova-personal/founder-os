@@ -140,7 +140,7 @@ export function diagnose(
 
   if (stage === 2) {
     const numbers: [KpiCard, KpiCard, KpiCard] = [
-      { label: "Paying customers", value: n(m.payingUsers), hint: m.trialingUsers > 0 ? `+ ${m.trialingUsers} on a free trial` : undefined },
+      { label: "Paying customers", value: n(m.payingUsers), hint: m.trialingUsers > 0 || m.trialStarts30d > 0 ? `+ ${m.trialingUsers} on a free trial${m.trialToPaid30d === null ? "" : ` · ${Math.round(m.trialToPaid30d * 100)}% of trials convert`}` : undefined },
       { label: "MRR", value: formatMoney(m.mrrUsdCents), hint: m.mrrUsdCents === 0 && m.revenue30dUsdCents > 0 ? `${formatMoney(m.revenue30dUsdCents)} one-time this month` : undefined },
       { label: "Checkout → paid", value: formatPercent(m.checkoutConversion30d), hint: m.checkoutConversion30d === null ? "Install the snippet to see this" : undefined },
     ];

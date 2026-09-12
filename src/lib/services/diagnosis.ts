@@ -11,6 +11,11 @@ import { getInterview } from "./pricing";
 
 export const ASSESSMENT_MAX_AGE_MS = 6 * 3_600_000;
 
+/** Assessments stored before a metric existed lack its key; default every newer key so the UI never renders undefined. */
+function withMetricDefaults(m: Partial<Metrics>): Metrics {
+  return { trialingUsers: 0, trialStarts30d: 0, trialConversions30d: 0, trialToPaid30d: null, lapsed30d: 0, installs30d: null, ...m } as Metrics;
+}
+
 export type AssessmentResult = {
   assessment: Assessment;
   metrics: Metrics;
@@ -65,7 +70,7 @@ export async function getOrRunAssessment(app: App, opts: { force?: boolean } = {
   const latest = opts.force ? null : await latestAssessment(app.id);
   if (latest && Date.now() - latest.computedAt.getTime() < ASSESSMENT_MAX_AGE_MS) {
     // Assessments stored before a metric existed lack its key; default it so the UI never renders undefined.
-    return { assessment: latest, metrics: { ...(latest.metrics as Metrics), trialingUsers: (latest.metrics as Partial<Metrics>).trialingUsers ?? 0, installs30d: (latest.metrics as Partial<Metrics>).installs30d ?? null }, placement: placementFrom(latest), errors: [] };
+    return { assessment: latest, metrics: withMetricDefaults(latest.metrics as Partial<Metrics>), placement: placementFrom(latest), errors: [] };
   }
   return runAssessment(app);
 }

@@ -11,7 +11,7 @@ describe("App Store subscriber reports", () => {
     const tsv = [HEADER, row("2026-07-01", "Start introductory offer", "s1", "0.00"), row("2026-07-08", "Paid subscription from introductory offer", "s1"), row("2026-08-20", "Cancel", "s1"), row("2026-08-01", "Subscribe", "s2", "5.99"), row("2026-08-08", "Renew", "s2", "5.99"), row("2026-09-01", "Subscribe", "s3", "59.99", "1 Year")].join("\n");
     const events = parseSubscriberReport(tsv);
     expect(events).toHaveLength(6);
-    const data = normalizeAppStore(events);
+    const data = normalizeAppStore(events, new Date("2026-08-25T00:00:00Z")); // before s2 would lapse (08-08 + 7 + 16 days)
     const s1 = data.subscriptions.find((s) => s.customerId === "s1")!;
     expect(s1.status).toBe("canceled");
     expect(s1.startedAt.toISOString().slice(0, 10)).toBe("2026-07-01");
@@ -28,13 +28,42 @@ describe("App Store subscriber reports", () => {
   });
   it("keeps a $0 introductory start on trial until something is paid", () => {
     const tsv = [HEADER, row("2026-09-01", "Start introductory offer", "t1", "0.00"), row("2026-09-01", "Start introductory offer", "t2", "0.00"), row("2026-09-08", "Renew", "t2", "3.99")].join("\n");
-    const subs = normalizeAppStore(parseSubscriberReport(tsv)).subscriptions;
+    const subs = normalizeAppStore(parseSubscriberReport(tsv), new Date("2026-09-10T00:00:00Z")).subscriptions;
     const t1 = subs.find((s) => s.customerId === "t1")!;
     const t2 = subs.find((s) => s.customerId === "t2")!;
     expect(t1.status).toBe("trialing");
     expect(t1.amountCents).toBe(0);
     expect(t2.status).toBe("active");
     expect(t2.amountCents).toBe(399);
+  });
+  it("stamps trial start and first paid date", () => {
+    const tsv = [HEADER, row("2026-09-01", "Start introductory offer", "t2", "0.00"), row("2026-09-08", "Renew", "t2", "3.99")].join("\n");
+    const [t2] = normalizeAppStore(parseSubscriberReport(tsv), new Date("2026-09-10T00:00:00Z")).subscriptions;
+    expect(t2.trialStartedAt?.toISOString().slice(0, 10)).toBe("2026-09-01");
+    expect(t2.firstPaidAt?.toISOString().slice(0, 10)).toBe("2026-09-08");
+  });
+  it("treats a weekly subscription as lapsed one period + 16 days after its last paid event", () => {
+    const tsv = [HEADER, row("2026-07-01", "Subscribe", "w1", "3.99"), row("2026-07-08", "Renew", "w1", "3.99"), row("2026-09-01", "Subscribe", "w2", "3.99")].join("\n");
+    const subs = normalizeAppStore(parseSubscriberReport(tsv), new Date("2026-09-12T00:00:00Z")).subscriptions;
+    const w1 = subs.find((s) => s.customerId === "w1")!;
+    const w2 = subs.find((s) => s.customerId === "w2")!;
+    expect(w1.status).toBe("canceled");
+    expect(w1.canceledAt?.toISOString().slice(0, 10)).toBe("2026-07-31"); // 07-08 + 7 days + 16 days
+    expect(w2.status).toBe("active"); // 09-01 + 7 + 16 = 09-24 > now
+  });
+  it("treats an unconverted trial as lapsed after the offer length + grace, and a yearly plan as live", () => {
+    const HEADER_OFFER = HEADER + "\tSubscription Offer Duration";
+    const rowO = (date: string, event: string, sub: string, price: string, dur: string, offer: string) => row(date, event, sub, price, dur) + "\t" + offer;
+    const tsv = [HEADER_OFFER, rowO("2026-07-01", "Start introductory offer", "t1", "0.00", "1 Week", "7 Days"), rowO("2026-09-05", "Start introductory offer", "t2", "0.00", "1 Week", "7 Days"), rowO("2026-07-15", "Subscribe", "y1", "59.99", "1 Year", "")].join("\n");
+    const subs = normalizeAppStore(parseSubscriberReport(tsv), new Date("2026-09-12T00:00:00Z")).subscriptions;
+    const t1 = subs.find((s) => s.customerId === "t1")!;
+    const t2 = subs.find((s) => s.customerId === "t2")!;
+    const y1 = subs.find((s) => s.customerId === "y1")!;
+    expect(t1.status).toBe("canceled");
+    expect(t1.canceledAt?.toISOString().slice(0, 10)).toBe("2026-07-24"); // 07-01 + 7 days + 16 days
+    expect(t1.firstPaidAt).toBeNull();
+    expect(t2.status).toBe("trialing");
+    expect(y1.status).toBe("active");
   });
   it("ignores reports without the needed columns", () => {
     expect(parseSubscriberReport("Foo\tBar\n1\t2")).toEqual([]);

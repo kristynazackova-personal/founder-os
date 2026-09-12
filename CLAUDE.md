@@ -18,6 +18,6 @@ Rules that are easy to break:
 - `npm test`, `npm run check`, `npm run lint`, `npm run build` must pass.
 
 Roadmap for the current customer: `docs/ROADMAP-revenue-selvenn.md` — eight
-items, built one per session in order. **The next session works on item 1
-only** (trial funnel + lapse detection); update the item's status line when
-it ships.
+items, built one per session in order. Item 1 shipped. **The next session
+works on item 2 only** (cost per paid user and payback by campaign); update
+the item's status line when it ships.

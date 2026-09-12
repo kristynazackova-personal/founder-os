@@ -41,6 +41,8 @@ type SubLike = {
   start_date?: number;
   canceled_at?: number | null;
   ended_at?: number | null;
+  trial_start?: number | null;
+  trial_end?: number | null;
   items: { data: Array<{ quantity?: number | null; price: { unit_amount: number | null; currency: string; recurring: { interval: string; interval_count: number } | null } }> };
 };
 type ChargeLike = { id: string; customer: string | { id: string } | null; amount: number; currency: string; created: number; paid: boolean; refunded: boolean; status: string };
@@ -75,6 +77,15 @@ export function normalizeStripe(subs: SubLike[], charges: ChargeLike[]): Normali
       status: STATUS[s.status] ?? "active",
       startedAt: new Date((s.start_date ?? s.created) * 1000),
       canceledAt: s.ended_at ? new Date(s.ended_at * 1000) : s.status === "canceled" && s.canceled_at ? new Date(s.canceled_at * 1000) : null,
+      trialStartedAt: s.trial_start ? new Date(s.trial_start * 1000) : null,
+      // First paid period: after the trial when there was one, else at the start. Never while still trialing or never paid.
+      firstPaidAt: (() => {
+        if (s.status === "trialing" || s.status === "incomplete" || s.status === "incomplete_expired") return null;
+        const startMs = (s.start_date ?? s.created) * 1000;
+        const paidMs = s.trial_end ? Math.max(s.trial_end * 1000, startMs) : startMs;
+        if (s.ended_at && s.ended_at * 1000 <= paidMs) return null; // cancelled before ever paying
+        return new Date(paidMs);
+      })(),
     };
   });
   const normalizedCharges: NormalizedCharge[] = charges

@@ -1,5 +1,7 @@
 import { monthlyEquivalentCents, toUsdCents } from "./money";
 
+const DAY_MS = 86_400_000;
+
 /**
  * Normalised revenue data. Every source adapter (Stripe, Lemon Squeezy,
  * Paddle, our wrapped checkout) converts its own API shapes into this, and
@@ -17,7 +19,20 @@ export type NormalizedSubscription = {
   status: "active" | "trialing" | "past_due" | "canceled" | "paused" | "incomplete";
   startedAt: Date;
   canceledAt: Date | null;
+  /** When a free trial began, when the source knows (App Store, Stripe). */
+  trialStartedAt?: Date | null;
+  /** First paid period, when the source knows. A trial that never reached this never converted. */
+  firstPaidAt?: Date | null;
 };
+
+/** One billing period in ms — coarse (30-day month, 365-day year); used for lapse inference on report-derived data. */
+export function periodMs(interval: NormalizedSubscription["interval"], intervalCount: number): number {
+  const unit = { day: DAY_MS, week: 7 * DAY_MS, month: 30 * DAY_MS, year: 365 * DAY_MS }[interval];
+  return unit * Math.max(1, intervalCount);
+}
+
+/** Apple keeps retrying a failed renewal for up to 16 days; a subscription is only lapsed after that. */
+export const BILLING_RETRY_GRACE_MS = 16 * DAY_MS;
 
 export type NormalizedCharge = {
   id: string;
@@ -50,6 +65,14 @@ export type Metrics = {
   payingUsers: number;
   /** Customers currently on a free trial — never counted as paying. */
   trialingUsers: number;
+  /** Free trials started in the last 30 days (sources that know trial dates). */
+  trialStarts30d: number;
+  /** Of those, how many have reached a paid period so far. */
+  trialConversions30d: number;
+  /** trialConversions30d ÷ trialStarts30d, null when no trials started. Recent starts haven't had time to convert. */
+  trialToPaid30d: number | null;
+  /** Distinct customers whose subscription ended (cancelled or lapsed) in the last 30 days. */
+  lapsed30d: number;
   mrrUsdCents: number;
   /** MRR 30 days ago, for growth. */
   mrrPrevUsdCents: number;
@@ -75,7 +98,6 @@ export type Metrics = {
   checkoutConversion30d: number | null;
 };
 
-const DAY_MS = 86_400_000;
 
 function isActiveAt(sub: NormalizedSubscription, at: Date): boolean {
   if (sub.startedAt > at) return false;
@@ -109,6 +131,12 @@ export function computeMetrics(
 
   const payingUsers = subscriberIds.size + oneTimeBuyers30.size;
   const trialingUsers = new Set(data.subscriptions.filter((s) => isActiveAt(s, now) && s.status === "trialing").map((s) => s.customerId)).size;
+  const inWindow = (d: Date | null | undefined) => !!d && d > d30 && d <= now;
+  const trialsStarted = data.subscriptions.filter((s) => inWindow(s.trialStartedAt));
+  const trialStarts30d = new Set(trialsStarted.map((s) => s.customerId)).size;
+  const trialConversions30d = new Set(trialsStarted.filter((s) => s.firstPaidAt && s.firstPaidAt <= now).map((s) => s.customerId)).size;
+  const trialToPaid30d = trialStarts30d > 0 ? trialConversions30d / trialStarts30d : null;
+  const lapsed30d = new Set(data.subscriptions.filter((s) => inWindow(s.canceledAt)).map((s) => s.customerId)).size;
 
   // Churn: customers active 30 days ago who are no longer active now.
   const prevIds = new Set(activePrev.map((s) => s.customerId));
@@ -141,6 +169,10 @@ export function computeMetrics(
   return {
     payingUsers,
     trialingUsers,
+    trialStarts30d,
+    trialConversions30d,
+    trialToPaid30d,
+    lapsed30d,
     mrrUsdCents: mrr,
     mrrPrevUsdCents: mrrPrev,
     momGrowth,

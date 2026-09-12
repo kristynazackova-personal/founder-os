@@ -135,6 +135,9 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ appI
           {[
             ["Paying customers", String(m.payingUsers)],
             ["Free trials", String(m.trialingUsers)],
+            ["Trial starts, 30d", String(m.trialStarts30d)],
+            ["Trial → paid, 30d", m.trialToPaid30d === null ? "—" : `${Math.round(m.trialToPaid30d * 100)}% (${m.trialConversions30d} of ${m.trialStarts30d})`],
+            ["Lapsed, 30d", String(m.lapsed30d)],
             ["MRR", formatMoney(m.mrrUsdCents)],
             ["MRR 30 days ago", formatMoney(m.mrrPrevUsdCents)],
             ["MoM growth", formatPercent(m.momGrowth)],
