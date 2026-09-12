@@ -17,6 +17,10 @@ Rules that are easy to break:
 - Schema changes: edit `src/lib/db/schema.ts`, then `npm run db:generate` and commit `drizzle/`.
 - `npm test`, `npm run check`, `npm run lint`, `npm run build` must pass.
 
+> **Session history**: `docs/SESSION_LOG.md` records what shipped, what was
+> decided and the traps that cost time. Read it when resuming work, and
+> append to it as you go.
+
 Roadmap for the current customer: `docs/ROADMAP-revenue-selvenn.md` — eight
 items, built one per session in order. Items 1, 2 and 2b shipped. **The next
 session works on item 3 only** (paywall views from apps); update the item's
