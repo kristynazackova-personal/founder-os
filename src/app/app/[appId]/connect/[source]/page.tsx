@@ -4,6 +4,8 @@ import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
 import { listSources, sourceIdentity } from "@/lib/services/sources";
 import { getChecklist, getDraft } from "@/lib/services/connectChecklists";
+import { getEventSettings, isEventSource } from "@/lib/services/eventCatalog";
+import { describeEventSettings } from "@/lib/domain/eventSettings";
 import { stripeConnectConfigured } from "@/lib/env";
 import { disconnectSourceAction } from "@/app/actions/sources";
 import { CONNECT_GUIDES, isSourceType, SourceIcon } from "@/components/connect/guides";
@@ -11,7 +13,7 @@ import { ConnectChecklist } from "@/components/connect/Checklist";
 import { AppStoreForm, Ga4Form, LemonSqueezyForm, MixpanelForm, PaddleForm, PostgresForm, StripeKeyForm } from "@/components/ConnectForms";
 import { Alert, fmtDate } from "@/components/ui";
 
-export default async function ConnectSourcePage({ params, searchParams }: { params: Promise<{ appId: string; source: string }>; searchParams: Promise<{ connected?: string; disconnected?: string; replace?: string; stripe?: string; error?: string; empty?: string; signups?: string; subs?: string; draft?: string }> }) {
+export default async function ConnectSourcePage({ params, searchParams }: { params: Promise<{ appId: string; source: string }>; searchParams: Promise<{ connected?: string; disconnected?: string; replace?: string; stripe?: string; error?: string; empty?: string; signups?: string; subs?: string; draft?: string; events?: string }> }) {
   const user = await requireUser();
   const { appId, source } = await params;
   const q = await searchParams;
@@ -23,6 +25,7 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
   const secretsOnFile = draftView.secretsOnFile;
   const hasDraft = Object.keys(draft).length > 0 || secretsOnFile.length > 0;
   const row = sources.find((s) => s.type === source) ?? null;
+  const eventSettings = row && isEventSource(source) ? await getEventSettings(app.id, source) : null;
   const connected = Boolean(row) && !q.replace;
   const base = `/app/${app.id}/connect/${source}`;
 
@@ -78,6 +81,7 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
         </Alert>
       ) : null}
       {q.disconnected ? <Alert kind="info">{guide.name} disconnected.</Alert> : null}
+      {q.events ? <Alert kind="good">Event settings saved. Your diagnosis has been refreshed.</Alert> : null}
       {q.draft ? <Alert kind="info">Draft saved. Keys and secrets are stored encrypted and never shown again — leave those fields blank when you finish, or paste a new one to replace what&apos;s on file.</Alert> : null}
       {!q.draft && hasDraft && !connected ? <Alert kind="info">You have a saved draft; the fields below are filled from it{secretsOnFile.length ? ", and the secret is on file" : ""}.</Alert> : null}
       {q.stripe === "connected" ? <Alert kind="good">Stripe connected. Your diagnosis has been refreshed.</Alert> : null}
@@ -94,6 +98,14 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
               Connected {fmtDate(row.connectedAt)} · last read {fmtDate(row.lastSyncedAt)}
             </div>
             {row.lastError ? <div className="mt-1 max-w-xl text-xs text-red-700">{row.lastError}</div> : null}
+            {isEventSource(source) ? (
+              <div className="mt-1 text-[var(--muted)]">
+                {describeEventSettings(eventSettings, null)}{" "}
+                <Link href={`${base}/events`} className="font-semibold text-stone-900 underline">
+                  Change
+                </Link>
+              </div>
+            ) : null}
           </div>
           <div className="flex gap-2">
             {q.replace ? (

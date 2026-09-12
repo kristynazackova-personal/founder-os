@@ -1,4 +1,5 @@
 import type { AnalyticsSignals, NormalizedRevenueData } from "../domain/metrics";
+import type { EventSettings } from "../domain/eventSettings";
 
 export type SourceType = "stripe" | "lemonsqueezy" | "paddle" | "appstore" | "postgres" | "mixpanel" | "ga4";
 
@@ -43,8 +44,11 @@ export function isSqlIdentifier(s: string): boolean {
 export interface RevenueAdapter {
   fetchRevenue(credentials: unknown): Promise<NormalizedRevenueData & { hasProducts: boolean }>;
 }
+/** What the founder allowed the source to read (see domain/eventSettings). Null = never asked = everything. */
+export type ReadOpts = { events?: EventSettings | null };
+
 export interface AnalyticsAdapter {
-  fetchSignals(credentials: unknown, now?: Date): Promise<Partial<AnalyticsSignals>>;
+  fetchSignals(credentials: unknown, now?: Date, opts?: ReadOpts): Promise<Partial<AnalyticsSignals>>;
 }
 
 export function toInterval(s: string | null | undefined): "day" | "week" | "month" | "year" {

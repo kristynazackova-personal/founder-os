@@ -5,6 +5,7 @@ import { decryptJson, encryptJson } from "../crypto";
 import { mergeRevenueData, type AnalyticsSignals, type NormalizedRevenueData } from "../domain/metrics";
 import type { RevenueSource as RevenueSourceRow } from "../db/schema";
 import { aggregateInstalls, type InstallsByChannel } from "../domain/attribution";
+import { EVENT_SETTINGS_KEY, parseEventSettings } from "../domain/eventSettings";
 import { analyticsAdapter, ANALYTICS_SOURCE_TYPES, isRevenueSource, isSqlIdentifier, revenueAdapter, type AppStoreCredentials, type Ga4Credentials, type MixpanelCredentials, type PostgresCredentials, type SourceType } from "../sources";
 import { probeAppStore } from "../sources/appstore";
 import { probeMixpanel } from "../sources/mixpanel";
@@ -54,10 +55,14 @@ export async function listSources(appId: string): Promise<SourceView[]> {
 export async function upsertSource(app: App, type: SourceType, credentials: unknown, externalId: string | null, meta: Record<string, unknown> = {}): Promise<void> {
   const db = await getDb();
   const credentialsEnc = encryptJson(credentials);
+  // Replacing a credential keeps the founder's event choices (meta.events).
+  const [existing] = await db.select({ meta: schema.revenueSources.meta }).from(schema.revenueSources).where(and(eq(schema.revenueSources.appId, app.id), eq(schema.revenueSources.type, type))).limit(1);
+  const kept = existing?.meta?.[EVENT_SETTINGS_KEY];
+  const merged = kept !== undefined && meta[EVENT_SETTINGS_KEY] === undefined ? { ...meta, [EVENT_SETTINGS_KEY]: kept } : meta;
   await db
     .insert(schema.revenueSources)
-    .values({ appId: app.id, type, credentialsEnc, externalId, meta, status: "connected" })
-    .onConflictDoUpdate({ target: [schema.revenueSources.appId, schema.revenueSources.type], set: { credentialsEnc, externalId, meta, status: "connected", lastError: null, connectedAt: new Date() } });
+    .values({ appId: app.id, type, credentialsEnc, externalId, meta: merged, status: "connected" })
+    .onConflictDoUpdate({ target: [schema.revenueSources.appId, schema.revenueSources.type], set: { credentialsEnc, externalId, meta: merged, status: "connected", lastError: null, connectedAt: new Date() } });
   await track("source_connected", { userId: app.userId, appId: app.id, props: { type } });
 }
 
@@ -258,7 +263,7 @@ export async function fetchAnalyticsSignals(app: App): Promise<{ signals: Partia
     const adapter = analyticsAdapter(type);
     if (!row || !adapter) continue;
     try {
-      const part = await adapter.fetchSignals(decryptJson(row.credentialsEnc));
+      const part = await adapter.fetchSignals(decryptJson(row.credentialsEnc), new Date(), { events: parseEventSettings(row.meta) });
       for (const key of ["visitors30d", "signups30d", "checkoutViews30d", "activations30d", "installs30d"] as const) {
         if (signals[key] == null && part[key] != null) signals[key] = part[key];
       }
@@ -282,7 +287,7 @@ export async function fetchInstalls(app: App): Promise<{ connected: boolean; row
   if (!row) return { connected: false, rows: [], total: 0, days: INSTALLS_DAYS, error: null };
   try {
     const creds = decryptJson(row.credentialsEnc) as Ga4Credentials;
-    const rows = aggregateInstalls(await fetchGa4Installs(creds, INSTALLS_DAYS));
+    const rows = aggregateInstalls(await fetchGa4Installs(creds, INSTALLS_DAYS, { events: parseEventSettings(row.meta) }));
     return { connected: true, rows, total: rows.reduce((n, r) => n + r.installs, 0), days: INSTALLS_DAYS, error: null };
   } catch (err) {
     return { connected: true, rows: [], total: 0, days: INSTALLS_DAYS, error: err instanceof Error ? err.message : String(err) };
@@ -296,7 +301,7 @@ export async function fetchCampaigns(app: App): Promise<{ connected: boolean; ad
   if (!row) return { connected: false, ads: [], events: [], scope: null, days: INSTALLS_DAYS, error: null };
   try {
     const creds = decryptJson(row.credentialsEnc) as Ga4Credentials;
-    const { ads, events, scope } = await fetchGa4Campaigns(creds, INSTALLS_DAYS);
+    const { ads, events, scope } = await fetchGa4Campaigns(creds, INSTALLS_DAYS, { events: parseEventSettings(row.meta) });
     return { connected: true, ads, events, scope, days: INSTALLS_DAYS, error: null };
   } catch (err) {
     return { connected: true, ads: [], events: [], scope: null, days: INSTALLS_DAYS, error: err instanceof Error ? err.message : String(err) };

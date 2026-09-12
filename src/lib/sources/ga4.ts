@@ -2,7 +2,9 @@ import { createSign } from "node:crypto";
 import { jsonFetch } from "../checkout/provider";
 import type { InstallRow } from "../domain/attribution";
 import { CAMPAIGN_FUNNEL_EVENTS, type CampaignAdRow, type CampaignEventRow } from "../domain/campaigns";
-import type { AnalyticsAdapter, Ga4Credentials } from "./types";
+import { ga4Date, isEventAllowed, readFrom } from "../domain/eventSettings";
+import type { CatalogEvent } from "../services/eventCatalog";
+import type { AnalyticsAdapter, Ga4Credentials, ReadOpts } from "./types";
 
 /**
  * GA4 Data API, read with a service account (the founder adds it as a Viewer
@@ -32,41 +34,53 @@ export async function serviceAccountToken(sa: ServiceAccount, scope = "https://w
 
 type RunReport = { rows?: Array<{ dimensionValues?: Array<{ value: string }>; metricValues: Array<{ value: string }> }> };
 
+/** The read window for a report: `days` back, floored at the founder's "from now on" date when set. */
+function dateRanges(opts: ReadOpts | undefined, days: number, now: Date) {
+  return [{ startDate: ga4Date(readFrom(opts?.events ?? null, days, now)), endDate: "today" }];
+}
+
+async function reportClient(credentials: Ga4Credentials) {
+  const sa = JSON.parse(credentials.serviceAccountJson) as ServiceAccount;
+  const token = await serviceAccountToken(sa);
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(credentials.propertyId)}:runReport`;
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  return (body: Record<string, unknown>) => jsonFetch<RunReport>(url, { method: "POST", headers, body: JSON.stringify(body) });
+}
+
 export const ga4Adapter: AnalyticsAdapter = {
-  async fetchSignals(credentials) {
-    const { propertyId, serviceAccountJson } = credentials as Ga4Credentials;
-    const sa = JSON.parse(serviceAccountJson) as ServiceAccount;
-    const token = await serviceAccountToken(sa);
-    const url = `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`;
-    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-    const users = await jsonFetch<RunReport>(url, { method: "POST", headers, body: JSON.stringify({ dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], metrics: [{ name: "activeUsers" }] }) });
-    const signups = await jsonFetch<RunReport>(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
-        metrics: [{ name: "eventCount" }],
-        dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: "sign_up" } } },
-      }),
-    });
+  async fetchSignals(credentials, now = new Date(), opts) {
+    const run = await reportClient(credentials as Ga4Credentials);
+    const ranges = dateRanges(opts, 30, now);
+    const allowed = (event: string) => isEventAllowed(opts?.events ?? null, event);
+    const countEvent = async (event: string): Promise<number | null> => {
+      if (!allowed(event)) return null;
+      const r = await run({ dateRanges: ranges, metrics: [{ name: "eventCount" }], dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: event } } } });
+      return r.rows?.length ? Number(r.rows[0].metricValues[0].value) : null;
+    };
+    const users = await run({ dateRanges: ranges, metrics: [{ name: "activeUsers" }] });
     // Firebase's automatic first_open = one per app install. A web-only
     // property never has it, so "no rows" stays null rather than 0.
-    const installs = await jsonFetch<RunReport>(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
-        metrics: [{ name: "eventCount" }],
-        dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: "first_open" } } },
-      }),
-    });
+    const [signups, installs] = await Promise.all([countEvent("sign_up"), countEvent("first_open")]);
     return {
       visitors30d: Number(users.rows?.[0]?.metricValues?.[0]?.value ?? 0),
-      signups30d: signups.rows?.length ? Number(signups.rows[0].metricValues[0].value) : null,
-      installs30d: installs.rows?.length ? Number(installs.rows[0].metricValues[0].value) : null,
+      signups30d: signups,
+      installs30d: installs,
     };
   },
 };
+
+/** Every event the property has ever collected, with all-time counts (GA4's earliest supported date), most frequent first. */
+export async function listGa4Events(credentials: Ga4Credentials): Promise<CatalogEvent[]> {
+  const run = await reportClient(credentials);
+  const report = await run({
+    dateRanges: [{ startDate: "2015-08-14", endDate: "today" }],
+    dimensions: [{ name: "eventName" }],
+    metrics: [{ name: "eventCount" }],
+    orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+    limit: 500,
+  });
+  return (report.rows ?? []).map((r) => ({ name: r.dimensionValues?.[0]?.value ?? "", count: Number(r.metricValues?.[0]?.value ?? 0) || 0 })).filter((e) => e.name);
+}
 
 /** Rows of a first_open report with dimensions [firstUserSource, firstUserMedium, firstUserCampaignName]. */
 export function installRowsFromReport(report: RunReport): InstallRow[] {
@@ -79,20 +93,15 @@ export function installRowsFromReport(report: RunReport): InstallRow[] {
 }
 
 /** App installs in the last `days` days: GA4 / Firebase `first_open`, split by the user's first-touch source, medium and campaign. */
-export async function fetchGa4Installs(credentials: Ga4Credentials, days = 30): Promise<InstallRow[]> {
-  const sa = JSON.parse(credentials.serviceAccountJson) as ServiceAccount;
-  const token = await serviceAccountToken(sa);
-  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(credentials.propertyId)}:runReport`;
-  const report = await jsonFetch<RunReport>(url, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      dateRanges: [{ startDate: `${days}daysAgo`, endDate: "today" }],
-      dimensions: [{ name: "firstUserSource" }, { name: "firstUserMedium" }, { name: "firstUserCampaignName" }],
-      metrics: [{ name: "eventCount" }],
-      dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: "first_open" } } },
-      limit: 500,
-    }),
+export async function fetchGa4Installs(credentials: Ga4Credentials, days = 30, opts?: ReadOpts, now = new Date()): Promise<InstallRow[]> {
+  if (!isEventAllowed(opts?.events ?? null, "first_open")) return [];
+  const run = await reportClient(credentials);
+  const report = await run({
+    dateRanges: dateRanges(opts, days, now),
+    dimensions: [{ name: "firstUserSource" }, { name: "firstUserMedium" }, { name: "firstUserCampaignName" }],
+    metrics: [{ name: "eventCount" }],
+    dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: "first_open" } } },
+    limit: 500,
   });
   return installRowsFromReport(report);
 }
@@ -125,23 +134,17 @@ export type CampaignScope = "firstUser" | "session";
  * metrics are read on first-touch scope; if the property rejects that
  * combination we fall back to session scope rather than lose the spend.
  */
-export async function fetchGa4Campaigns(credentials: Ga4Credentials, days = 30): Promise<{ ads: CampaignAdRow[]; events: CampaignEventRow[]; scope: CampaignScope }> {
-  const sa = JSON.parse(credentials.serviceAccountJson) as ServiceAccount;
-  const token = await serviceAccountToken(sa);
-  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(credentials.propertyId)}:runReport`;
-  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-  const dateRanges = [{ startDate: `${days}daysAgo`, endDate: "today" }];
+export async function fetchGa4Campaigns(credentials: Ga4Credentials, days = 30, opts?: ReadOpts, now = new Date()): Promise<{ ads: CampaignAdRow[]; events: CampaignEventRow[]; scope: CampaignScope }> {
+  const run = await reportClient(credentials);
+  const ranges = dateRanges(opts, days, now);
+  const funnelEvents = CAMPAIGN_FUNNEL_EVENTS.filter((e) => isEventAllowed(opts?.events ?? null, e));
   const adsRequest = (scope: CampaignScope) =>
-    jsonFetch<RunReport>(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        dateRanges,
-        dimensions: [{ name: scope === "firstUser" ? "firstUserGoogleAdsCampaignName" : "sessionGoogleAdsCampaignName" }],
-        metrics: [{ name: "advertiserAdClicks" }, { name: "advertiserAdImpressions" }, { name: "advertiserAdCost" }],
-        orderBys: [{ metric: { metricName: "advertiserAdCost" }, desc: true }],
-        limit: 100,
-      }),
+    run({
+      dateRanges: ranges,
+      dimensions: [{ name: scope === "firstUser" ? "firstUserGoogleAdsCampaignName" : "sessionGoogleAdsCampaignName" }],
+      metrics: [{ name: "advertiserAdClicks" }, { name: "advertiserAdImpressions" }, { name: "advertiserAdCost" }],
+      orderBys: [{ metric: { metricName: "advertiserAdCost" }, desc: true }],
+      limit: 100,
     });
   let scope: CampaignScope = "firstUser";
   let adsReport: RunReport;
@@ -155,16 +158,14 @@ export async function fetchGa4Campaigns(credentials: Ga4Credentials, days = 30):
       throw firstErr;
     }
   }
-  const eventsReport = await jsonFetch<RunReport>(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      dateRanges,
-      dimensions: [{ name: "firstUserGoogleAdsCampaignName" }, { name: "eventName" }],
-      metrics: [{ name: "totalUsers" }],
-      dimensionFilter: { filter: { fieldName: "eventName", inListFilter: { values: [...CAMPAIGN_FUNNEL_EVENTS] } } },
-      limit: 500,
-    }),
-  });
+  const eventsReport = funnelEvents.length
+    ? await run({
+        dateRanges: ranges,
+        dimensions: [{ name: "firstUserGoogleAdsCampaignName" }, { name: "eventName" }],
+        metrics: [{ name: "totalUsers" }],
+        dimensionFilter: { filter: { fieldName: "eventName", inListFilter: { values: funnelEvents } } },
+        limit: 500,
+      })
+    : {};
   return { ads: campaignAdRowsFromReport(adsReport), events: campaignEventRowsFromReport(eventsReport), scope };
 }

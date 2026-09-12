@@ -1,4 +1,5 @@
 import { jsonFetch } from "../checkout/provider";
+import { isEventAllowed, readFrom } from "../domain/eventSettings";
 import type { AnalyticsAdapter, MixpanelCredentials } from "./types";
 
 /**
@@ -50,14 +51,11 @@ async function distinctUsers(c: MixpanelCredentials, event: string, from: Date, 
 }
 
 export const mixpanelAdapter: AnalyticsAdapter = {
-  async fetchSignals(credentials, now = new Date()) {
+  async fetchSignals(credentials, now = new Date(), opts) {
     const c = credentials as MixpanelCredentials;
-    const from = new Date(now.getTime() - 30 * 86_400_000);
-    const [signups, activations, visitors] = await Promise.all([
-      distinctUsers(c, c.signupEvent, from, now),
-      c.activationEvent ? distinctUsers(c, c.activationEvent, from, now) : Promise.resolve(null),
-      c.visitorEvent ? distinctUsers(c, c.visitorEvent, from, now) : Promise.resolve(null),
-    ]);
+    const from = readFrom(opts?.events ?? null, 30, now);
+    const read = (event: string | null) => (event && isEventAllowed(opts?.events ?? null, event) ? distinctUsers(c, event, from, now) : Promise.resolve(null));
+    const [signups, activations, visitors] = await Promise.all([read(c.signupEvent), read(c.activationEvent), read(c.visitorEvent)]);
     return { signups30d: signups, activations30d: activations, visitors30d: visitors };
   },
 };

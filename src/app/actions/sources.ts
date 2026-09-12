@@ -6,6 +6,8 @@ import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
 import { connectAppStore, connectGa4, connectLemonSqueezy, connectMixpanel, connectPaddle, connectPostgres, connectStripeKey, removeSource } from "@/lib/services/sources";
 import { clearDraft, saveDraft, setChecklistStep, withDraftSecrets } from "@/lib/services/connectChecklists";
+import { isEventSource, saveEventSettings } from "@/lib/services/eventCatalog";
+import { eventSettingsFromForm } from "@/lib/domain/eventSettings";
 import { runAssessment } from "@/lib/services/diagnosis";
 import type { SourceType } from "@/lib/sources";
 import { isSourceType } from "@/components/connect/guides";
@@ -77,7 +79,7 @@ export async function connectGa4Action(appId: string, _prev: FormState, formData
     return { error: res.error };
   }
   await afterConnect(appId, "ga4");
-  redirect(`/app/${appId}/connect/ga4?connected=1`);
+  redirect(`/app/${appId}/connect/ga4/events?connected=1`);
 }
 
 const f = (data: Record<string, string>, k: string) => data[k] ?? "";
@@ -107,7 +109,7 @@ export async function connectMixpanelAction(appId: string, _prev: FormState, for
     return { error: res.error };
   }
   await afterConnect(appId, "mixpanel");
-  redirect(`/app/${appId}/connect/mixpanel?connected=1`);
+  redirect(`/app/${appId}/connect/mixpanel/events?connected=1`);
 }
 
 export async function connectPostgresAction(appId: string, _prev: FormState, formData: FormData): Promise<FormState> {
@@ -159,4 +161,20 @@ export async function saveConnectDraftAction(appId: string, source: string, form
   for (const [k, v] of formData.entries()) if (typeof v === "string") raw[k] = v;
   await saveDraft(app.id, source, raw);
   redirect(`/app/${appId}/connect/${source}?draft=1`);
+}
+
+/** Which events the source may read, and from when. Editable any time from the connection's settings. */
+export async function saveEventSettingsAction(appId: string, source: string, formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const app = await getAppForUser(appId, user.id);
+  if (!app || !isEventSource(source)) return;
+  const settings = eventSettingsFromForm({
+    mode: formData.get("mode") === null ? null : String(formData.get("mode")),
+    selected: formData.getAll("events").map(String),
+    history: formData.get("history") === null ? null : String(formData.get("history")),
+  });
+  await saveEventSettings(app.id, source, settings);
+  await runAssessment(app).catch(() => undefined);
+  revalidatePath(`/app/${appId}`, "layout");
+  redirect(`/app/${appId}/connect/${source}?events=saved`);
 }

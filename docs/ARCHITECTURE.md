@@ -93,3 +93,16 @@ tests/                    vitest — domain units + PGlite integration (checkout
 Wrap payment infra, never build it; never hold customer funds (the MoR pays
 out); test vs live is shown on every money screen; three numbers and one
 action per stage.
+
+## Event settings for analytics sources
+
+After GA4 or Mixpanel is connected the founder lands on
+`/app/[appId]/connect/[source]/events`: read **all events** or **selected
+events** (checkbox list of everything the tool has collected — GA4 with
+all-time counts, Mixpanel names), and **all time** or **only from now on**.
+Stored on `revenue_sources.meta.events` (`src/lib/domain/eventSettings.ts`,
+pure; `src/lib/services/eventCatalog.ts` reads/writes it and lists events),
+kept across a credential replace, editable from the connection page
+("Change"). Every GA4 / Mixpanel read goes through `isEventAllowed` and
+`readFrom` (the "from now on" floor), so an unticked event is never
+requested. Postgres is a table mapping, not events — it has no such step.
