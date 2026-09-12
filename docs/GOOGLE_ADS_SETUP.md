@@ -16,12 +16,23 @@ customer id and a refresh token (see the in-app guide on
 ## 1. Developer token — from Google Ads, not Cloud
 
 Google Ads → a **manager (MCC) account** → *Admin* → *API Center*. Apply if
-there is no token. **Basic access is enough for reporting**; test access
-only reaches test accounts. Approval takes days to weeks and reviews the
-tool, so start it first.
+there is no token. Approval takes days to weeks and reviews the tool, so
+start it first.
 
-The token is per manager account, so check any existing deployment's
-variables before applying — a token already in use elsewhere works here.
+**API Center only exists on a manager account** — a regular Google Ads
+account has no such page, which is where this usually stalls. Create one
+free at
+[ads.google.com/home/tools/manager-accounts](https://ads.google.com/home/tools/manager-accounts)
+and link the ads account to it.
+
+**Ask for Basic access.** A token is issued immediately but starts at
+*Test* access, which only reaches test accounts: real queries fail until
+Basic is granted, reported here as "developer token is not approved for
+this account yet". Basic is ample for reporting.
+
+The token belongs to the manager account, not to an ads account, so one
+token serves every founder — and a token already set on another deployment
+works here unchanged. Check for one before applying.
 
 ## 2. Cloud project + OAuth client
 
