@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { CHANNEL_LABEL } from "@/lib/domain/attribution";
 import { formatMoney } from "@/lib/domain/money";
 import { CopyButton } from "@/components/CopyButton";
+import { InstallGuideDialog } from "@/components/InstallGuideDialog";
 import { Alert, PageHeader, fmtDate } from "@/components/ui";
 
 export default async function AttributionPage({ params }: { params: Promise<{ appId: string }> }) {
@@ -19,12 +20,12 @@ export default async function AttributionPage({ params }: { params: Promise<{ ap
   const lovablePrompt = `Add this script tag to index.html, inside <head>: ${snippet}
 Then: when a user finishes sign-up, call window.fos('signup'). When a user ${activation}, call window.fos('activation'). Do not change anything else.`;
 
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Attribution" subtitle="One line in your app. It records where a visitor came from, and joins sign-ups, activation and purchases back to that source. Anonymous id only until someone pays." />
-      {app.snippetInstalledAt ? <Alert kind="good">Snippet installed — first event received {fmtDate(app.snippetInstalledAt)}.</Alert> : <Alert kind="warn">No events received yet. Install the snippet below; the diagnosis fills in visitors, signups and conversion as soon as data arrives.</Alert>}
-
-      <section className="card p-6">
+  // The install guide sits inline until the snippet reports its first event;
+  // after that it moves behind a "How to install" button so the report leads.
+  const installed = !!app.snippetInstalledAt;
+  const guide = (
+    <>
+      <section className={installed ? "" : "card p-6"}>
         <h2 className="font-semibold">1. Install</h2>
         <p className="help">Paste into the &lt;head&gt; of your app. Under 5 KB, no cookies, no personal data.</p>
         <div className="mt-3 flex items-start gap-2">
@@ -38,13 +39,31 @@ Then: when a user finishes sign-up, call window.fos('signup'). When a user ${act
         </div>
       </section>
 
-      <section className="card p-6">
+      <section className={installed ? "" : "card p-6"}>
         <h2 className="font-semibold">2. Tell it about the moments that matter</h2>
         <p className="help">Page views and checkout views are automatic. Two calls from your code complete the funnel:</p>
         <pre className="code mt-3">{`window.fos('signup');            // when an account is created
 window.fos('activation');        // when a user ${activation}
 window.fos('purchase', { amount: 19 });  // optional; checkout through Founder OS records this for you`}</pre>
       </section>
+    </>
+  );
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Attribution"
+        subtitle="One line in your app. It records where a visitor came from, and joins sign-ups, activation and purchases back to that source. Anonymous id only until someone pays."
+        actions={installed ? <InstallGuideDialog>{guide}</InstallGuideDialog> : undefined}
+      />
+      {installed ? (
+        <Alert kind="good">Snippet installed — first event received {fmtDate(app.snippetInstalledAt)}.</Alert>
+      ) : (
+        <>
+          <Alert kind="warn">No events received yet. Install the snippet below; the diagnosis fills in visitors, signups and conversion as soon as data arrives.</Alert>
+          {guide}
+        </>
+      )}
 
       <section className="card p-6">
         <h2 className="font-semibold">Channels, last 90 days</h2>
