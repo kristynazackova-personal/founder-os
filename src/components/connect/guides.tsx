@@ -133,7 +133,7 @@ export const CONNECT_GUIDES: Record<SourceType, ConnectGuide> = {
         title: "Create an App Store Connect API key with the Sales and Reports role",
         body: (
           <>
-            {ext("https://appstoreconnect.apple.com/access/integrations/api", "App Store Connect → Users and Access → Integrations → App Store Connect API")} → <em>Team Keys</em> → <em>+</em>. Name it <code>Founder OS</code>, access <em>Sales and Reports</em> (the smallest role that can read reports). Only the Account Holder or an Admin can create keys.
+            {ext("https://appstoreconnect.apple.com/access/integrations/api", "App Store Connect → Users and Access → Integrations → App Store Connect API")} → the <em>Team Keys</em> tab → <em>+</em>. Name it <code>Founder OS</code>, access <em>Sales and Reports</em> (the smallest role that can read reports). Only the Account Holder or an Admin can create keys. It must be a <em>Team</em> key: an <em>In-App Purchase</em> key (the other tab, used by apps to verify purchases) cannot read sales reports and is rejected with 401.
           </>
         ),
       },

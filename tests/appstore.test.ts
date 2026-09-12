@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { generateKeyPairSync } from "node:crypto";
 import { appStoreConnectJwt, normalizeAppStore, parseSubscriberReport } from "@/lib/sources/appstore";
+import { normalizeP8 } from "@/lib/services/sources";
 
 const HEADER = ["Event Date", "Event", "App Name", "App Apple ID", "Subscription Name", "Subscription Apple ID", "Standard Subscription Duration", "Customer Price", "Customer Currency", "Proceeds", "Subscriber ID", "Country"].join("\t");
 const row = (date: string, event: string, sub: string, price = "3.99", dur = "1 Week") => [date, event, "Selvenn", "6758160286", "Premium", "1001", dur, price, "USD", "2.79", sub, "US"].join("\t");
@@ -28,6 +29,15 @@ describe("App Store subscriber reports", () => {
   it("ignores reports without the needed columns", () => {
     expect(parseSubscriberReport("Foo\tBar\n1\t2")).toEqual([]);
     expect(parseSubscriberReport("")).toEqual([]);
+  });
+  it("normalises .p8 formats", () => {
+    const b64 = "A".repeat(120);
+    const pem = `-----BEGIN PRIVATE KEY-----\n${b64.slice(0, 64)}\n${b64.slice(64)}\n-----END PRIVATE KEY-----`;
+    expect(normalizeP8(pem)).toBe(pem);
+    expect(normalizeP8(pem.replace(/\n/g, "\\n"))).toBe(pem);
+    expect(normalizeP8(`"${pem}"`)).toBe(pem);
+    expect(normalizeP8(b64)).toBe(pem);
+    expect(normalizeP8("garbage")).toBe("garbage");
   });
   it("signs an ES256 token Apple can parse", () => {
     const { privateKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });

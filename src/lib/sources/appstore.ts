@@ -184,7 +184,12 @@ export async function probeAppStore(c: AppStoreCredentials): Promise<{ ok: true;
     return { ok: true, found: false };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (/401|NOT_AUTHORIZED/i.test(msg)) return { ok: false, error: "App Store Connect rejected the key (401). Check the issuer id and key id match the key, and that the key has the Sales and Reports role." };
+    if (/401|NOT_AUTHORIZED/i.test(msg))
+      return {
+        ok: false,
+        error:
+          "App Store Connect rejected the token (401). The usual cause: this is an In-App Purchase key (the kind that works for in-app purchase verification) — sales reports need a Team key from Users and Access → Integrations → App Store Connect API → Team Keys, with the Sales, Finance or Admin role. Also check the issuer id and key id belong to that same key.",
+      };
     if (/403/i.test(msg)) return { ok: false, error: "App Store Connect refused access (403). The API key needs the Sales and Reports role, and the vendor number must belong to this team." };
     return { ok: false, error: msg };
   }

@@ -128,11 +128,20 @@ export function explainGa4Error(err: unknown, serviceAccountEmail: string, prope
   return `GA4 refused the request: ${err instanceof Error ? err.message : String(err)}${google ? ` — ${google}` : ""}.`;
 }
 
+/** Accept a .p8 as pasted from a file, from an env var with escaped newlines, quote-wrapped, or as bare base64. */
+export function normalizeP8(raw: string): string {
+  const k = raw.trim().replace(/^["']|["']$/g, "").replace(/\\n/g, "\n").trim();
+  if (/-----BEGIN [A-Z ]*PRIVATE KEY-----\n/.test(k)) return k;
+  const b64 = k.replace(/-----(BEGIN|END)[A-Z ]*PRIVATE KEY-----/g, " ").replace(/\s/g, "");
+  if (!/^[A-Za-z0-9+/=]{100,}$/.test(b64)) return k;
+  return `-----BEGIN PRIVATE KEY-----\n${b64.match(/.{1,64}/g)!.join("\n")}\n-----END PRIVATE KEY-----`;
+}
+
 export async function connectAppStore(app: App, input: { issuerId: string; keyId: string; privateKey: string; vendorNumber: string }): Promise<{ ok: true; found: boolean } | { ok: false; error: string }> {
   const issuerId = input.issuerId.trim();
   const keyId = input.keyId.trim();
   const vendorNumber = input.vendorNumber.trim();
-  const privateKey = input.privateKey.trim().replace(/\\n/g, "\n");
+  const privateKey = normalizeP8(input.privateKey);
   if (!/^[0-9a-f-]{36}$/i.test(issuerId)) return { ok: false, error: "The issuer id is a UUID (e.g. 57246542-96fe-1a63-e053-0824d011072a), shown at the top of the API keys page." };
   if (!/^[A-Z0-9]{8,12}$/i.test(keyId)) return { ok: false, error: "The key id is the 10-character code on the key's row (e.g. 2X9R4HXF34)." };
   if (!/^\d{6,10}$/.test(vendorNumber)) return { ok: false, error: "The vendor number is an 8-digit number from Sales and Trends → Reports." };
