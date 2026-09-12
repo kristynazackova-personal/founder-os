@@ -20,6 +20,17 @@ export default async function AttributionPage({ params }: { params: Promise<{ ap
   const lovablePrompt = `Add this script tag to index.html, inside <head>: ${snippet}
 Then: when a user finishes sign-up, call window.fos('signup'). When a user ${activation}, call window.fos('activation'). Do not change anything else.`;
 
+  const installSnippet = `fetch('${env.appUrl}/api/collect', {
+  method: 'POST',
+  headers: { 'content-type': 'text/plain' },
+  body: JSON.stringify({
+    key: '${app.siteKey}',
+    anonId: installId,                    // random id generated on first launch, kept on the device
+    event: 'install',                     // then 'signup' | 'activation' | 'purchase' with the same anonId
+    source: { utmSource: Platform.OS === 'ios' ? 'app_store' : 'play_store', utmMedium: 'app' },
+  }),
+});`;
+
   // The install guide sits inline until the snippet reports its first event;
   // after that it moves behind a "How to install" button so the report leads.
   const installed = !!app.snippetInstalledAt;
@@ -45,6 +56,16 @@ Then: when a user finishes sign-up, call window.fos('signup'). When a user ${act
         <pre className="code mt-3">{`window.fos('signup');            // when an account is created
 window.fos('activation');        // when a user ${activation}
 window.fos('purchase', { amount: 19 });  // optional; checkout through Founder OS records this for you`}</pre>
+      </section>
+
+      <section className={installed ? "" : "card p-6"}>
+        <h2 className="font-semibold">3. Running app campaigns? Report installs from the app</h2>
+        <p className="help">A native app can&apos;t load the snippet, so it posts events to the same collector. Send <code>install</code> once on first launch, then the same signup / activation / purchase calls with the same id, so the store funnel joins up. Use one random id generated on first launch and stored on the device — never a hardware identifier.</p>
+        <div className="mt-3 flex items-start gap-2">
+          <pre className="code flex-1">{installSnippet}</pre>
+          <CopyButton text={installSnippet} />
+        </div>
+        <p className="help mt-2">Installs show as &quot;App Store / Play Store&quot;. Which campaign drove an install isn&apos;t knowable from inside the app (that needs SKAdNetwork or an attribution SDK) — compare the installs row against campaign spend for the period.</p>
       </section>
     </>
   );
@@ -74,6 +95,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
               <tr>
                 <th>Channel</th>
                 <th>Visitors</th>
+                <th>Installs</th>
                 <th>Signups</th>
                 <th>Activated</th>
                 <th>Checkout views</th>
@@ -87,6 +109,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
                 <tr key={r.channel}>
                   <td className="font-semibold">{CHANNEL_LABEL[r.channel]}</td>
                   <td>{r.visitors}</td>
+                  <td>{r.installs}</td>
                   <td>{r.signups}</td>
                   <td>{r.activations}</td>
                   <td>{r.checkoutViews}</td>

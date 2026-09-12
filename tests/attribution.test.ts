@@ -17,6 +17,11 @@ describe("classifyChannel", () => {
     expect(classifyChannel({ referrer: "https://someblog.io/post" })).toBe("other");
     expect(classifyChannel({ referrer: "not a url" })).toBe("other");
   });
+  it("buckets store installs into app_store", () => {
+    expect(classifyChannel({ utmSource: "app_store" })).toBe("app_store");
+    expect(classifyChannel({ utmSource: "play_store" })).toBe("app_store");
+    expect(classifyChannel({ utmSource: "ios" })).toBe("app_store");
+  });
   it("is direct with nothing", () => {
     expect(classifyChannel({})).toBe("direct");
   });
@@ -35,5 +40,17 @@ describe("aggregateByChannel", () => {
     expect(rows[0].purchases).toBe(1);
     expect(rows[0].revenueCents).toBe(1_900);
     expect(rows[1].channel).toBe("x");
+  });
+  it("counts installs per visitor", () => {
+    const rows = aggregateByChannel([
+      { anonId: "a", channel: "app_store", events: new Set(["install", "signup"]), revenueCents: 0 },
+      { anonId: "b", channel: "app_store", events: new Set(["install"]), revenueCents: 0 },
+      { anonId: "c", channel: "reddit", events: new Set(["pageview"]), revenueCents: 0 },
+    ]);
+    const store = rows.find((r) => r.channel === "app_store")!;
+    expect(store.visitors).toBe(2);
+    expect(store.installs).toBe(2);
+    expect(store.signups).toBe(1);
+    expect(rows.find((r) => r.channel === "reddit")!.installs).toBe(0);
   });
 });

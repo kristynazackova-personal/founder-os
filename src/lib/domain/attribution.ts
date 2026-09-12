@@ -23,6 +23,7 @@ export type Channel =
   | "lovable"
   | "email"
   | "paid"
+  | "app_store"
   | "other";
 
 const HOST_CHANNELS: Array<[RegExp, Channel]> = [
@@ -37,12 +38,18 @@ const HOST_CHANNELS: Array<[RegExp, Channel]> = [
   [/lovable\.(dev|app)$/i, "lovable"],
 ];
 
+const APP_STORE_SOURCES = new Set(["app_store", "play_store", "appstore", "playstore", "ios", "android"]);
+
 export function classifyChannel(src: SourceInfo): Channel {
   const medium = (src.utmMedium ?? "").toLowerCase();
   const source = (src.utmSource ?? "").toLowerCase();
   if (medium === "cpc" || medium === "ppc" || medium === "paid" || medium === "ads") return "paid";
   if (medium === "email" || source === "email" || source === "newsletter") return "email";
   if (source) {
+    // A mobile app reporting an install names the store it came from. Google
+    // Ads App campaigns can't be told apart per campaign client-side (that
+    // needs SKAdNetwork / an MMP), so all store installs share one bucket.
+    if (APP_STORE_SOURCES.has(source)) return "app_store";
     for (const [re, ch] of HOST_CHANNELS) if (re.test(source) || source === ch) return ch;
     if (source === "twitter" || source === "x") return "x";
     if (source === "ph" || source === "producthunt") return "product_hunt";
@@ -74,17 +81,20 @@ export const CHANNEL_LABEL: Record<Channel, string> = {
   lovable: "Lovable",
   email: "Email",
   paid: "Paid ads",
+  app_store: "App Store / Play Store",
   other: "Other referrals",
 };
 
-export type AttributionEventName = "pageview" | "signup" | "activation" | "checkout_view" | "purchase" | "return";
-export const ATTRIBUTION_EVENTS: AttributionEventName[] = ["pageview", "signup", "activation", "checkout_view", "purchase", "return"];
+export type AttributionEventName = "pageview" | "install" | "signup" | "activation" | "checkout_view" | "purchase" | "return";
+export const ATTRIBUTION_EVENTS: AttributionEventName[] = ["pageview", "install", "signup", "activation", "checkout_view", "purchase", "return"];
 
 export type VisitorRow = { anonId: string; channel: Channel; events: Set<AttributionEventName>; revenueCents: number };
 
 export type ChannelReport = {
   channel: Channel;
   visitors: number;
+  /** Mobile app installs (first launch), reported by the app over HTTP — there is no snippet in a native app. */
+  installs: number;
   signups: number;
   activations: number;
   checkoutViews: number;
@@ -96,8 +106,9 @@ export type ChannelReport = {
 export function aggregateByChannel(visitors: Iterable<VisitorRow>): ChannelReport[] {
   const map = new Map<Channel, ChannelReport>();
   for (const v of visitors) {
-    const row = map.get(v.channel) ?? { channel: v.channel, visitors: 0, signups: 0, activations: 0, checkoutViews: 0, purchases: 0, returned: 0, revenueCents: 0 };
+    const row = map.get(v.channel) ?? { channel: v.channel, visitors: 0, installs: 0, signups: 0, activations: 0, checkoutViews: 0, purchases: 0, returned: 0, revenueCents: 0 };
     row.visitors += 1;
+    if (v.events.has("install")) row.installs += 1;
     if (v.events.has("signup")) row.signups += 1;
     if (v.events.has("activation")) row.activations += 1;
     if (v.events.has("checkout_view")) row.checkoutViews += 1;
