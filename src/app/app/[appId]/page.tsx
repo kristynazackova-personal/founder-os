@@ -134,6 +134,7 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ appI
         <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           {[
             ["Paying customers", String(m.payingUsers)],
+            ["Free trials", String(m.trialingUsers)],
             ["MRR", formatMoney(m.mrrUsdCents)],
             ["MRR 30 days ago", formatMoney(m.mrrPrevUsdCents)],
             ["MoM growth", formatPercent(m.momGrowth)],

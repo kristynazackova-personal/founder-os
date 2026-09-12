@@ -26,6 +26,16 @@ describe("App Store subscriber reports", () => {
     expect(s3.amountCents).toBe(5_999);
     expect(data.dataSince?.toISOString().slice(0, 10)).toBe("2026-07-01");
   });
+  it("keeps a $0 introductory start on trial until something is paid", () => {
+    const tsv = [HEADER, row("2026-09-01", "Start introductory offer", "t1", "0.00"), row("2026-09-01", "Start introductory offer", "t2", "0.00"), row("2026-09-08", "Renew", "t2", "3.99")].join("\n");
+    const subs = normalizeAppStore(parseSubscriberReport(tsv)).subscriptions;
+    const t1 = subs.find((s) => s.customerId === "t1")!;
+    const t2 = subs.find((s) => s.customerId === "t2")!;
+    expect(t1.status).toBe("trialing");
+    expect(t1.amountCents).toBe(0);
+    expect(t2.status).toBe("active");
+    expect(t2.amountCents).toBe(399);
+  });
   it("ignores reports without the needed columns", () => {
     expect(parseSubscriberReport("Foo\tBar\n1\t2")).toEqual([]);
     expect(parseSubscriberReport("")).toEqual([]);

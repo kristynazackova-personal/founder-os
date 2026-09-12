@@ -23,6 +23,7 @@ describe("computeMetrics", () => {
   it("returns zeros on empty data", () => {
     const m = computeMetrics({ subscriptions: [], charges: [], dataSince: null }, EMPTY_SIGNALS, { launchedAt: null, now: NOW });
     expect(m.payingUsers).toBe(0);
+    expect(m.trialingUsers).toBe(0);
     expect(m.mrrUsdCents).toBe(0);
     expect(m.momGrowth).toBeNull();
     expect(m.churn30d).toBeNull();
@@ -44,6 +45,7 @@ describe("computeMetrics", () => {
     };
     const m = computeMetrics(data, EMPTY_SIGNALS, { launchedAt: daysAgo(120), now: NOW });
     expect(m.payingUsers).toBe(4); // a, b, c, e
+    expect(m.trialingUsers).toBe(1); // t
     expect(m.mrrUsdCents).toBe(2_900 * 3 + 2_000);
     // 30 days ago: a, b, d, e active => 2900*3 + 2000 = 10700
     expect(m.mrrPrevUsdCents).toBe(10_700);

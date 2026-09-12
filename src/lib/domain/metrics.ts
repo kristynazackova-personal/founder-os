@@ -46,6 +46,8 @@ export type AnalyticsSignals = {
 
 export type Metrics = {
   payingUsers: number;
+  /** Customers currently on a free trial — never counted as paying. */
+  trialingUsers: number;
   mrrUsdCents: number;
   /** MRR 30 days ago, for growth. */
   mrrPrevUsdCents: number;
@@ -103,6 +105,7 @@ export function computeMetrics(
   const oneTimeBuyers30 = new Set(charges30.map((c) => c.customerId).filter((id) => !subscriberIds.has(id)));
 
   const payingUsers = subscriberIds.size + oneTimeBuyers30.size;
+  const trialingUsers = new Set(data.subscriptions.filter((s) => isActiveAt(s, now) && s.status === "trialing").map((s) => s.customerId)).size;
 
   // Churn: customers active 30 days ago who are no longer active now.
   const prevIds = new Set(activePrev.map((s) => s.customerId));
@@ -134,6 +137,7 @@ export function computeMetrics(
 
   return {
     payingUsers,
+    trialingUsers,
     mrrUsdCents: mrr,
     mrrPrevUsdCents: mrrPrev,
     momGrowth,

@@ -110,8 +110,16 @@ export function normalizeAppStore(events: SubscriberEvent[]): NormalizedRevenueD
           startedAt = e.date;
           canceledAt = null;
         }
-        trialing = TRIAL_EVENTS.has(kind) || (trialing && e.priceCents === 0 && kind === "renew");
-        if (e.priceCents > 0) last = e;
+        // Apple reports a free trial as "Start introductory offer" at 0.00
+        // (the trial wording only appears in the offer-type column), so any
+        // start-family event that charged nothing keeps the subscriber on a
+        // trial until a paid event follows. Only paid events set the price.
+        if (e.priceCents > 0) {
+          trialing = false;
+          last = e;
+        } else {
+          trialing = TRIAL_EVENTS.has(kind) || e.priceCents === 0;
+        }
       } else if (END_EVENTS.has(kind)) {
         canceledAt = e.date;
       }

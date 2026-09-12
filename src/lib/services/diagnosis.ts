@@ -61,7 +61,8 @@ export async function latestAssessment(appId: string): Promise<Assessment | null
 export async function getOrRunAssessment(app: App, opts: { force?: boolean } = {}): Promise<AssessmentResult> {
   const latest = opts.force ? null : await latestAssessment(app.id);
   if (latest && Date.now() - latest.computedAt.getTime() < ASSESSMENT_MAX_AGE_MS) {
-    return { assessment: latest, metrics: latest.metrics as Metrics, placement: placementFrom(latest), errors: [] };
+    // Assessments stored before a metric existed lack its key; default it so the UI never renders undefined.
+    return { assessment: latest, metrics: { ...(latest.metrics as Metrics), trialingUsers: (latest.metrics as Partial<Metrics>).trialingUsers ?? 0 }, placement: placementFrom(latest), errors: [] };
   }
   return runAssessment(app);
 }
