@@ -1,12 +1,14 @@
 import type { AnalyticsSignals, NormalizedRevenueData } from "../domain/metrics";
 import type { EventSettings } from "../domain/eventSettings";
 
-export type SourceType = "stripe" | "lemonsqueezy" | "paddle" | "appstore" | "postgres" | "mixpanel" | "ga4";
+export type SourceType = "stripe" | "lemonsqueezy" | "paddle" | "appstore" | "postgres" | "mixpanel" | "ga4" | "googleads";
 
 /** Either a Connect OAuth grant (platform key + Stripe-Account header) or a founder-pasted restricted read-only key. */
 export type StripeCredentials = { stripeUserId: string; accessToken?: string; refreshToken?: string; restrictedKey?: string };
 export type ApiKeyCredentials = { apiKey: string; storeId?: string };
 export type Ga4Credentials = { propertyId: string; serviceAccountJson: string };
+/** A founder's Google Ads account. The developer token and OAuth client live in env, not here. */
+export type GoogleAdsCredentials = { customerId: string; refreshToken: string; loginCustomerId?: string | null };
 export type AppStoreCredentials = { issuerId: string; keyId: string; privateKey: string; vendorNumber: string };
 export type MixpanelCredentials = { projectId: string; serviceUser: string; serviceSecret: string; region: "us" | "eu" | "in"; signupEvent: string; activationEvent: string | null; visitorEvent: string | null };
 export type PriceMap = Record<string, { amountCents: number; interval: "day" | "week" | "month" | "year" }>;
@@ -26,6 +28,7 @@ export const SOURCE_LABEL: Record<SourceType, string> = {
   postgres: "Postgres / Supabase",
   mixpanel: "Mixpanel",
   ga4: "Google Analytics 4",
+  googleads: "Google Ads",
 };
 
 /** Sources that always carry revenue. Postgres carries revenue only when a subscription table is mapped (see `isRevenueSource`). */

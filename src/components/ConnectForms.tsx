@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { connectAppStoreAction, connectGa4Action, connectLemonSqueezyAction, connectMixpanelAction, connectPaddleAction, connectPostgresAction, connectStripeKeyAction, saveConnectDraftAction } from "@/app/actions/sources";
+import { connectAppStoreAction, connectGa4Action, connectLemonSqueezyAction, connectMixpanelAction, connectPaddleAction, connectPostgresAction, connectStripeKeyAction, saveConnectDraftAction, connectGoogleAdsAction} from "@/app/actions/sources";
 
 export type Draft = Record<string, string>;
 
@@ -115,6 +115,39 @@ export function Ga4Form({ appId, draft = {}, secretsOnFile = [] }: { appId: stri
           {pending ? "Checking…" : "Connect GA4"}
         </button>
         <SaveForLater appId={appId} source="ga4" />
+      </div>
+    </form>
+  );
+}
+
+export function GoogleAdsForm({ appId, draft = {}, secretsOnFile = [] }: { appId: string; draft?: Draft; secretsOnFile?: string[] }) {
+  const [state, action, pending] = useActionState<FormState, FormData>(connectGoogleAdsAction.bind(null, appId), undefined);
+  return (
+    <form action={action} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="label">Customer id</label>
+          <input name="customerId" className="input" required placeholder="123-456-7890" defaultValue={draft.customerId} />
+          <p className="help">Ten digits, top right in Google Ads.</p>
+        </div>
+        <div>
+          <label className="label">Login customer id (optional)</label>
+          <input name="loginCustomerId" className="input" placeholder="manager account id" defaultValue={draft.loginCustomerId} />
+          <p className="help">Only when the account is queried through a manager account.</p>
+        </div>
+      </div>
+      <div>
+        <label className="label">Refresh token</label>
+        <textarea name="refreshToken" className="textarea h-20 font-mono text-xs" required={!secretsOnFile.includes("refreshToken")} placeholder="1//0g…" />
+        <SecretOnFile name="refreshToken" secretsOnFile={secretsOnFile} />
+        <p className="help">An OAuth refresh token with the <code>adwords</code> scope. Stored encrypted and never shown again.</p>
+      </div>
+      <Status state={state} />
+      <div className="flex gap-2">
+        <button type="submit" className="btn btn-primary" disabled={pending}>
+          {pending ? "Checking…" : "Connect Google Ads"}
+        </button>
+        <SaveForLater appId={appId} source="googleads" />
       </div>
     </form>
   );

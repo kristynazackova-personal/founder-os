@@ -12,6 +12,9 @@ import { probeMixpanel } from "../sources/mixpanel";
 import { parsePriceMap, probePostgres } from "../sources/postgres";
 import { ProviderError } from "../checkout/provider";
 import { fetchGa4Campaigns, fetchGa4Installs, ga4ErrorText, ga4Adapter, type AdReadNote, type CampaignScope } from "../sources/ga4";
+import { fetchGoogleAdsSpend, googleAdsConfigured, probeGoogleAds, explainGoogleAdsError } from "../sources/googleads";
+import { normalizeCustomerId } from "../domain/googleAds";
+import type { GoogleAdsCredentials } from "../sources";
 import type { CampaignAdRow, CampaignEventRow } from "../domain/campaigns";
 import { validateLemonSqueezyKey } from "../sources/lemonsqueezy";
 import { validatePaddleKey } from "../sources/paddle";
@@ -142,6 +145,33 @@ export function normalizeP8(raw: string): string {
   const b64 = k.replace(/-----(BEGIN|END)[A-Z ]*PRIVATE KEY-----/g, " ").replace(/\s/g, "");
   if (!/^[A-Za-z0-9+/=]{100,}$/.test(b64)) return k;
   return `-----BEGIN PRIVATE KEY-----\n${b64.match(/.{1,64}/g)!.join("\n")}\n-----END PRIVATE KEY-----`;
+}
+
+export async function connectGoogleAds(app: App, input: { customerId: string; refreshToken: string; loginCustomerId: string }): Promise<{ ok: true; campaigns: number } | { ok: false; error: string }> {
+  const customerId = normalizeCustomerId(input.customerId);
+  if (!customerId) return { ok: false, error: `"${input.customerId}" is not a Google Ads customer id. It is ten digits, shown top right in Google Ads, e.g. 123-456-7890.` };
+  if (!input.refreshToken.trim()) return { ok: false, error: "A refresh token is required; see the steps above for getting one." };
+  const loginCustomerId = input.loginCustomerId.trim() ? normalizeCustomerId(input.loginCustomerId) : null;
+  if (input.loginCustomerId.trim() && !loginCustomerId) return { ok: false, error: `"${input.loginCustomerId}" is not a manager account id. Leave it blank unless the account is queried through a manager.` };
+  const credentials: GoogleAdsCredentials = { customerId, refreshToken: input.refreshToken.trim(), loginCustomerId };
+  const probe = await probeGoogleAds(credentials);
+  if (!probe.ok) return probe;
+  await upsertSource(app, "googleads", credentials, customerId, {});
+  return { ok: true, campaigns: probe.campaigns };
+}
+
+/** Spend per campaign from a connected Google Ads account. Fail-soft, like every other read. */
+export async function fetchGoogleAdsCampaigns(app: App, now = new Date()): Promise<{ connected: boolean; rows: CampaignAdRow[]; error: string | null; customerId: string | null }> {
+  const db = await getDb();
+  const [row] = await db.select().from(schema.revenueSources).where(and(eq(schema.revenueSources.appId, app.id), eq(schema.revenueSources.type, "googleads"))).limit(1);
+  if (!row) return { connected: false, rows: [], error: null, customerId: null };
+  const creds = decryptJson(row.credentialsEnc) as GoogleAdsCredentials;
+  if (!googleAdsConfigured()) return { connected: true, rows: [], error: "Google Ads is not configured on this deployment.", customerId: creds.customerId };
+  try {
+    return { connected: true, rows: await fetchGoogleAdsSpend(creds, INSTALLS_DAYS, now), error: null, customerId: creds.customerId };
+  } catch (err) {
+    return { connected: true, rows: [], error: explainGoogleAdsError(err, creds.customerId), customerId: creds.customerId };
+  }
 }
 
 export async function connectAppStore(app: App, input: { issuerId: string; keyId: string; privateKey: string; vendorNumber: string }): Promise<{ ok: true; found: boolean } | { ok: false; error: string }> {

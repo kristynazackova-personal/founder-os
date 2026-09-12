@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
-import { connectAppStore, connectGa4, connectLemonSqueezy, connectMixpanel, connectPaddle, connectPostgres, connectStripeKey, removeSource } from "@/lib/services/sources";
+import { connectAppStore, connectGa4, connectGoogleAds, connectLemonSqueezy, connectMixpanel, connectPaddle, connectPostgres, connectStripeKey, removeSource } from "@/lib/services/sources";
 import { clearDraft, saveDraft, setChecklistStep, withDraftSecrets } from "@/lib/services/connectChecklists";
 import { isEventSource, saveEventSettings } from "@/lib/services/eventCatalog";
 import { eventSettingsFromForm } from "@/lib/domain/eventSettings";
@@ -177,4 +177,18 @@ export async function saveEventSettingsAction(appId: string, source: string, for
   await runAssessment(app).catch(() => undefined);
   revalidatePath(`/app/${appId}`, "layout");
   redirect(`/app/${appId}/connect/${source}?events=saved`);
+}
+
+export async function connectGoogleAdsAction(appId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const app = await getAppForUser(appId, user.id);
+  if (!app) return { error: "App not found." };
+  const data = await withDraftSecrets(app.id, "googleads", formData);
+  const res = await connectGoogleAds(app, { customerId: f(data, "customerId"), refreshToken: f(data, "refreshToken"), loginCustomerId: f(data, "loginCustomerId") });
+  if (!res.ok) {
+    await keepDraft(appId, "googleads", data);
+    return { error: res.error };
+  }
+  await afterConnect(appId, "googleads");
+  redirect(`/app/${appId}/connect/googleads?connected=1`);
 }

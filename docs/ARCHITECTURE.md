@@ -106,3 +106,23 @@ kept across a credential replace, editable from the connection page
 ("Change"). Every GA4 / Mixpanel read goes through `isEventAllowed` and
 `readFrom` (the "from now on" floor), so an unticked event is never
 requested. Postgres is a table mapping, not events — it has no such step.
+
+## Ad spend
+
+Three sources, in precedence order, merged by `summarizeCampaigns`:
+
+1. **Google Ads** (`src/lib/sources/googleads.ts`) — the authoritative
+   figure. GAQL over `campaign` for cost, clicks and impressions. The
+   developer token and OAuth client are Founder OS's (env); the founder
+   supplies a customer id and a refresh token with the `adwords` scope.
+   `login-customer-id` is sent when the account sits under a manager.
+2. **GA4** (`advertiserAdCost`) — only populated when the property's Google
+   Ads link delivers cost, which it does not for iOS app campaigns. Cost is
+   session-scoped there and GA4 answers a wrong-scope request with blank
+   cost and a 200, so candidate dimensions are tried and judged on whether
+   cost came back (`pickAdRows`).
+3. **Typed in** (`ad_spend` table) — fills whatever neither reports, per
+   campaign or as one figure for all of them. Rows are marked in the UI.
+
+A reported figure always beats a typed one. Pure parts live in
+`domain/googleAds.ts` and `domain/campaigns.ts` and are unit-tested.

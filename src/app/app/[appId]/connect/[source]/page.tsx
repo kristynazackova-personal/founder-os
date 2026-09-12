@@ -10,7 +10,7 @@ import { stripeConnectConfigured } from "@/lib/env";
 import { disconnectSourceAction } from "@/app/actions/sources";
 import { CONNECT_GUIDES, isSourceType, SourceIcon } from "@/components/connect/guides";
 import { ConnectChecklist } from "@/components/connect/Checklist";
-import { AppStoreForm, Ga4Form, LemonSqueezyForm, MixpanelForm, PaddleForm, PostgresForm, StripeKeyForm } from "@/components/ConnectForms";
+import { AppStoreForm, Ga4Form, GoogleAdsForm, LemonSqueezyForm, MixpanelForm, PaddleForm, PostgresForm, StripeKeyForm } from "@/components/ConnectForms";
 import { Alert, fmtDate } from "@/components/ui";
 
 export default async function ConnectSourcePage({ params, searchParams }: { params: Promise<{ appId: string; source: string }>; searchParams: Promise<{ connected?: string; disconnected?: string; replace?: string; stripe?: string; error?: string; empty?: string; signups?: string; subs?: string; draft?: string; events?: string }> }) {
@@ -53,6 +53,8 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
       <MixpanelForm appId={app.id} draft={draft} secretsOnFile={secretsOnFile} />
     ) : source === "postgres" ? (
       <PostgresForm appId={app.id} draft={draft} secretsOnFile={secretsOnFile} />
+    ) : source === "googleads" ? (
+      <GoogleAdsForm appId={app.id} draft={draft} secretsOnFile={secretsOnFile} />
     ) : (
       <Ga4Form appId={app.id} draft={draft} secretsOnFile={secretsOnFile} />
     );

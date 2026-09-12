@@ -18,11 +18,9 @@ Rules that are easy to break:
 - `npm test`, `npm run check`, `npm run lint`, `npm run build` must pass.
 
 Roadmap for the current customer: `docs/ROADMAP-revenue-selvenn.md` — eight
-items, built one per session in order. Items 1–2 shipped. **The next session
-works on item 2b only** (Google Ads as a first-class source) — but it is
-BLOCKED until the founder has an approved Google Ads developer token, so
-confirm that before starting and otherwise move to item 3. Update the
-item's status line when it ships.
+items, built one per session in order. Items 1, 2 and 2b shipped. **The next
+session works on item 3 only** (paywall views from apps); update the item's
+status line when it ships.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
 import { channelReport } from "@/lib/services/attribution";
-import { fetchCampaigns, fetchInstalls } from "@/lib/services/sources";
+import { fetchCampaigns, fetchGoogleAdsCampaigns, fetchInstalls } from "@/lib/services/sources";
 import { latestAssessment } from "@/lib/services/diagnosis";
 import { summarizeCampaigns, UNATTRIBUTED_CAMPAIGN } from "@/lib/domain/campaigns";
 import { listAdSpend, toManualSpend } from "@/lib/services/adSpend";
@@ -23,13 +23,17 @@ export default async function AttributionPage({ params }: { params: Promise<{ ap
   const { appId } = await params;
   const app = await getAppForUser(appId, user.id);
   if (!app) notFound();
-  const [report, installs, campaignsRaw, assessment, spendRows] = await Promise.all([channelReport(app.id), fetchInstalls(app), fetchCampaigns(app), latestAssessment(app.id), listAdSpend(app.id)]);
+  const [report, installs, campaignsRaw, googleAds, assessment, spendRows] = await Promise.all([channelReport(app.id), fetchInstalls(app), fetchCampaigns(app), fetchGoogleAdsCampaigns(app), latestAssessment(app.id), listAdSpend(app.id)]);
+  // Google Ads is the authoritative record of spend; GA4 only sees cost when
+  // its Ads link delivers it, and typed figures fill whatever neither has.
+  const adSource = googleAds.rows.length ? ("googleads" as const) : ("ga4" as const);
+  const adRows = googleAds.rows.length ? googleAds.rows : campaignsRaw.ads;
   const manualSpend = toManualSpend(spendRows);
   const saveSpend = saveAdSpendAction.bind(null, app.id);
   // Payback needs what a paying customer is worth per month: MRR ÷ paying customers from the latest diagnosis.
   const m = (assessment?.metrics ?? null) as Metrics | null;
   const monthlyRevenuePerPayingCents = m && m.payingUsers > 0 && m.mrrUsdCents > 0 ? Math.round(m.mrrUsdCents / m.payingUsers) : null;
-  const campaigns = summarizeCampaigns(campaignsRaw.ads, campaignsRaw.events, { monthlyRevenuePerPayingCents, manualSpend });
+  const campaigns = summarizeCampaigns(adRows, campaignsRaw.events, { monthlyRevenuePerPayingCents, manualSpend, adSource });
   const money = (cents: number | null) => (cents === null ? "—" : formatMoney(cents));
   const snippet = `<script async src="${env.appUrl}/fos.js" data-key="${app.siteKey}"></script>`;
   const activation = app.activationEvent ?? "the activation event";
@@ -163,14 +167,18 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
             <Link href={`/app/${app.id}/connect/ga4`} className="font-semibold underline">
               Connect Google Analytics 4
             </Link>{" "}
-            (linked to your Google Ads account) to read spend and the funnel automatically, or type the spend in below.
+            (linked to your Google Ads account) to read the funnel automatically. For spend, connect{" "}
+            <Link href={`/app/${app.id}/connect/googleads`} className="font-semibold underline">
+              Google Ads
+            </Link>{" "}
+            or type it in below.
           </p>
         ) : campaigns.rows.length ? (
           <>
             {campaigns.total.spendCents === 0 ? (
               <div className="mt-3">
                 <Alert kind="warn">
-                  GA4 reported no ad cost for property <span className="font-mono">{campaignsRaw.propertyId}</span>, on any campaign dimension or as a property-wide total. The funnel below is real; only spend is missing, so cost per install, CAC and payback stay unknown rather than $0. You can type the spend in yourself at the bottom of this card.{campaignsRaw.notes.length ? " What GA4 said about each query it refused is listed under the table." : " If the Google Ads link is in place, check that the linked account runs these campaigns and that the window covers days after the link was created."}
+                  GA4 reported no ad cost for property <span className="font-mono">{campaignsRaw.propertyId}</span>, on any campaign dimension or as a property-wide total. The funnel below is real; only spend is missing, so cost per install, CAC and payback stay unknown rather than $0. Connect Google Ads for the real figure, or type it in at the bottom of this card.{campaignsRaw.notes.length ? " What GA4 said about each query it refused is listed under the table." : " If the Google Ads link is in place, check that the linked account runs these campaigns and that the window covers days after the link was created."}
                 </Alert>
               </div>
             ) : null}
@@ -199,6 +207,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
                     <td>
                       {formatMoney(r.spendCents)}
                       {r.spendSource === "manual" ? <span className="ml-1 text-xs text-[var(--muted)]">entered</span> : null}
+                      {r.spendSource === "googleads" ? <span className="ml-1 text-xs text-[var(--muted)]">Google Ads</span> : null}
                     </td>
                     <td>{r.clicks}</td>
                     <td>{r.installs}</td>
@@ -212,7 +221,11 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
                 ))}
               </tbody>
             </table>
-            {campaignsRaw.scope === "total" ? (
+            {adSource === "googleads" ? (
+              <p className="help mt-2">
+                Spend from Google Ads account <span className="font-mono">{googleAds.customerId}</span>, which is the authoritative figure. The funnel beside it stays GA4&apos;s, attributed to each campaign&apos;s first touch.
+              </p>
+            ) : campaignsRaw.scope === "total" ? (
               <p className="help mt-2">GA4 would not break this spend down by campaign, so it is shown as one unattributed total. That is normal for iOS App campaigns, where per-user campaign attribution never reaches GA4.</p>
             ) : campaignsRaw.scope ? (
               <p className="help mt-2">
@@ -220,6 +233,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
               </p>
             ) : null}
             {campaignsRaw.error ? <p className="help mt-2">GA4 could not be read: {campaignsRaw.error}</p> : null}
+            {googleAds.error ? <p className="help mt-2">Google Ads could not be read: {googleAds.error}</p> : null}
             {campaignsRaw.notes.map((n) => (
               <p key={n.request} className="help mt-2">
                 GA4 refused the spend query on <span className="font-mono">{n.request}</span>: {n.message}
@@ -232,6 +246,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
               GA4 property <span className="font-mono">{campaignsRaw.propertyId}</span> returned {campaignsRaw.ads.length} ad row{campaignsRaw.ads.length === 1 ? "" : "s"} and {campaignsRaw.events.length} event row{campaignsRaw.events.length === 1 ? "" : "s"} for {campaignsRaw.from ? fmtDay(campaignsRaw.from) : "—"} → today
               {campaignsRaw.scope && campaignsRaw.scope !== "total" ? ` (spend read on ${campaignsRaw.scope})` : ""}.
             </p>
+            {googleAds.error ? <p>Google Ads could not be read: {googleAds.error}</p> : null}
             {campaignsRaw.notes.map((n) => (
               <p key={n.request}>
                 GA4 refused the spend query on <span className="font-mono">{n.request}</span>: {n.message}

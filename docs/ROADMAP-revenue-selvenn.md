@@ -68,7 +68,7 @@ section "Paid campaigns, last 30 days" — table campaign · spend · installs �
 trials · paid · CAC · payback months, with an unambiguous "not connected /
 no Google Ads link" state. Read-only; no spend controls (that is V3).
 
-## 2b. Google Ads as a first-class source — `todo` — NEXT SESSION
+## 2b. Google Ads as a first-class source — `done` (2026-09-12; needs GOOGLE_ADS_DEVELOPER_TOKEN + GOOGLE_OAUTH_CLIENT_ID/SECRET set on the deployment before a founder can connect)
 
 Why: GA4 was proven unable to supply Selvenn's ad spend (2026-09-12). The
 Google Ads account IS linked to property 552881470, yet every valid
@@ -92,7 +92,7 @@ BLOCKED ON: a Google Ads manager account and an approved developer token
 (basic access). Days to weeks, and not something a session can do. Do not
 start the code until the token exists — check with the founder first.
 
-## 3. Paywall views from apps — `todo`
+## 3. Paywall views from apps — `todo` — NEXT SESSION
 
 Why: "checkout → paid" is blank for Selvenn because `checkout_view` only
 fires on Founder OS pay pages. The collector already accepts the event.

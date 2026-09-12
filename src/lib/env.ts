@@ -12,6 +12,14 @@ export const env = {
   stripePriceWrapped39: process.env.STRIPE_PRICE_WRAPPED_39 ?? "",
   stripePriceConnected29: process.env.STRIPE_PRICE_CONNECTED_29 ?? "",
 
+  // Google Ads reporting. The developer token and OAuth client belong to
+  // Founder OS, not to each founder: one approved token serves every
+  // customer, and the founder supplies only their own account.
+  googleAdsDeveloperToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN ?? "",
+  googleOAuthClientId: process.env.GOOGLE_OAUTH_CLIENT_ID ?? "",
+  googleOAuthClientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "",
+  /** Google ships a new major version monthly and sunsets each after a year; override when v25 retires. */
+  googleAdsApiVersion: process.env.GOOGLE_ADS_API_VERSION ?? "v25",
   checkoutProvider: (process.env.CHECKOUT_PROVIDER ?? "mock") as "dodo" | "polar" | "mock",
   dodoApiKey: process.env.DODO_API_KEY ?? "",
   dodoWebhookSecret: process.env.DODO_WEBHOOK_SECRET ?? "",

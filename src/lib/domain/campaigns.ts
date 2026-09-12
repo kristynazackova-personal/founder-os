@@ -16,7 +16,7 @@ export type CampaignSummary = {
   campaign: string;
   spendCents: number;
   /** Where the spend figure came from, or null when there is none. */
-  spendSource: "ga4" | "manual" | null;
+  spendSource: "googleads" | "ga4" | "manual" | null;
   clicks: number;
   installs: number;
   signups: number;
@@ -80,7 +80,7 @@ function ratio(cents: number, n: number): number | null {
  * campaign cost often lands there at first-touch scope, and organic
  * installs always do. Named campaigns first, then by spend.
  */
-export function summarizeCampaigns(ads: CampaignAdRow[], events: CampaignEventRow[], opts: { monthlyRevenuePerPayingCents: number | null; manualSpend?: ManualSpend[] }): { rows: CampaignSummary[]; total: CampaignSummary } {
+export function summarizeCampaigns(ads: CampaignAdRow[], events: CampaignEventRow[], opts: { monthlyRevenuePerPayingCents: number | null; manualSpend?: ManualSpend[]; adSource?: "googleads" | "ga4" }): { rows: CampaignSummary[]; total: CampaignSummary } {
   const map = new Map<string, CampaignSummary>();
   const get = (campaign: string) => {
     let row = map.get(campaign);
@@ -96,7 +96,7 @@ export function summarizeCampaigns(ads: CampaignAdRow[], events: CampaignEventRo
     const row = get(name(a.campaign));
     row.spendCents += a.costCents;
     row.clicks += a.clicks;
-    row.spendSource = "ga4";
+    row.spendSource = opts.adSource ?? "ga4";
   }
   for (const e of events) {
     if (e.users === 0) continue;
@@ -113,7 +113,7 @@ export function summarizeCampaigns(ads: CampaignAdRow[], events: CampaignEventRo
     if (!(m.amountCents > 0)) continue;
     const target = m.campaign.trim() === "" ? UNATTRIBUTED_CAMPAIGN : m.campaign.trim();
     const row = get(target);
-    if (row.spendSource === "ga4") continue; // GA4 is authoritative where it has data
+    if (row.spendSource !== null) continue; // a reported figure always beats a typed one
     row.spendCents += m.amountCents;
     row.spendSource = "manual";
   }

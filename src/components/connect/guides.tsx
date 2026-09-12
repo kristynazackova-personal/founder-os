@@ -232,6 +232,39 @@ GRANT SELECT ON public.subscriptions TO founder_os_ro;`}</pre>
     ],
     finalStep: "Paste the project id, service account and event names",
   },
+  googleads: {
+    source: "googleads",
+    name: "Google Ads",
+    tagline: "What you actually spent, per campaign",
+    reads: "Cost, clicks and impressions per campaign for the last 30 days. Read-only; nothing in your account is changed.",
+    minutes: 6,
+    steps: [
+      {
+        key: "customer-id",
+        title: "Copy your Google Ads customer id",
+        body: (
+          <>
+            Top right of the Google Ads interface, under your account name: ten digits like <code>123-456-7890</code>. Use the id of the account the campaigns run in, not your manager account.
+          </>
+        ),
+      },
+      {
+        key: "oauth",
+        title: "Grant read access and copy the refresh token",
+        body: (
+          <>
+            Google Ads has no read-only key, so access comes from an OAuth grant carrying the <code>{"https://www.googleapis.com/auth/adwords"}</code> scope. The quickest route is {ext("https://developers.google.com/oauthplayground/", "the OAuth playground")}: open the gear, tick <em>Use your own OAuth credentials</em>, paste the client id and secret this deployment is configured with, authorise that scope as the Google account that can see the ads account, then exchange the code and copy the <em>refresh token</em>. It is a long string starting <code>1//</code>.
+          </>
+        ),
+      },
+      {
+        key: "manager",
+        title: "If the account sits under a manager account, note its id too",
+        body: <>Agencies and multi-account setups query a child account through the manager. Put the manager&apos;s ten-digit id in the login customer id box; leave it blank otherwise.</>,
+      },
+    ],
+    finalStep: "Paste the customer id and refresh token",
+  },
   ga4: {
     source: "ga4",
     name: "Google Analytics 4",
@@ -285,7 +318,7 @@ GRANT SELECT ON public.subscriptions TO founder_os_ro;`}</pre>
   },
 };
 
-export const CONNECT_ORDER: SourceType[] = ["stripe", "appstore", "lemonsqueezy", "paddle", "postgres", "mixpanel", "ga4"];
+export const CONNECT_ORDER: SourceType[] = ["stripe", "appstore", "lemonsqueezy", "paddle", "googleads", "postgres", "mixpanel", "ga4"];
 
 export function isSourceType(s: string): s is SourceType {
   return s in CONNECT_GUIDES;
@@ -301,6 +334,7 @@ export function SourceIcon({ source, size = 40 }: { source: SourceType; size?: n
     appstore: { bg: "#1d1d1f", fg: "#fff", text: "" },
     postgres: { bg: "#336791", fg: "#fff", text: "PG" },
     mixpanel: { bg: "#7856ff", fg: "#fff", text: "MP" },
+    googleads: { bg: "#4285f4", fg: "#fff", text: "Ads" },
   };
   const { bg, fg, text } = spec[source];
   return (
