@@ -37,17 +37,21 @@ access to the ads account.
    project is the commonest mistake here.
 3. **Consent screen** — *APIs & Services* → *OAuth consent screen* (newer
    consoles file this under *Google Auth Platform*).
-   - **User type `Internal` if the account is in a Google Workspace
-     organisation.** That skips verification and the 7-day limit below, and
-     is the right answer whenever it is available.
-   - Otherwise `External`. Fill in app name, support email, developer
-     contact.
+   - **User type `External`.** `Internal` restricts authorisation to
+     accounts inside one Workspace organisation, so it would work for you
+     and for nobody else — and every founder who connects their own Google
+     Ads account is outside your organisation. Choosing `Internal` now
+     means rebuilding the consent screen and re-minting every token later.
+     (It is also simply unavailable on a personal Gmail account.)
+   - Fill in app name, support email, developer contact.
    - Add exactly one scope: `https://www.googleapis.com/auth/adwords`.
    - **Then set publishing status to *In production*.** See the warning
      below — leaving it on *Testing* silently breaks the integration weekly.
      An unverified app in production shows a "Google hasn't verified this
-     app" screen you click through; that is fine for your own account and
-     needs no security audit.
+     app" screen with an *Advanced* link to continue; that costs one extra
+     click and needs no security audit. Verification is worth doing later,
+     when you want that screen gone and need to pass the ~100-user cap that
+     applies to unverified apps on a sensitive scope like `adwords`.
 4. **OAuth client** — *APIs & Services* → *Credentials* → *Create
    credentials* → *OAuth client ID* → application type **Web application**.
    Under *Authorized redirect URIs* add:
@@ -89,9 +93,10 @@ project … before or it is disabled", whatever the developer token says.
 A consent screen with user type **External** and publishing status
 **Testing** issues refresh tokens that **Google revokes after 7 days**.
 Everything works, then stops, and the symptom is `invalid_grant` — which
-reads like a bad token rather than a project setting. Either publish to
-production, or use `Internal` on a Workspace account. Verified against
-Google's own documentation, September 2026.
+reads like a bad token rather than a project setting. Publish to production to
+fix it permanently. (`Internal` on a Workspace account also avoids it, but
+see above for why it is the wrong choice for a multi-tenant product.)
+Verified against Google's own documentation, September 2026.
 
 ## 3. Set the variables
 
