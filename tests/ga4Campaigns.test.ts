@@ -36,15 +36,17 @@ describe("fetchGa4Campaigns", () => {
     expect(got.notes[0].message).toContain("HTTP 400");
   });
 
-  it("falls back to the property-wide total when no campaign dimension reports cost", async () => {
+  it("never asks for cost without a dimension — GA4 rejects that as incompatible", async () => {
+    const asked: string[][] = [];
     stubGoogle((dimensions) => {
+      asked.push(dimensions);
       if (dimensions.includes("eventName")) return { ok: true, status: 200, body: { rows: [] } };
-      if (dimensions.length === 0) return { ok: true, status: 200, body: { rows: [{ metricValues: [{ value: "900" }, { value: "40000" }, { value: "450.00" }] }] } };
       return { ok: true, status: 200, body: { rows: [{ dimensionValues: [{ value: "(not set)" }], metricValues: [{ value: "0" }, { value: "0" }, { value: "0" }] }] } };
     });
     const got = await fetchGa4Campaigns(credentials);
+    expect(asked.every((d) => d.length > 0)).toBe(true);
     expect(got.scope).toBe("total");
-    expect(got.ads).toEqual([{ campaign: "(not set)", clicks: 900, impressions: 40_000, costCents: 45_000 }]);
+    expect(got.notes).toEqual([]);
   });
 
   it("keeps a campaign split when a dimension does report cost", async () => {

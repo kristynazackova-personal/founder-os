@@ -9,9 +9,14 @@
 export type CampaignAdRow = { campaign: string; clicks: number; impressions: number; costCents: number };
 export type CampaignEventRow = { campaign: string; event: string; users: number };
 
+/** Spend the founder typed in. `campaign` empty means "all campaigns". */
+export type ManualSpend = { campaign: string; amountCents: number; updatedAt: Date };
+
 export type CampaignSummary = {
   campaign: string;
   spendCents: number;
+  /** Where the spend figure came from, or null when there is none. */
+  spendSource: "ga4" | "manual" | null;
   clicks: number;
   installs: number;
   signups: number;
@@ -38,14 +43,14 @@ export function adRowsHaveSpend(rows: CampaignAdRow[]): boolean {
  * Choose which ad rows to trust. GA4 reports ad cost on SESSION scope and
  * answers a user-scoped request with blank cost and a 200, so a zero result
  * is indistinguishable from a wrong-scope result: prefer the first attempt
- * that actually carries cost, and otherwise fall back to the property-wide
- * total, which no scope can distort.
+ * that actually carries cost. Cost cannot be read without a dimension at
+ * all — GA4 rejects that as incompatible — so when no attempt reports cost
+ * the first attempt's rows stand and the scope is "total".
  */
-export function pickAdRows(attempts: Array<{ scope: string; rows: CampaignAdRow[] }>, totals: CampaignAdRow | null): { ads: CampaignAdRow[]; scope: AdRowScope } {
+export function pickAdRows(attempts: Array<{ scope: string; rows: CampaignAdRow[] }>): { ads: CampaignAdRow[]; scope: AdRowScope } {
   for (const a of attempts) {
     if (adRowsHaveSpend(a.rows)) return { ads: a.rows, scope: a.scope };
   }
-  if (totals && (totals.costCents > 0 || totals.clicks > 0)) return { ads: [{ ...totals, campaign: "(not set)" }], scope: TOTAL_SCOPE };
   return { ads: attempts[0]?.rows ?? [], scope: TOTAL_SCOPE };
 }
 
@@ -75,12 +80,12 @@ function ratio(cents: number, n: number): number | null {
  * campaign cost often lands there at first-touch scope, and organic
  * installs always do. Named campaigns first, then by spend.
  */
-export function summarizeCampaigns(ads: CampaignAdRow[], events: CampaignEventRow[], opts: { monthlyRevenuePerPayingCents: number | null }): { rows: CampaignSummary[]; total: CampaignSummary } {
+export function summarizeCampaigns(ads: CampaignAdRow[], events: CampaignEventRow[], opts: { monthlyRevenuePerPayingCents: number | null; manualSpend?: ManualSpend[] }): { rows: CampaignSummary[]; total: CampaignSummary } {
   const map = new Map<string, CampaignSummary>();
   const get = (campaign: string) => {
     let row = map.get(campaign);
     if (!row) {
-      row = { campaign, spendCents: 0, clicks: 0, installs: 0, signups: 0, trials: 0, paid: 0, costPerInstallCents: null, costPerTrialCents: null, cacCents: null, paybackMonths: null };
+      row = { campaign, spendCents: 0, spendSource: null, clicks: 0, installs: 0, signups: 0, trials: 0, paid: 0, costPerInstallCents: null, costPerTrialCents: null, cacCents: null, paybackMonths: null };
       map.set(campaign, row);
     }
     return row;
@@ -91,6 +96,7 @@ export function summarizeCampaigns(ads: CampaignAdRow[], events: CampaignEventRo
     const row = get(name(a.campaign));
     row.spendCents += a.costCents;
     row.clicks += a.clicks;
+    row.spendSource = "ga4";
   }
   for (const e of events) {
     if (e.users === 0) continue;
@@ -100,6 +106,18 @@ export function summarizeCampaigns(ads: CampaignAdRow[], events: CampaignEventRo
     else if (e.event === "trial_start") row.trials += e.users;
     else if (e.event === "purchase") row.paid += e.users;
   }
+  // Manual spend fills what GA4 did not report. A named campaign attaches to
+  // its own row; the "all campaigns" figure attaches to the unattributed row,
+  // which is where an app's installs land when GA4 has no campaign split.
+  for (const m of opts.manualSpend ?? []) {
+    if (!(m.amountCents > 0)) continue;
+    const target = m.campaign.trim() === "" ? UNATTRIBUTED_CAMPAIGN : m.campaign.trim();
+    const row = get(target);
+    if (row.spendSource === "ga4") continue; // GA4 is authoritative where it has data
+    row.spendCents += m.amountCents;
+    row.spendSource = "manual";
+  }
+
   const finish = (row: CampaignSummary): CampaignSummary => {
     row.costPerInstallCents = ratio(row.spendCents, row.installs);
     row.costPerTrialCents = ratio(row.spendCents, row.trials);
@@ -113,8 +131,8 @@ export function summarizeCampaigns(ads: CampaignAdRow[], events: CampaignEventRo
     .sort((a, b) => Number(a.campaign === UNATTRIBUTED_CAMPAIGN) - Number(b.campaign === UNATTRIBUTED_CAMPAIGN) || b.spendCents - a.spendCents || b.installs - a.installs);
   const total = finish(
     rows.reduce(
-      (t, r) => ({ ...t, spendCents: t.spendCents + r.spendCents, clicks: t.clicks + r.clicks, installs: t.installs + r.installs, signups: t.signups + r.signups, trials: t.trials + r.trials, paid: t.paid + r.paid }),
-      { campaign: "All campaigns", spendCents: 0, clicks: 0, installs: 0, signups: 0, trials: 0, paid: 0, costPerInstallCents: null, costPerTrialCents: null, cacCents: null, paybackMonths: null } as CampaignSummary,
+      (t, r) => ({ ...t, spendSource: r.spendSource ?? t.spendSource, spendCents: t.spendCents + r.spendCents, clicks: t.clicks + r.clicks, installs: t.installs + r.installs, signups: t.signups + r.signups, trials: t.trials + r.trials, paid: t.paid + r.paid }),
+      { campaign: "All campaigns", spendCents: 0, spendSource: null, clicks: 0, installs: 0, signups: 0, trials: 0, paid: 0, costPerInstallCents: null, costPerTrialCents: null, cacCents: null, paybackMonths: null } as CampaignSummary,
     ),
   );
   return { rows, total };

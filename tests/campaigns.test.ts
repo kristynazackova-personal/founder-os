@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { pickAdRows, summarizeCampaigns, UNATTRIBUTED_CAMPAIGN } from "@/lib/domain/campaigns";
+import { parseAmount } from "@/lib/services/adSpend";
 import { campaignAdRowsFromReport, campaignEventRowsFromReport } from "@/lib/sources/ga4";
 
 describe("summarizeCampaigns", () => {
@@ -72,42 +73,86 @@ describe("pickAdRows", () => {
   const row = (campaign: string, costCents: number, clicks = 0) => ({ campaign, clicks, impressions: 0, costCents });
 
   it("prefers the session-scoped attempt when it carries cost", () => {
-    const got = pickAdRows(
-      [
-        { scope: "session", rows: [row("App CZ", 12_000, 400)] },
-        { scope: "firstUser", rows: [row("(not set)", 0)] },
-      ],
-      row("(not set)", 12_000, 400),
-    );
+    const got = pickAdRows([
+      { scope: "session", rows: [row("App CZ", 12_000, 400)] },
+      { scope: "firstUser", rows: [row("(not set)", 0)] },
+    ]);
     expect(got.scope).toBe("session");
     expect(got.ads[0].campaign).toBe("App CZ");
   });
 
   it("skips a zero-cost attempt — GA4 answers a wrong-scope request with blanks and a 200", () => {
-    const got = pickAdRows(
-      [
-        { scope: "session", rows: [row("(not set)", 0)] },
-        { scope: "firstUser", rows: [row("App CZ", 9_900, 120)] },
-      ],
-      null,
-    );
+    const got = pickAdRows([
+      { scope: "session", rows: [row("(not set)", 0)] },
+      { scope: "firstUser", rows: [row("App CZ", 9_900, 120)] },
+    ]);
     expect(got.scope).toBe("firstUser");
     expect(got.ads[0].costCents).toBe(9_900);
   });
 
-  it("falls back to the property-wide total when no campaign dimension reports cost", () => {
-    const got = pickAdRows([{ scope: "session", rows: [row("(not set)", 0)] }], row("", 45_000, 900));
-    expect(got.scope).toBe("total");
-    expect(got.ads).toEqual([{ campaign: "(not set)", clicks: 900, impressions: 0, costCents: 45_000 }]);
-    // …and the summariser folds it into the one unattributed row, so spend is visible with a real cost per install
+  it("keeps unattributed spend the dimension did report, and the summariser gives it a real cost per install", () => {
+    const got = pickAdRows([{ scope: "session", rows: [row("(not set)", 45_000, 900)] }]);
+    expect(got.scope).toBe("session");
     const { rows } = summarizeCampaigns(got.ads, [{ campaign: "(not set)", event: "first_open", users: 30 }], { monthlyRevenuePerPayingCents: null });
     expect(rows[0].campaign).toBe(UNATTRIBUTED_CAMPAIGN);
     expect(rows[0].costPerInstallCents).toBe(1_500);
   });
 
-  it("reports no spend when neither the dimensions nor the total have any", () => {
-    const got = pickAdRows([{ scope: "session", rows: [row("(not set)", 0)] }], row("", 0));
+  it("reports no spend when no dimension has any", () => {
+    const got = pickAdRows([{ scope: "session", rows: [row("(not set)", 0)] }]);
     expect(got.scope).toBe("total");
     expect(got.ads).toEqual([row("(not set)", 0)]);
+  });
+});
+
+describe("manual spend", () => {
+  const at = new Date("2026-09-12T00:00:00Z");
+
+  it("fills spend GA4 never reported, and gives the funnel a real CAC", () => {
+    const { rows, total } = summarizeCampaigns([], [{ campaign: "(not set)", event: "first_open", users: 34 }, { campaign: "(not set)", event: "purchase", users: 2 }], {
+      monthlyRevenuePerPayingCents: 2_349,
+      manualSpend: [{ campaign: "", amountCents: 45_000, updatedAt: at }],
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].campaign).toBe(UNATTRIBUTED_CAMPAIGN);
+    expect(rows[0].spendSource).toBe("manual");
+    expect(rows[0].costPerInstallCents).toBe(1_324);
+    expect(rows[0].cacCents).toBe(22_500);
+    expect(rows[0].paybackMonths).toBe(9.6);
+    expect(total.spendCents).toBe(45_000);
+  });
+
+  it("never overrides a campaign GA4 does report, and adds its own named rows", () => {
+    const { rows } = summarizeCampaigns(
+      [{ campaign: "App CZ", clicks: 400, impressions: 0, costCents: 12_000 }],
+      [{ campaign: "App CZ", event: "first_open", users: 40 }],
+      { monthlyRevenuePerPayingCents: null, manualSpend: [{ campaign: "App CZ", amountCents: 99_900, updatedAt: at }, { campaign: "App US", amountCents: 8_000, updatedAt: at }] },
+    );
+    const cz = rows.find((r) => r.campaign === "App CZ")!;
+    const us = rows.find((r) => r.campaign === "App US")!;
+    expect(cz.spendCents).toBe(12_000);
+    expect(cz.spendSource).toBe("ga4");
+    expect(us.spendCents).toBe(8_000);
+    expect(us.spendSource).toBe("manual");
+  });
+
+  it("ignores a zero or unparseable amount", () => {
+    const { total } = summarizeCampaigns([], [{ campaign: "(not set)", event: "first_open", users: 5 }], { monthlyRevenuePerPayingCents: null, manualSpend: [{ campaign: "", amountCents: 0, updatedAt: at }] });
+    expect(total.spendCents).toBe(0);
+    expect(total.cacCents).toBeNull();
+  });
+});
+
+describe("parseAmount", () => {
+  it("reads what a founder is likely to type", () => {
+    expect(parseAmount("450")).toBe(45_000);
+    expect(parseAmount("450.50")).toBe(45_050);
+    expect(parseAmount("$1,299.99")).toBe(129_999);
+    expect(parseAmount("1,5")).toBe(150); // comma as a decimal separator
+    expect(parseAmount("1.299,99")).toBe(129_999); // European grouping
+    expect(parseAmount("12,500")).toBe(1_250_000); // three trailing digits group thousands
+    expect(parseAmount("")).toBeNull();
+    expect(parseAmount("abc")).toBeNull();
+    expect(parseAmount("-5")).toBeNull();
   });
 });

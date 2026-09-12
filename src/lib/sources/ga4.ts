@@ -218,13 +218,6 @@ export async function fetchGa4Campaigns(
       notes.push({ request: dimension, message: ga4ErrorText(err) });
     }
   }
-  let totals: CampaignAdRow | null = null;
-  try {
-    totals = campaignAdRowsFromReport(await run({ dateRanges: ranges, metrics: adMetrics }))[0] ?? null;
-  } catch (err) {
-    notes.push({ request: "property-wide total (no dimension)", message: ga4ErrorText(err) });
-  }
-
-  const { ads, scope } = pickAdRows(attempts, totals);
+  const { ads, scope } = pickAdRows(attempts);
   return { ads, events, scope, notes };
 }

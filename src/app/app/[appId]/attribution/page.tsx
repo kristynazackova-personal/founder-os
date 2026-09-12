@@ -6,6 +6,9 @@ import { channelReport } from "@/lib/services/attribution";
 import { fetchCampaigns, fetchInstalls } from "@/lib/services/sources";
 import { latestAssessment } from "@/lib/services/diagnosis";
 import { summarizeCampaigns, UNATTRIBUTED_CAMPAIGN } from "@/lib/domain/campaigns";
+import { listAdSpend, toManualSpend } from "@/lib/services/adSpend";
+import { saveAdSpendAction } from "@/app/actions/adSpend";
+import { ManualSpendForm } from "@/components/ManualSpendForm";
 import { fmtDate as fmtDay } from "@/components/ui";
 import type { Metrics } from "@/lib/domain/metrics";
 import { env } from "@/lib/env";
@@ -20,11 +23,13 @@ export default async function AttributionPage({ params }: { params: Promise<{ ap
   const { appId } = await params;
   const app = await getAppForUser(appId, user.id);
   if (!app) notFound();
-  const [report, installs, campaignsRaw, assessment] = await Promise.all([channelReport(app.id), fetchInstalls(app), fetchCampaigns(app), latestAssessment(app.id)]);
+  const [report, installs, campaignsRaw, assessment, spendRows] = await Promise.all([channelReport(app.id), fetchInstalls(app), fetchCampaigns(app), latestAssessment(app.id), listAdSpend(app.id)]);
+  const manualSpend = toManualSpend(spendRows);
+  const saveSpend = saveAdSpendAction.bind(null, app.id);
   // Payback needs what a paying customer is worth per month: MRR ÷ paying customers from the latest diagnosis.
   const m = (assessment?.metrics ?? null) as Metrics | null;
   const monthlyRevenuePerPayingCents = m && m.payingUsers > 0 && m.mrrUsdCents > 0 ? Math.round(m.mrrUsdCents / m.payingUsers) : null;
-  const campaigns = summarizeCampaigns(campaignsRaw.ads, campaignsRaw.events, { monthlyRevenuePerPayingCents });
+  const campaigns = summarizeCampaigns(campaignsRaw.ads, campaignsRaw.events, { monthlyRevenuePerPayingCents, manualSpend });
   const money = (cents: number | null) => (cents === null ? "—" : formatMoney(cents));
   const snippet = `<script async src="${env.appUrl}/fos.js" data-key="${app.siteKey}"></script>`;
   const activation = app.activationEvent ?? "the activation event";
@@ -148,24 +153,24 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
         <p className="help">
           Ad spend from the Google Ads account linked to your GA4 property, next to the installs, trials and purchases GA4 attributes to each campaign&apos;s first touch. Spend is in the property&apos;s currency. Payback = cost per paid customer ÷ monthly revenue per paying customer{monthlyRevenuePerPayingCents ? ` (${formatMoney(monthlyRevenuePerPayingCents)} from your diagnosis)` : " (run the diagnosis with a revenue source connected to see it)"}.
         </p>
-        {!campaignsRaw.connected ? (
+        {campaignsRaw.connected && campaignsRaw.error && !campaigns.rows.length ? (
+          <div className="mt-3">
+            <Alert kind="bad">GA4 could not be read: {campaignsRaw.error}</Alert>
+          </div>
+        ) : !campaignsRaw.connected && !campaigns.rows.length ? (
           <p className="mt-3 text-sm text-[var(--muted)]">
             Not connected.{" "}
             <Link href={`/app/${app.id}/connect/ga4`} className="font-semibold underline">
               Connect Google Analytics 4
             </Link>{" "}
-            (linked to your Google Ads account) to see spend here.
+            (linked to your Google Ads account) to read spend and the funnel automatically, or type the spend in below.
           </p>
-        ) : campaignsRaw.error ? (
-          <div className="mt-3">
-            <Alert kind="bad">GA4 could not be read: {campaignsRaw.error}</Alert>
-          </div>
         ) : campaigns.rows.length ? (
           <>
             {campaigns.total.spendCents === 0 ? (
               <div className="mt-3">
                 <Alert kind="warn">
-                  GA4 reported no ad cost for property <span className="font-mono">{campaignsRaw.propertyId}</span>, on any campaign dimension or as a property-wide total. The funnel below is real; only spend is missing, so cost per install, CAC and payback stay unknown rather than $0.{campaignsRaw.notes.length ? " What GA4 said about each query it refused is listed under the table." : " If the Google Ads link is in place, check that the linked account runs these campaigns and that the window covers days after the link was created."}
+                  GA4 reported no ad cost for property <span className="font-mono">{campaignsRaw.propertyId}</span>, on any campaign dimension or as a property-wide total. The funnel below is real; only spend is missing, so cost per install, CAC and payback stay unknown rather than $0. You can type the spend in yourself at the bottom of this card.{campaignsRaw.notes.length ? " What GA4 said about each query it refused is listed under the table." : " If the Google Ads link is in place, check that the linked account runs these campaigns and that the window covers days after the link was created."}
                 </Alert>
               </div>
             ) : null}
@@ -191,7 +196,10 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
                 {campaigns.rows.map((r) => (
                   <tr key={r.campaign} className={r.campaign === UNATTRIBUTED_CAMPAIGN ? "text-[var(--muted)]" : undefined}>
                     <td className="font-semibold">{r.campaign}</td>
-                    <td>{formatMoney(r.spendCents)}</td>
+                    <td>
+                      {formatMoney(r.spendCents)}
+                      {r.spendSource === "manual" ? <span className="ml-1 text-xs text-[var(--muted)]">entered</span> : null}
+                    </td>
                     <td>{r.clicks}</td>
                     <td>{r.installs}</td>
                     <td>{r.trials}</td>
@@ -211,6 +219,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
                 Spend read on <span className="font-mono">{campaignsRaw.scope}</span>.
               </p>
             ) : null}
+            {campaignsRaw.error ? <p className="help mt-2">GA4 could not be read: {campaignsRaw.error}</p> : null}
             {campaignsRaw.notes.map((n) => (
               <p key={n.request} className="help mt-2">
                 GA4 refused the spend query on <span className="font-mono">{n.request}</span>: {n.message}
@@ -237,6 +246,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
             </p>
           </div>
         )}
+        <ManualSpendForm action={saveSpend} entries={manualSpend} windowDays={campaignsRaw.days} />
       </section>
 
       <section className="card p-6">

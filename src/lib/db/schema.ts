@@ -223,6 +223,28 @@ export const attributionEvents = pgTable(
   (t) => [index("attribution_app_anon_idx").on(t.appId, t.anonId), index("attribution_app_time_idx").on(t.appId, t.occurredAt)],
 );
 
+/**
+ * Ad spend the founder typed in, for the attribution card's rolling window.
+ * GA4 only reports cost when the Google Ads link actually delivers it, which
+ * it often does not for app campaigns, and the Google Ads API needs an
+ * approved developer token — so a number the founder enters is the only
+ * source that always works. GA4 wins for any campaign it does report.
+ */
+export const adSpend = pgTable(
+  "ad_spend",
+  {
+    id: id(),
+    appId: uuid("app_id").notNull().references(() => apps.id, { onDelete: "cascade" }),
+    /** Campaign name as the founder writes it, or "" for "all campaigns". */
+    campaign: text("campaign").notNull().default(""),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency").notNull().default("usd"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("ad_spend_app_campaign_idx").on(t.appId, t.campaign)],
+);
+
 export const webhookEvents = pgTable(
   "webhook_events",
   {
@@ -260,3 +282,4 @@ export type Plan = typeof plans.$inferSelect;
 export type Purchase = typeof purchases.$inferSelect;
 export type WrappedSubscription = typeof wrappedSubscriptions.$inferSelect;
 export type AttributionEvent = typeof attributionEvents.$inferSelect;
+export type AdSpend = typeof adSpend.$inferSelect;
