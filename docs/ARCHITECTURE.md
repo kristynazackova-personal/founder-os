@@ -148,3 +148,24 @@ change:
 So a cutover is: point the new domain at the service, set `APP_URL`, keep
 the old host alive and un-redirected for those paths, and re-register the
 callbacks. Anything else silently drops a customer's data.
+
+### Attaching a custom domain (Railway)
+
+1. **Railway → the service → Settings → Networking → Custom Domain.** Add
+   `completefounder.com`, and `www.completefounder.com` if you want both.
+   Railway then shows the DNS record to create.
+2. **Apex domains need a provider that fakes a CNAME at the root.** DNS
+   standards forbid a real CNAME on the apex, so the registrar must offer
+   CNAME flattening (Cloudflare) or an ALIAS/ANAME record (Route 53,
+   DNSimple). If yours offers neither, attach `www` as the real domain and
+   have the registrar redirect the apex to it.
+3. **Wait for the certificate.** Railway issues it automatically once the
+   record resolves; the domain shows as validating until then.
+4. **Leave the `*.up.railway.app` domain attached.** Every snippet and pay
+   link already in the wild points at it — see above.
+5. **Set `APP_URL=https://completefounder.com`** so newly generated snippets
+   and links use it. Nothing rewrites the old ones.
+6. **Verify:** `curl https://completefounder.com/api/health` and check
+   `requestHost` is the new domain and `commit` matches the deployment. That
+   proves DNS reaches this service rather than a parking page.
+7. **Re-register callbacks** for Stripe Connect and, if used, Google OAuth.

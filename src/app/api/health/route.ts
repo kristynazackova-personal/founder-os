@@ -6,7 +6,7 @@ import { googleAdsConfigured } from "@/lib/sources/googleads";
 export const dynamic = "force-dynamic";
 
 /** Deployment health. Never includes secrets; the DB error is the driver's message, which names the host at most. */
-export async function GET() {
+export async function GET(request: Request) {
   const status = dbStatus();
   let db: "ok" | "error" = "ok";
   let error: string | null = null;
@@ -25,6 +25,15 @@ export async function GET() {
       databaseUrlSet: status.configured,
       error: error ?? status.lastError,
       appUrl: env.appUrl,
+      // The host the request actually arrived on, so a new custom domain can
+      // be checked against the service it resolves to and against APP_URL.
+      requestHost: (() => {
+        try {
+          return new URL(request.url).host;
+        } catch {
+          return null;
+        }
+      })(),
       checkoutProvider: env.checkoutProvider,
       encryptionKeySet: Boolean(env.encryptionKey),
       sessionSecretSet: env.sessionSecret !== "dev-session-secret-change-me",
