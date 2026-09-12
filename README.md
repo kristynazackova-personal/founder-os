@@ -12,8 +12,11 @@ This repository holds the business plan, the PRDs, and the V1 application.
 
 ## What V1 does
 
-1. **Connect and assess** — read-only Stripe (Connect OAuth), Lemon Squeezy and
-   Paddle (API key), optional GA4. Places the app at stage 0–3 with a
+1. **Connect and assess** — read-only sources with step-by-step guides:
+   Stripe (restricted key or Connect OAuth), App Store (App Store Connect
+   sales reports), Lemon Squeezy and Paddle (API key), the founder's own
+   Postgres / Supabase database (sign-ups, optional subscriptions table),
+   Mixpanel and GA4 (funnel numbers). Places the app at stage 0–3 with a
    confidence flag and shows three numbers, one sentence, one action.
 2. **Pricing engine** — an 8-question interview → model, tiers, prices, the
    reasoning in plain language, and a pricing page block (HTML + a Lovable

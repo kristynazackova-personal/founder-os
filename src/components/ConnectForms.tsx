@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { connectGa4Action, connectLemonSqueezyAction, connectPaddleAction, connectStripeKeyAction } from "@/app/actions/sources";
+import { connectAppStoreAction, connectGa4Action, connectLemonSqueezyAction, connectMixpanelAction, connectPaddleAction, connectPostgresAction, connectStripeKeyAction } from "@/app/actions/sources";
 import type { FormState } from "@/app/actions/apps";
 
 function Status({ state }: { state: FormState }) {
@@ -82,6 +82,142 @@ export function Ga4Form({ appId }: { appId: string }) {
       <Status state={state} />
       <button type="submit" className="btn btn-primary" disabled={pending}>
         {pending ? "Checking…" : "Connect GA4"}
+      </button>
+    </form>
+  );
+}
+
+export function AppStoreForm({ appId }: { appId: string }) {
+  const [state, action, pending] = useActionState<FormState, FormData>(connectAppStoreAction.bind(null, appId), undefined);
+  return (
+    <form action={action} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <label className="label">Issuer ID</label>
+          <input name="issuerId" className="input" required placeholder="57246542-96fe-1a63-…" autoComplete="off" />
+        </div>
+        <div>
+          <label className="label">Key ID</label>
+          <input name="keyId" className="input" required placeholder="2X9R4HXF34" autoComplete="off" />
+        </div>
+        <div>
+          <label className="label">Vendor number</label>
+          <input name="vendorNumber" className="input" required placeholder="12345678" inputMode="numeric" />
+        </div>
+      </div>
+      <div>
+        <label className="label">Private key (.p8 contents)</label>
+        <textarea name="privateKey" className="textarea h-28 font-mono text-xs" required placeholder={"-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----"} />
+        <p className="help">The whole file, BEGIN and END lines included. Stored encrypted; used only to sign report requests.</p>
+      </div>
+      <Status state={state} />
+      <button type="submit" className="btn btn-primary" disabled={pending}>
+        {pending ? "Checking with Apple…" : "Connect App Store"}
+      </button>
+    </form>
+  );
+}
+
+export function MixpanelForm({ appId }: { appId: string }) {
+  const [state, action, pending] = useActionState<FormState, FormData>(connectMixpanelAction.bind(null, appId), undefined);
+  return (
+    <form action={action} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="label">Project id</label>
+          <input name="projectId" className="input" required placeholder="1234567" inputMode="numeric" />
+        </div>
+        <div>
+          <label className="label">Data residency</label>
+          <select name="region" className="select" defaultValue="us">
+            <option value="us">US (default)</option>
+            <option value="eu">EU</option>
+            <option value="in">India</option>
+          </select>
+        </div>
+        <div>
+          <label className="label">Service account username</label>
+          <input name="serviceUser" className="input" required placeholder="founder-os.abc123.mp-service-account" autoComplete="off" />
+        </div>
+        <div>
+          <label className="label">Service account secret</label>
+          <input name="serviceSecret" className="input" type="password" required autoComplete="off" />
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <label className="label">Sign-up event</label>
+          <input name="signupEvent" className="input" required placeholder="User Signup" />
+        </div>
+        <div>
+          <label className="label">Activation event (optional)</label>
+          <input name="activationEvent" className="input" placeholder="Onboarding Completed" />
+        </div>
+        <div>
+          <label className="label">Visit event (optional)</label>
+          <input name="visitorEvent" className="input" placeholder="Page View" />
+        </div>
+      </div>
+      <p className="help">Exact event names, case-sensitive. We check they exist before saving.</p>
+      <Status state={state} />
+      <button type="submit" className="btn btn-primary" disabled={pending}>
+        {pending ? "Checking…" : "Connect Mixpanel"}
+      </button>
+    </form>
+  );
+}
+
+export function PostgresForm({ appId }: { appId: string }) {
+  const [state, action, pending] = useActionState<FormState, FormData>(connectPostgresAction.bind(null, appId), undefined);
+  return (
+    <form action={action} className="space-y-3">
+      <div>
+        <label className="label">Read-only connection string</label>
+        <input name="connectionString" className="input" type="password" required placeholder="postgresql://founder_os_ro:…@host:5432/db?sslmode=require" autoComplete="off" />
+        <p className="help">A role that can only SELECT. Every query runs read-only with a 15-second limit.</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="label">Users table</label>
+          <input name="usersTable" className="input" defaultValue="users" placeholder="users or auth.users" />
+        </div>
+        <div>
+          <label className="label">Created-at column</label>
+          <input name="usersCreatedAt" className="input" defaultValue="created_at" />
+        </div>
+      </div>
+      <details className="rounded-xl border border-stone-200 p-3">
+        <summary className="cursor-pointer text-sm font-semibold">Optional: subscriptions table (reports paying users, MRR and churn)</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label">Table</label>
+            <input name="subsTable" className="input" placeholder="subscriptions" />
+          </div>
+          <div>
+            <label className="label">Customer column</label>
+            <input name="subsCustomer" className="input" placeholder="user_id" />
+          </div>
+          <div>
+            <label className="label">Started-at column</label>
+            <input name="subsStartedAt" className="input" placeholder="subscribed_date" />
+          </div>
+          <div>
+            <label className="label">Ended-at column (null while active)</label>
+            <input name="subsEndedAt" className="input" placeholder="unsubscribed_date" />
+          </div>
+          <div>
+            <label className="label">Plan column</label>
+            <input name="subsPlan" className="input" placeholder="tier" />
+          </div>
+          <div>
+            <label className="label">Plan prices (cents per interval)</label>
+            <input name="priceMap" className="input" placeholder="premium=399/week, premium_plus=599/week" />
+          </div>
+        </div>
+      </details>
+      <Status state={state} />
+      <button type="submit" className="btn btn-primary" disabled={pending}>
+        {pending ? "Reading…" : "Connect database"}
       </button>
     </form>
   );

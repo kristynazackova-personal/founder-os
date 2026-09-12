@@ -16,7 +16,9 @@ src/
       billing.ts          Founder OS's own plan state machine
       money.ts            cents, fees (6% + 50¢), FX table
     db/                   Drizzle schema + client (Neon in prod, embedded PGlite otherwise)
-    sources/              read adapters: stripe (Connect OAuth), lemonsqueezy, paddle, ga4
+    sources/              read adapters: stripe (restricted key or Connect OAuth), lemonsqueezy, paddle,
+                          appstore (App Store Connect sales reports), postgres (founder's own DB, read-only),
+                          mixpanel (export API), ga4
     checkout/             CheckoutProvider interface + dodo, polar, mock
     webhooks/             Standard Webhooks signature verification
     services/             DB-backed orchestration used by pages and actions
@@ -29,11 +31,19 @@ tests/                    vitest — domain units + PGlite integration (checkout
 ## Data flow
 
 1. **Connect.** A source row stores encrypted credentials (`revenue_sources`,
-   AES-256-GCM with `ENCRYPTION_KEY`). Stripe is read-only Connect OAuth; the
-   others are API keys validated before saving.
+   AES-256-GCM with `ENCRYPTION_KEY`). Every credential is validated with a
+   real read before saving and never displayed again (identifiers only;
+   Replace / Disconnect). Stripe accepts a read-only restricted key (`rk_…`,
+   secret keys refused) or Connect OAuth when the platform is configured.
+   Sources split into revenue (Stripe, Lemon Squeezy, Paddle, App Store,
+   Postgres with a mapped subscriptions table) and analytics (Postgres users
+   table, Mixpanel, GA4); `isRevenueSource` decides. The Connect tab lists
+   them as cards; each has a step-by-step page whose ticks persist in
+   `connect_checklists` (`components/connect/guides.tsx`).
 2. **Assess.** `services/diagnosis.runAssessment` pulls every source through
    its adapter into `NormalizedRevenueData`, merges it with live wrapped
-   checkout rows, adds funnel signals from `attribution_events` (or GA4), and
+   checkout rows, adds funnel signals from `attribution_events` (gaps filled
+   from Postgres, then Mixpanel, then GA4 — `fetchAnalyticsSignals`), and
    stores an `assessments` row (metrics + stage + confidence + reasons). The
    diagnosis page reuses the last assessment for 6 hours; "Refresh" forces one.
 3. **Price.** The interview is saved on `pricing_interviews` with the

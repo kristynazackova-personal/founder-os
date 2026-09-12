@@ -3,7 +3,11 @@ import { getDb, schema } from "../db";
 import type { App, RevenueSource } from "../db/schema";
 import { decryptJson, encryptJson } from "../crypto";
 import { mergeRevenueData, type AnalyticsSignals, type NormalizedRevenueData } from "../domain/metrics";
-import { revenueAdapter, REVENUE_SOURCE_TYPES, type Ga4Credentials, type SourceType } from "../sources";
+import type { RevenueSource as RevenueSourceRow } from "../db/schema";
+import { analyticsAdapter, ANALYTICS_SOURCE_TYPES, isRevenueSource, isSqlIdentifier, revenueAdapter, type AppStoreCredentials, type Ga4Credentials, type MixpanelCredentials, type PostgresCredentials, type SourceType } from "../sources";
+import { probeAppStore } from "../sources/appstore";
+import { probeMixpanel } from "../sources/mixpanel";
+import { parsePriceMap, probePostgres } from "../sources/postgres";
 import { ProviderError } from "../checkout/provider";
 import { ga4Adapter } from "../sources/ga4";
 import { validateLemonSqueezyKey } from "../sources/lemonsqueezy";
@@ -25,6 +29,12 @@ export function sourceIdentity(s: Pick<RevenueSource, "type" | "externalId" | "m
       return `${m.sandbox ? "Sandbox" : "Live"} key ····${String(m.keyLast4 ?? "")}`;
     case "ga4":
       return `Property ${s.externalId ?? "?"}${m.serviceAccountEmail ? ` · ${String(m.serviceAccountEmail)}` : ""}`;
+    case "appstore":
+      return `Vendor ${s.externalId ?? "?"} · key ${String(m.keyId ?? "")}`;
+    case "postgres":
+      return `${String(m.host ?? "database")} · ${String(m.usersTable ?? "users")}${m.hasSubscriptions ? ` + ${String(m.subsTable)}` : ""}`;
+    case "mixpanel":
+      return `Project ${s.externalId ?? "?"} (${String(m.region ?? "us").toUpperCase()}) · ${String(m.signupEvent ?? "")}`;
     default:
       return s.externalId ?? "—";
   }
@@ -118,6 +128,73 @@ export function explainGa4Error(err: unknown, serviceAccountEmail: string, prope
   return `GA4 refused the request: ${err instanceof Error ? err.message : String(err)}${google ? ` — ${google}` : ""}.`;
 }
 
+export async function connectAppStore(app: App, input: { issuerId: string; keyId: string; privateKey: string; vendorNumber: string }): Promise<{ ok: true; found: boolean } | { ok: false; error: string }> {
+  const issuerId = input.issuerId.trim();
+  const keyId = input.keyId.trim();
+  const vendorNumber = input.vendorNumber.trim();
+  const privateKey = input.privateKey.trim().replace(/\\n/g, "\n");
+  if (!/^[0-9a-f-]{36}$/i.test(issuerId)) return { ok: false, error: "The issuer id is a UUID (e.g. 57246542-96fe-1a63-e053-0824d011072a), shown at the top of the API keys page." };
+  if (!/^[A-Z0-9]{8,12}$/i.test(keyId)) return { ok: false, error: "The key id is the 10-character code on the key's row (e.g. 2X9R4HXF34)." };
+  if (!/^\d{6,10}$/.test(vendorNumber)) return { ok: false, error: "The vendor number is an 8-digit number from Sales and Trends → Reports." };
+  if (!/BEGIN PRIVATE KEY/.test(privateKey)) return { ok: false, error: "Paste the whole .p8 file, including the -----BEGIN PRIVATE KEY----- and -----END PRIVATE KEY----- lines." };
+  const creds: AppStoreCredentials = { issuerId, keyId, privateKey, vendorNumber };
+  const probe = await probeAppStore(creds);
+  if (!probe.ok) return { ok: false, error: probe.error };
+  await upsertSource(app, "appstore", creds, vendorNumber, { keyId });
+  return { ok: true, found: probe.found };
+}
+
+export async function connectMixpanel(app: App, input: { projectId: string; serviceUser: string; serviceSecret: string; region: string; signupEvent: string; activationEvent: string; visitorEvent: string }): Promise<{ ok: true } | { ok: false; error: string }> {
+  const projectId = input.projectId.trim();
+  if (!/^\d+$/.test(projectId)) return { ok: false, error: "The project id is a number (Project settings → Overview)." };
+  if (!input.serviceUser.trim() || !input.serviceSecret.trim()) return { ok: false, error: "Paste the service account username and secret." };
+  const region = (["us", "eu", "in"].includes(input.region) ? input.region : "us") as MixpanelCredentials["region"];
+  const signupEvent = input.signupEvent.trim();
+  if (!signupEvent) return { ok: false, error: "Name the event that means a sign-up (e.g. User Signup)." };
+  const creds: MixpanelCredentials = { projectId, serviceUser: input.serviceUser.trim(), serviceSecret: input.serviceSecret.trim(), region, signupEvent, activationEvent: input.activationEvent.trim() || null, visitorEvent: input.visitorEvent.trim() || null };
+  const probe = await probeMixpanel(creds);
+  if (!probe.ok) return { ok: false, error: `Mixpanel rejected the service account or project: ${probe.error}` };
+  const missing = [signupEvent, creds.activationEvent, creds.visitorEvent].filter((e): e is string => typeof e === "string" && e.length > 0 && probe.events.length > 0 && !probe.events.includes(e));
+  if (missing.length) return { ok: false, error: `These events don't exist in project ${projectId}: ${missing.join(", ")}. Names are case-sensitive; check Events in Mixpanel.` };
+  await upsertSource(app, "mixpanel", creds, projectId, { region, signupEvent });
+  return { ok: true };
+}
+
+export async function connectPostgres(
+  app: App,
+  input: { connectionString: string; usersTable: string; usersCreatedAt: string; subsTable: string; subsCustomer: string; subsStartedAt: string; subsEndedAt: string; subsPlan: string; priceMap: string },
+): Promise<{ ok: true; signups30d: number; subscriptions: number | null } | { ok: false; error: string }> {
+  const connectionString = input.connectionString.trim();
+  let host = "";
+  try {
+    const u = new URL(connectionString);
+    if (!/^postgres(ql)?:$/.test(u.protocol)) throw new Error("scheme");
+    host = u.hostname;
+  } catch {
+    return { ok: false, error: "That doesn't look like a Postgres connection string (postgresql://user:password@host:5432/db)." };
+  }
+  const usersTable = input.usersTable.trim() || "users";
+  const usersCreatedAt = input.usersCreatedAt.trim() || "created_at";
+  for (const id of [usersTable, usersCreatedAt]) if (!isSqlIdentifier(id)) return { ok: false, error: `"${id}" is not a plain table or column name (lowercase letters, digits, underscores; optional schema prefix).` };
+  let subs: PostgresCredentials["subs"] = null;
+  if (input.subsTable.trim()) {
+    const table = input.subsTable.trim();
+    const customer = input.subsCustomer.trim() || "user_id";
+    const startedAt = input.subsStartedAt.trim() || "created_at";
+    const endedAt = input.subsEndedAt.trim() || null;
+    const plan = input.subsPlan.trim() || null;
+    for (const id of [table, customer, startedAt, endedAt, plan].filter((x): x is string => Boolean(x))) if (!isSqlIdentifier(id)) return { ok: false, error: `"${id}" is not a plain table or column name.` };
+    const priceMap = parsePriceMap(input.priceMap);
+    if (!Object.keys(priceMap).length) return { ok: false, error: "Give each plan a price, e.g. premium=399/week, premium_plus=599/week (cents per interval)." };
+    subs = { table, customer, startedAt, endedAt, plan, priceMap };
+  }
+  const creds: PostgresCredentials = { connectionString, usersTable, usersCreatedAt, subs };
+  const probe = await probePostgres(creds);
+  if (!probe.ok) return { ok: false, error: `The database refused the read: ${probe.error}` };
+  await upsertSource(app, "postgres", creds, host, { host, usersTable, hasSubscriptions: Boolean(subs), subsTable: subs?.table ?? null });
+  return { ok: true, signups30d: probe.signups30d, subscriptions: probe.subscriptions };
+}
+
 export type ExternalRevenue = {
   data: NormalizedRevenueData;
   connected: boolean;
@@ -138,7 +215,7 @@ export async function fetchExternalRevenue(app: App): Promise<ExternalRevenue> {
   let earliest: Date | null = null;
   for (const row of rows) {
     const type = row.type as SourceType;
-    if (!REVENUE_SOURCE_TYPES.includes(type)) continue;
+    if (!isRevenueSource(row)) continue;
     connected = true;
     if (!earliest || row.connectedAt < earliest) earliest = row.connectedAt;
     const adapter = revenueAdapter(type);
@@ -158,17 +235,29 @@ export async function fetchExternalRevenue(app: App): Promise<ExternalRevenue> {
   return { data: mergeRevenueData(parts), connected, hasProducts, sourcesUsed, errors, earliestConnectedAt: earliest };
 }
 
-export async function fetchGa4Signals(app: App): Promise<{ signals: Partial<AnalyticsSignals> | null; error: string | null }> {
+/** Funnel numbers from every analytics-capable source, merged in ANALYTICS_SOURCE_TYPES order (first non-null wins per field). */
+export async function fetchAnalyticsSignals(app: App): Promise<{ signals: Partial<AnalyticsSignals>; used: string[]; errors: Array<{ type: string; message: string }> }> {
   const db = await getDb();
-  const [row] = await db.select().from(schema.revenueSources).where(and(eq(schema.revenueSources.appId, app.id), eq(schema.revenueSources.type, "ga4"))).limit(1);
-  if (!row) return { signals: null, error: null };
-  try {
-    const signals = await ga4Adapter.fetchSignals(decryptJson(row.credentialsEnc));
-    await db.update(schema.revenueSources).set({ lastSyncedAt: new Date(), lastError: null, status: "connected" }).where(eq(schema.revenueSources.id, row.id));
-    return { signals, error: null };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    await db.update(schema.revenueSources).set({ lastError: message, status: "error" }).where(eq(schema.revenueSources.id, row.id));
-    return { signals: null, error: message };
+  const rows: RevenueSourceRow[] = await db.select().from(schema.revenueSources).where(eq(schema.revenueSources.appId, app.id));
+  const signals: Partial<AnalyticsSignals> = {};
+  const used: string[] = [];
+  const errors: Array<{ type: string; message: string }> = [];
+  for (const type of ANALYTICS_SOURCE_TYPES) {
+    const row = rows.find((r) => r.type === type);
+    const adapter = analyticsAdapter(type);
+    if (!row || !adapter) continue;
+    try {
+      const part = await adapter.fetchSignals(decryptJson(row.credentialsEnc));
+      for (const key of ["visitors30d", "signups30d", "checkoutViews30d", "activations30d"] as const) {
+        if (signals[key] == null && part[key] != null) signals[key] = part[key];
+      }
+      used.push(type);
+      if (!isRevenueSource(row)) await db.update(schema.revenueSources).set({ lastSyncedAt: new Date(), lastError: null, status: "connected" }).where(eq(schema.revenueSources.id, row.id));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      errors.push({ type, message });
+      await db.update(schema.revenueSources).set({ lastError: message, status: "error" }).where(eq(schema.revenueSources.id, row.id));
+    }
   }
+  return { signals, used, errors };
 }

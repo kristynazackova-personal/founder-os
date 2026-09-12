@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { SourceType } from "@/lib/sources";
+import { env } from "@/lib/env";
 
 export type GuideStep = { key: string; title: string; body: ReactNode };
 
@@ -40,7 +41,7 @@ export const CONNECT_GUIDES: Record<SourceType, ConnectGuide> = {
         title: "Click Create restricted key",
         body: (
           <>
-            Choose <em>Providing this key to another website</em> if asked, name it <code>Founder OS</code>. Never use your secret key (<code>sk_…</code>) — the app refuses it.
+            When Stripe asks how you will use the key, choose <em>Providing this key to a third-party application</em> (Founder OS is the third party). On the next screen, <em>Name</em>: <code>Founder OS</code>, <em>URL</em>: <code>{env.appUrl}</code>, then open <em>Customise permissions for this key</em>. Never use your secret key (<code>sk_…</code>) — the app refuses it.
           </>
         ),
       },
@@ -120,6 +121,117 @@ export const CONNECT_GUIDES: Record<SourceType, ConnectGuide> = {
     ],
     finalStep: "Paste the key",
   },
+  appstore: {
+    source: "appstore",
+    name: "App Store",
+    tagline: "iOS subscriptions from App Store Connect sales reports",
+    reads: "Daily subscriber reports for the last 90 days: starts, renewals, cancellations and prices, per anonymous subscriber id. Never customer names.",
+    minutes: 6,
+    steps: [
+      {
+        key: "key",
+        title: "Create an App Store Connect API key with the Sales and Reports role",
+        body: (
+          <>
+            {ext("https://appstoreconnect.apple.com/access/integrations/api", "App Store Connect → Users and Access → Integrations → App Store Connect API")} → <em>Team Keys</em> → <em>+</em>. Name it <code>Founder OS</code>, access <em>Sales and Reports</em> (the smallest role that can read reports). Only the Account Holder or an Admin can create keys.
+          </>
+        ),
+      },
+      {
+        key: "download",
+        title: "Download the .p8 file and note the Key ID and Issuer ID",
+        body: <>The <em>Download API Key</em> link works once. The <em>Key ID</em> is on the key&apos;s row; the <em>Issuer ID</em> is at the top of the same page. Open the .p8 in a text editor — you paste its whole contents, BEGIN and END lines included.</>,
+      },
+      {
+        key: "vendor",
+        title: "Find your vendor number",
+        body: <>{ext("https://appstoreconnect.apple.com/trends/reports", "Sales and Trends → Reports")} → the vendor number is shown next to your legal entity name (an 8-digit number).</>,
+      },
+      {
+        key: "wait",
+        title: "Know that Apple's reports run a day behind",
+        body: <>A day&apos;s report appears the following morning (Pacific time) and days without activity have no report at all, so the first read can be empty for a brand-new app.</>,
+      },
+    ],
+    finalStep: "Paste the issuer id, key id, vendor number and the .p8 key",
+  },
+  postgres: {
+    source: "postgres",
+    name: "Postgres / Supabase",
+    tagline: "Sign-ups from your own users table; optionally subscriptions too",
+    reads: "A count of rows in your users table from the last 30 days, and — if you map one — a subscriptions table. Every query runs read-only with a 15-second limit.",
+    minutes: 5,
+    steps: [
+      {
+        key: "readonly",
+        title: "Create a read-only database role",
+        body: (
+          <>
+            Run in the SQL editor (Supabase: <em>SQL Editor</em>; Neon: <em>SQL Editor</em>; anything else: psql):
+            <pre className="code mt-2">{`CREATE ROLE founder_os_ro LOGIN PASSWORD 'choose-a-long-password';
+GRANT USAGE ON SCHEMA public TO founder_os_ro;
+GRANT SELECT ON public.users TO founder_os_ro;
+-- and, only if you map subscriptions:
+GRANT SELECT ON public.subscriptions TO founder_os_ro;`}</pre>
+            Never paste your main database URL; a role that can only SELECT two tables is the whole point.
+          </>
+        ),
+      },
+      {
+        key: "url",
+        title: "Build the connection string for that role",
+        body: (
+          <>
+            Copy your provider&apos;s connection string and swap in the new user and password: <code>postgresql://founder_os_ro:PASSWORD@HOST:5432/DBNAME?sslmode=require</code>. Supabase: use the <em>Session pooler</em> string from <em>Connect</em>. Neon: the pooled host works.
+          </>
+        ),
+      },
+      {
+        key: "users",
+        title: "Note the users table and its created-at column",
+        body: <>Usually <code>users</code> and <code>created_at</code>. Supabase Auth keeps its users in <code>auth.users</code> (grant SELECT on that instead).</>,
+      },
+      {
+        key: "subs",
+        title: "Optional: map a subscriptions table",
+        body: (
+          <>
+            If your app records subscriptions itself (e.g. because you bill on Stripe and the App Store), tell us the table, the customer column, the started-at and ended-at columns, the plan column, and what each plan costs: <code>premium=399/week, premium_plus=599/week</code>. With that, this one source reports paying users, MRR and churn.
+          </>
+        ),
+      },
+    ],
+    finalStep: "Paste the connection string and the column names",
+  },
+  mixpanel: {
+    source: "mixpanel",
+    name: "Mixpanel",
+    tagline: "Sign-ups, activation and visitors from your existing events",
+    reads: "Distinct users of the events you name, over the last 30 days, through the raw export API. Nothing is written to Mixpanel.",
+    minutes: 4,
+    steps: [
+      {
+        key: "project",
+        title: "Find your project id",
+        body: <>Mixpanel → <em>Settings</em> (gear) → <em>Project settings</em> → <em>Overview</em>. The project id is a number; note the <em>Data residency</em> shown there too (US, EU or India).</>,
+      },
+      {
+        key: "service-account",
+        title: "Create a service account",
+        body: (
+          <>
+            Same page → <em>Service Accounts</em> → <em>Add Service Account</em>. Role <em>Consumer</em> is enough (it can read, not change). Copy the <em>username</em> and the <em>secret</em> — the secret is shown once.
+          </>
+        ),
+      },
+      {
+        key: "events",
+        title: "Pick the events that mean sign-up, activation and a visit",
+        body: <>Exact event names as they appear in Mixpanel, e.g. <code>User Signup</code>, <code>Onboarding Completed</code>, <code>Page View</code>. Sign-up is required; the other two are optional.</>,
+      },
+    ],
+    finalStep: "Paste the project id, service account and event names",
+  },
   ga4: {
     source: "ga4",
     name: "Google Analytics 4",
@@ -173,7 +285,7 @@ export const CONNECT_GUIDES: Record<SourceType, ConnectGuide> = {
   },
 };
 
-export const CONNECT_ORDER: SourceType[] = ["stripe", "lemonsqueezy", "paddle", "ga4"];
+export const CONNECT_ORDER: SourceType[] = ["stripe", "appstore", "lemonsqueezy", "paddle", "postgres", "mixpanel", "ga4"];
 
 export function isSourceType(s: string): s is SourceType {
   return s in CONNECT_GUIDES;
@@ -186,6 +298,9 @@ export function SourceIcon({ source, size = 40 }: { source: SourceType; size?: n
     lemonsqueezy: { bg: "#ffc233", fg: "#1f1f1f", text: "LS" },
     paddle: { bg: "#0b0b0b", fg: "#fff", text: "P" },
     ga4: { bg: "#f9ab00", fg: "#1f1f1f", text: "GA" },
+    appstore: { bg: "#1d1d1f", fg: "#fff", text: "" },
+    postgres: { bg: "#336791", fg: "#fff", text: "PG" },
+    mixpanel: { bg: "#7856ff", fg: "#fff", text: "MP" },
   };
   const { bg, fg, text } = spec[source];
   return (

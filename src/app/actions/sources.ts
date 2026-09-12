@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
-import { connectGa4, connectLemonSqueezy, connectPaddle, connectStripeKey, removeSource } from "@/lib/services/sources";
+import { connectAppStore, connectGa4, connectLemonSqueezy, connectMixpanel, connectPaddle, connectPostgres, connectStripeKey, removeSource } from "@/lib/services/sources";
 import { setChecklistStep } from "@/lib/services/connectChecklists";
 import { runAssessment } from "@/lib/services/diagnosis";
 import type { SourceType } from "@/lib/sources";
@@ -56,6 +56,48 @@ export async function connectGa4Action(appId: string, _prev: FormState, formData
   if (!res.ok) return { error: res.error };
   await afterConnect(appId);
   redirect(`/app/${appId}/connect/ga4?connected=1`);
+}
+
+const f = (formData: FormData, k: string) => String(formData.get(k) ?? "");
+
+export async function connectAppStoreAction(appId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const app = await getAppForUser(appId, user.id);
+  if (!app) return { error: "App not found." };
+  const res = await connectAppStore(app, { issuerId: f(formData, "issuerId"), keyId: f(formData, "keyId"), privateKey: f(formData, "privateKey"), vendorNumber: f(formData, "vendorNumber") });
+  if (!res.ok) return { error: res.error };
+  await afterConnect(appId);
+  redirect(`/app/${appId}/connect/appstore?connected=1${res.found ? "" : "&empty=1"}`);
+}
+
+export async function connectMixpanelAction(appId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const app = await getAppForUser(appId, user.id);
+  if (!app) return { error: "App not found." };
+  const res = await connectMixpanel(app, { projectId: f(formData, "projectId"), serviceUser: f(formData, "serviceUser"), serviceSecret: f(formData, "serviceSecret"), region: f(formData, "region"), signupEvent: f(formData, "signupEvent"), activationEvent: f(formData, "activationEvent"), visitorEvent: f(formData, "visitorEvent") });
+  if (!res.ok) return { error: res.error };
+  await afterConnect(appId);
+  redirect(`/app/${appId}/connect/mixpanel?connected=1`);
+}
+
+export async function connectPostgresAction(appId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const app = await getAppForUser(appId, user.id);
+  if (!app) return { error: "App not found." };
+  const res = await connectPostgres(app, {
+    connectionString: f(formData, "connectionString"),
+    usersTable: f(formData, "usersTable"),
+    usersCreatedAt: f(formData, "usersCreatedAt"),
+    subsTable: f(formData, "subsTable"),
+    subsCustomer: f(formData, "subsCustomer"),
+    subsStartedAt: f(formData, "subsStartedAt"),
+    subsEndedAt: f(formData, "subsEndedAt"),
+    subsPlan: f(formData, "subsPlan"),
+    priceMap: f(formData, "priceMap"),
+  });
+  if (!res.ok) return { error: res.error };
+  await afterConnect(appId);
+  redirect(`/app/${appId}/connect/postgres?connected=1&signups=${res.signups30d}${res.subscriptions !== null ? `&subs=${res.subscriptions}` : ""}`);
 }
 
 export async function disconnectSourceAction(appId: string, type: SourceType): Promise<void> {

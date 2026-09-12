@@ -4,7 +4,7 @@ import { getDb, schema } from "../db";
 import type { User } from "../db/schema";
 import { env } from "../env";
 import { billingState, type BillingState } from "../domain/billing";
-import { REVENUE_SOURCE_TYPES } from "../sources";
+import { isRevenueSource } from "../sources";
 import { lifetimeWrappedRevenueCents } from "./checkout";
 
 export async function getBillingState(user: User): Promise<BillingState & { lifetimeWrappedRevenueCents: number }> {
@@ -14,8 +14,8 @@ export async function getBillingState(user: User): Promise<BillingState & { life
   let connectedSince: Date | null = null;
   if (appIds.length) {
     // The first REVENUE source starts the trial (GA4 does not).
-    const rows = await db.select({ type: schema.revenueSources.type, connectedAt: schema.revenueSources.connectedAt }).from(schema.revenueSources).where(inArray(schema.revenueSources.appId, appIds));
-    connectedSince = rows.filter((r) => REVENUE_SOURCE_TYPES.includes(r.type as (typeof REVENUE_SOURCE_TYPES)[number])).map((r) => r.connectedAt).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+    const rows = await db.select({ type: schema.revenueSources.type, meta: schema.revenueSources.meta, connectedAt: schema.revenueSources.connectedAt }).from(schema.revenueSources).where(inArray(schema.revenueSources.appId, appIds));
+    connectedSince = rows.filter((r) => isRevenueSource(r)).map((r) => r.connectedAt).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
   }
   const state = billingState({ lifetimeWrappedRevenueCents: lifetime, connectedSourceSince: connectedSince, subscriptionActive: user.subscriptionActive });
   return { ...state, lifetimeWrappedRevenueCents: lifetime };

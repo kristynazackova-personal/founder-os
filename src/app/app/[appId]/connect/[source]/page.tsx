@@ -8,10 +8,10 @@ import { stripeConnectConfigured } from "@/lib/env";
 import { disconnectSourceAction } from "@/app/actions/sources";
 import { CONNECT_GUIDES, isSourceType, SourceIcon } from "@/components/connect/guides";
 import { ConnectChecklist } from "@/components/connect/Checklist";
-import { Ga4Form, LemonSqueezyForm, PaddleForm, StripeKeyForm } from "@/components/ConnectForms";
+import { AppStoreForm, Ga4Form, LemonSqueezyForm, MixpanelForm, PaddleForm, PostgresForm, StripeKeyForm } from "@/components/ConnectForms";
 import { Alert, fmtDate } from "@/components/ui";
 
-export default async function ConnectSourcePage({ params, searchParams }: { params: Promise<{ appId: string; source: string }>; searchParams: Promise<{ connected?: string; disconnected?: string; replace?: string; stripe?: string; error?: string }> }) {
+export default async function ConnectSourcePage({ params, searchParams }: { params: Promise<{ appId: string; source: string }>; searchParams: Promise<{ connected?: string; disconnected?: string; replace?: string; stripe?: string; error?: string; empty?: string; signups?: string; subs?: string }> }) {
   const user = await requireUser();
   const { appId, source } = await params;
   const q = await searchParams;
@@ -41,6 +41,12 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
       <LemonSqueezyForm appId={app.id} />
     ) : source === "paddle" ? (
       <PaddleForm appId={app.id} />
+    ) : source === "appstore" ? (
+      <AppStoreForm appId={app.id} />
+    ) : source === "mixpanel" ? (
+      <MixpanelForm appId={app.id} />
+    ) : source === "postgres" ? (
+      <PostgresForm appId={app.id} />
     ) : (
       <Ga4Form appId={app.id} />
     );
@@ -61,7 +67,13 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
         </div>
       </div>
 
-      {q.connected ? <Alert kind="good">Connected. Your diagnosis has been refreshed with {guide.name} data.</Alert> : null}
+      {q.connected ? (
+        <Alert kind="good">
+          Connected. Your diagnosis has been refreshed with {guide.name} data.
+          {q.signups !== undefined ? ` ${q.signups} sign-ups in the last 30 days${q.subs !== undefined ? `, ${q.subs} subscription rows` : ""}.` : ""}
+          {q.empty ? " Apple returned no report for the last 7 days yet — that's normal for a new app; numbers appear as reports land." : ""}
+        </Alert>
+      ) : null}
       {q.disconnected ? <Alert kind="info">{guide.name} disconnected.</Alert> : null}
       {q.stripe === "connected" ? <Alert kind="good">Stripe connected. Your diagnosis has been refreshed.</Alert> : null}
       {q.error ? <Alert kind="bad">{q.error}</Alert> : null}

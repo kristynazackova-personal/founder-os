@@ -4,7 +4,7 @@ import type { App, Assessment } from "../db/schema";
 import { computeMetrics, mergeRevenueData, type AnalyticsSignals, type Metrics } from "../domain/metrics";
 import { diagnose, placeStage, type Diagnosis, type StagePlacement, type Stage, type Confidence } from "../domain/stages";
 import { track } from "../track";
-import { fetchExternalRevenue, fetchGa4Signals } from "./sources";
+import { fetchExternalRevenue, fetchAnalyticsSignals } from "./sources";
 import { snippetSignals } from "./attribution";
 import { hasLivePlans, wrappedRevenueData } from "./checkout";
 import { getInterview } from "./pricing";
@@ -20,21 +20,21 @@ export type AssessmentResult = {
 
 export async function runAssessment(app: App, now = new Date()): Promise<AssessmentResult> {
   const db = await getDb();
-  const [ext, wrapped, snippet, ga4, livePlans] = await Promise.all([fetchExternalRevenue(app), wrappedRevenueData(app.id), snippetSignals(app.id, now), fetchGa4Signals(app), hasLivePlans(app.id)]);
+  const [ext, wrapped, snippet, analytics, livePlans] = await Promise.all([fetchExternalRevenue(app), wrappedRevenueData(app.id), snippetSignals(app.id, now), fetchAnalyticsSignals(app), hasLivePlans(app.id)]);
 
   const data = mergeRevenueData([ext.data, wrapped.data]);
   const signals: AnalyticsSignals = {
-    visitors30d: snippet.visitors30d ?? ga4.signals?.visitors30d ?? null,
-    signups30d: snippet.signups30d ?? ga4.signals?.signups30d ?? null,
-    checkoutViews30d: snippet.checkoutViews30d,
-    activations30d: snippet.activations30d,
+    visitors30d: snippet.visitors30d ?? analytics.signals.visitors30d ?? null,
+    signups30d: snippet.signups30d ?? analytics.signals.signups30d ?? null,
+    checkoutViews30d: snippet.checkoutViews30d ?? analytics.signals.checkoutViews30d ?? null,
+    activations30d: snippet.activations30d ?? analytics.signals.activations30d ?? null,
   };
   const metrics = computeMetrics(data, signals, { launchedAt: app.launchedAt, now });
   const revenueSourceConnected = ext.connected || wrapped.hasAny;
   const checkoutLive = livePlans || ext.hasProducts;
   const placement = placeStage({ metrics, checkoutLive, revenueSourceConnected, hasLiveApp: Boolean(app.url) });
 
-  const sourcesUsed = [...ext.sourcesUsed, ...(wrapped.hasAny ? ["wrapped_checkout"] : []), ...(snippet.hasAny ? ["snippet"] : []), ...(ga4.signals ? ["ga4"] : [])];
+  const sourcesUsed = [...new Set([...ext.sourcesUsed, ...(wrapped.hasAny ? ["wrapped_checkout"] : []), ...(snippet.hasAny ? ["snippet"] : []), ...analytics.used])];
   const [assessment] = await db
     .insert(schema.assessments)
     .values({ appId: app.id, computedAt: now, metrics, stage: placement.stage, confidence: placement.confidence, reasons: placement.reasons, confidenceReasons: placement.confidenceReasons, sourcesUsed })
@@ -47,7 +47,7 @@ export async function runAssessment(app: App, now = new Date()): Promise<Assessm
     await db.update(schema.apps).set({ lastConfidence: placement.confidence }).where(eq(schema.apps.id, app.id));
   }
 
-  const errors = [...ext.errors, ...(ga4.error ? [{ type: "ga4", message: ga4.error }] : [])];
+  const errors = [...ext.errors, ...analytics.errors];
   return { assessment, metrics, placement, errors };
 }
 
