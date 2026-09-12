@@ -210,8 +210,9 @@ export function PostgresForm({ appId }: { appId: string }) {
             <input name="subsPlan" className="input" placeholder="tier" />
           </div>
           <div>
-            <label className="label">Plan prices (cents per interval)</label>
-            <input name="priceMap" className="input" placeholder="premium=399/week, premium_plus=599/week" />
+            <label className="label">Plan prices</label>
+            <input name="priceMap" className="input" placeholder="premium=$3.99/week, premium_plus=$5.99/week" />
+            <p className="help">One per plan value, comma-separated. Dollars with a decimal point or cents as a whole number; interval day, week, month or year.</p>
           </div>
         </div>
       </details>

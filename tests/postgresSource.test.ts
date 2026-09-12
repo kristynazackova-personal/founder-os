@@ -42,6 +42,12 @@ describe("postgres source over the wire", () => {
       pro: { amountCents: 2900, interval: "month" },
     });
     expect(parsePriceMap("garbage")).toEqual({});
+    expect(parsePriceMap("premium=$3.99/week; plus: 5.99 per week, pro=$29/mo, team=99900/year")).toEqual({
+      premium: { amountCents: 399, interval: "week" },
+      plus: { amountCents: 599, interval: "week" },
+      pro: { amountCents: 2900, interval: "month" },
+      team: { amountCents: 99900, interval: "year" },
+    });
   });
 
   it("counts recent signups and maps subscriptions", async () => {

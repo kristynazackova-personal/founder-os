@@ -60,12 +60,17 @@ export function normalizePostgresSubscriptions(rows: SubRow[], priceMap: PriceMa
 }
 
 export function parsePriceMap(text: string): PriceMap {
-  // "premium=399/week, premium_plus=599/week, pro=2900/month"
+  // "premium=399/week, premium_plus=$5.99/week, pro=2900/month" — a bare integer is
+  // cents; a $ prefix or a decimal point means dollars.
   const out: PriceMap = {};
-  for (const part of text.split(/[,\n]/)) {
-    const m = part.trim().match(/^([A-Za-z0-9_.-]+)\s*=\s*(\d+)\s*\/\s*(day|week|month|year)$/i);
+  for (const part of text.split(/[,\n;]/)) {
+    const m = part.trim().match(/^([A-Za-z0-9_.-]+)\s*[=:]\s*(\$?)\s*(\d+(?:\.\d{1,2})?)\s*(?:\/|\s+per\s+)\s*(day|week|month|year|daily|weekly|monthly|yearly|annual|annually|wk|mo|yr)$/i);
     if (!m) continue;
-    out[m[1]] = { amountCents: Number(m[2]), interval: m[3].toLowerCase() as "day" | "week" | "month" | "year" };
+    const dollars = m[2] === "$" || m[3].includes(".");
+    const amountCents = dollars ? Math.round(Number(m[3]) * 100) : Number(m[3]);
+    const unit = m[4].toLowerCase();
+    const interval = unit.startsWith("d") ? "day" : unit.startsWith("w") ? "week" : unit.startsWith("y") || unit.startsWith("a") ? "year" : "month";
+    out[m[1]] = { amountCents, interval };
   }
   return out;
 }

@@ -185,7 +185,7 @@ export async function connectPostgres(
     const plan = input.subsPlan.trim() || null;
     for (const id of [table, customer, startedAt, endedAt, plan].filter((x): x is string => Boolean(x))) if (!isSqlIdentifier(id)) return { ok: false, error: `"${id}" is not a plain table or column name.` };
     const priceMap = parsePriceMap(input.priceMap);
-    if (!Object.keys(priceMap).length) return { ok: false, error: "Give each plan a price, e.g. premium=399/week, premium_plus=599/week (cents per interval)." };
+    if (!Object.keys(priceMap).length) return { ok: false, error: `Give each plan a price, one per plan, separated by commas: premium=399/week, premium_plus=599/week (cents) or premium=$3.99/week (dollars). Intervals: day, week, month, year.${input.priceMap.trim() ? ` Could not read "${input.priceMap.trim().slice(0, 60)}".` : ""}` };
     subs = { table, customer, startedAt, endedAt, plan, priceMap };
   }
   const creds: PostgresCredentials = { connectionString, usersTable, usersCreatedAt, subs };
