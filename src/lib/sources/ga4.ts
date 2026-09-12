@@ -1,6 +1,7 @@
 import { createSign } from "node:crypto";
 import { jsonFetch } from "../checkout/provider";
 import type { InstallRow } from "../domain/attribution";
+import { CAMPAIGN_FUNNEL_EVENTS, type CampaignAdRow, type CampaignEventRow } from "../domain/campaigns";
 import type { AnalyticsAdapter, Ga4Credentials } from "./types";
 
 /**
@@ -94,4 +95,76 @@ export async function fetchGa4Installs(credentials: Ga4Credentials, days = 30): 
     }),
   });
   return installRowsFromReport(report);
+}
+
+/** Rows of a report with dimension [<scope>GoogleAdsCampaignName] and metrics [advertiserAdClicks, advertiserAdImpressions, advertiserAdCost]. */
+export function campaignAdRowsFromReport(report: RunReport): CampaignAdRow[] {
+  return (report.rows ?? []).map((r) => ({
+    campaign: r.dimensionValues?.[0]?.value ?? "(not set)",
+    clicks: Number(r.metricValues?.[0]?.value ?? 0) || 0,
+    impressions: Number(r.metricValues?.[1]?.value ?? 0) || 0,
+    costCents: Math.round((Number(r.metricValues?.[2]?.value ?? 0) || 0) * 100),
+  }));
+}
+
+/** Rows of a report with dimensions [firstUserGoogleAdsCampaignName, eventName] and metric [totalUsers]. */
+export function campaignEventRowsFromReport(report: RunReport): CampaignEventRow[] {
+  return (report.rows ?? []).map((r) => ({
+    campaign: r.dimensionValues?.[0]?.value ?? "(not set)",
+    event: r.dimensionValues?.[1]?.value ?? "",
+    users: Number(r.metricValues?.[0]?.value ?? 0) || 0,
+  }));
+}
+
+export type CampaignScope = "firstUser" | "session";
+
+/**
+ * Ad spend per Google Ads campaign (clicks, impressions, cost — populated
+ * only on a property linked to the Google Ads account) plus the funnel
+ * events GA4 attributes to the same first-touch campaign. The advertiserAd*
+ * metrics are read on first-touch scope; if the property rejects that
+ * combination we fall back to session scope rather than lose the spend.
+ */
+export async function fetchGa4Campaigns(credentials: Ga4Credentials, days = 30): Promise<{ ads: CampaignAdRow[]; events: CampaignEventRow[]; scope: CampaignScope }> {
+  const sa = JSON.parse(credentials.serviceAccountJson) as ServiceAccount;
+  const token = await serviceAccountToken(sa);
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(credentials.propertyId)}:runReport`;
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const dateRanges = [{ startDate: `${days}daysAgo`, endDate: "today" }];
+  const adsRequest = (scope: CampaignScope) =>
+    jsonFetch<RunReport>(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        dateRanges,
+        dimensions: [{ name: scope === "firstUser" ? "firstUserGoogleAdsCampaignName" : "sessionGoogleAdsCampaignName" }],
+        metrics: [{ name: "advertiserAdClicks" }, { name: "advertiserAdImpressions" }, { name: "advertiserAdCost" }],
+        orderBys: [{ metric: { metricName: "advertiserAdCost" }, desc: true }],
+        limit: 100,
+      }),
+    });
+  let scope: CampaignScope = "firstUser";
+  let adsReport: RunReport;
+  try {
+    adsReport = await adsRequest("firstUser");
+  } catch (firstErr) {
+    try {
+      adsReport = await adsRequest("session");
+      scope = "session";
+    } catch {
+      throw firstErr;
+    }
+  }
+  const eventsReport = await jsonFetch<RunReport>(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      dateRanges,
+      dimensions: [{ name: "firstUserGoogleAdsCampaignName" }, { name: "eventName" }],
+      metrics: [{ name: "totalUsers" }],
+      dimensionFilter: { filter: { fieldName: "eventName", inListFilter: { values: [...CAMPAIGN_FUNNEL_EVENTS] } } },
+      limit: 500,
+    }),
+  });
+  return { ads: campaignAdRowsFromReport(adsReport), events: campaignEventRowsFromReport(eventsReport), scope };
 }

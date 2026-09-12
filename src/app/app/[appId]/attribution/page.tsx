@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
 import { channelReport } from "@/lib/services/attribution";
-import { fetchInstalls } from "@/lib/services/sources";
+import { fetchCampaigns, fetchInstalls } from "@/lib/services/sources";
+import { latestAssessment } from "@/lib/services/diagnosis";
+import { summarizeCampaigns } from "@/lib/domain/campaigns";
+import type { Metrics } from "@/lib/domain/metrics";
 import { env } from "@/lib/env";
 import { CHANNEL_LABEL } from "@/lib/domain/attribution";
 import { formatMoney } from "@/lib/domain/money";
@@ -16,7 +19,12 @@ export default async function AttributionPage({ params }: { params: Promise<{ ap
   const { appId } = await params;
   const app = await getAppForUser(appId, user.id);
   if (!app) notFound();
-  const [report, installs] = await Promise.all([channelReport(app.id), fetchInstalls(app)]);
+  const [report, installs, campaignsRaw, assessment] = await Promise.all([channelReport(app.id), fetchInstalls(app), fetchCampaigns(app), latestAssessment(app.id)]);
+  // Payback needs what a paying customer is worth per month: MRR ÷ paying customers from the latest diagnosis.
+  const m = (assessment?.metrics ?? null) as Metrics | null;
+  const monthlyRevenuePerPayingCents = m && m.payingUsers > 0 && m.mrrUsdCents > 0 ? Math.round(m.mrrUsdCents / m.payingUsers) : null;
+  const campaigns = summarizeCampaigns(campaignsRaw.ads, campaignsRaw.events, { monthlyRevenuePerPayingCents });
+  const money = (cents: number | null) => (cents === null ? "—" : formatMoney(cents));
   const snippet = `<script async src="${env.appUrl}/fos.js" data-key="${app.siteKey}"></script>`;
   const activation = app.activationEvent ?? "the activation event";
   const lovablePrompt = `Add this script tag to index.html, inside <head>: ${snippet}
@@ -131,6 +139,67 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
           </>
         ) : (
           <p className="mt-3 text-sm text-[var(--muted)]">No first_open events in the last {installs.days} days.</p>
+        )}
+      </section>
+
+      <section className="card p-6">
+        <h2 className="font-semibold">Paid campaigns, last {campaignsRaw.days} days</h2>
+        <p className="help">
+          Ad spend from the Google Ads account linked to your GA4 property, next to the installs, trials and purchases GA4 attributes to each campaign&apos;s first touch. Spend is in the property&apos;s currency. Payback = cost per paid customer ÷ monthly revenue per paying customer{monthlyRevenuePerPayingCents ? ` (${formatMoney(monthlyRevenuePerPayingCents)} from your diagnosis)` : " (run the diagnosis with a revenue source connected to see it)"}.
+        </p>
+        {!campaignsRaw.connected ? (
+          <p className="mt-3 text-sm text-[var(--muted)]">
+            Not connected.{" "}
+            <Link href={`/app/${app.id}/connect/ga4`} className="font-semibold underline">
+              Connect Google Analytics 4
+            </Link>{" "}
+            (linked to your Google Ads account) to see spend here.
+          </p>
+        ) : campaignsRaw.error ? (
+          <div className="mt-3">
+            <Alert kind="bad">GA4 could not be read: {campaignsRaw.error}</Alert>
+          </div>
+        ) : campaigns.rows.length ? (
+          <>
+            <p className="mt-3 text-sm">
+              <span className="text-2xl font-bold tracking-tight">{formatMoney(campaigns.total.spendCents)}</span> <span className="text-[var(--muted)]">spent · {campaigns.total.installs} installs · {campaigns.total.paid} paid · CAC {money(campaigns.total.cacCents)}</span>
+            </p>
+            <table className="data mt-3">
+              <thead>
+                <tr>
+                  <th>Campaign</th>
+                  <th>Spend</th>
+                  <th>Clicks</th>
+                  <th>Installs</th>
+                  <th>Trials</th>
+                  <th>Paid</th>
+                  <th>Cost / install</th>
+                  <th>Cost / trial</th>
+                  <th>CAC</th>
+                  <th>Payback</th>
+                </tr>
+              </thead>
+              <tbody>
+                {campaigns.rows.map((r) => (
+                  <tr key={r.campaign}>
+                    <td className="font-semibold">{r.campaign}</td>
+                    <td>{formatMoney(r.spendCents)}</td>
+                    <td>{r.clicks}</td>
+                    <td>{r.installs}</td>
+                    <td>{r.trials}</td>
+                    <td className="font-semibold">{r.paid}</td>
+                    <td>{money(r.costPerInstallCents)}</td>
+                    <td>{money(r.costPerTrialCents)}</td>
+                    <td>{money(r.cacCents)}</td>
+                    <td>{r.paybackMonths === null ? "—" : `${r.paybackMonths} mo`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {campaignsRaw.scope === "session" ? <p className="help mt-2">Spend is read on session scope (the property rejected first-touch scope for cost metrics); installs and purchases stay first-touch.</p> : null}
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-[var(--muted)]">No campaign spend or attributed events in the last {campaignsRaw.days} days. Spend only appears once the Google Ads account is linked to this GA4 property.</p>
         )}
       </section>
 

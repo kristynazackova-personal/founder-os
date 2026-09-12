@@ -10,7 +10,8 @@ import { probeAppStore } from "../sources/appstore";
 import { probeMixpanel } from "../sources/mixpanel";
 import { parsePriceMap, probePostgres } from "../sources/postgres";
 import { ProviderError } from "../checkout/provider";
-import { fetchGa4Installs, ga4Adapter } from "../sources/ga4";
+import { fetchGa4Campaigns, fetchGa4Installs, ga4Adapter, type CampaignScope } from "../sources/ga4";
+import type { CampaignAdRow, CampaignEventRow } from "../domain/campaigns";
 import { validateLemonSqueezyKey } from "../sources/lemonsqueezy";
 import { validatePaddleKey } from "../sources/paddle";
 import { isRestrictedStripeKey, probeRestrictedStripeKey } from "../sources/stripe";
@@ -285,5 +286,19 @@ export async function fetchInstalls(app: App): Promise<{ connected: boolean; row
     return { connected: true, rows, total: rows.reduce((n, r) => n + r.installs, 0), days: INSTALLS_DAYS, error: null };
   } catch (err) {
     return { connected: true, rows: [], total: 0, days: INSTALLS_DAYS, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** Ad spend + attributed funnel events per Google Ads campaign from a connected GA4 property. Fail-soft: never throws. */
+export async function fetchCampaigns(app: App): Promise<{ connected: boolean; ads: CampaignAdRow[]; events: CampaignEventRow[]; scope: CampaignScope | null; days: number; error: string | null }> {
+  const db = await getDb();
+  const [row] = await db.select().from(schema.revenueSources).where(and(eq(schema.revenueSources.appId, app.id), eq(schema.revenueSources.type, "ga4"))).limit(1);
+  if (!row) return { connected: false, ads: [], events: [], scope: null, days: INSTALLS_DAYS, error: null };
+  try {
+    const creds = decryptJson(row.credentialsEnc) as Ga4Credentials;
+    const { ads, events, scope } = await fetchGa4Campaigns(creds, INSTALLS_DAYS);
+    return { connected: true, ads, events, scope, days: INSTALLS_DAYS, error: null };
+  } catch (err) {
+    return { connected: true, ads: [], events: [], scope: null, days: INSTALLS_DAYS, error: err instanceof Error ? err.message : String(err) };
   }
 }

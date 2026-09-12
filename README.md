@@ -28,7 +28,9 @@ This repository holds the business plan, the PRDs, and the V1 application.
    signup, activation, checkout view, purchase, 30-day return, by channel.
    Native apps post `install` (plus the same funnel events) straight to
    `/api/collect`, bucketed as "App Store / Play Store". A connected GA4
-   property also shows Firebase `first_open` installs by first-touch channel.
+   property also shows Firebase `first_open` installs by first-touch channel
+   and, when linked to Google Ads, spend per campaign with cost per install /
+   trial / paid customer and payback.
 5. **Billing for Founder OS** — free until $500 lifetime revenue through
    checkout, then $39/mo; Stripe-connected founders $29/mo after 14 days.
 

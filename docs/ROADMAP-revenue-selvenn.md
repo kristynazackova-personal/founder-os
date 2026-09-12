@@ -50,7 +50,7 @@ Done when: Selvenn's diagnosis shows the true paying count (3–4), trial
 starts and trial → paid for the last 30 days, and `npm test`, `check`,
 `lint`, `build` pass.
 
-## 2. Cost per paid user and payback by campaign — `todo` — NEXT SESSION
+## 2. Cost per paid user and payback by campaign — `done` (2026-09-12, session branch claude/trusting-shannon-3wndg6)
 
 Why: Selvenn spends on Google Ads app campaigns and Founder OS has no
 ad-cost data. GA4's Google Ads link exposes clicks and cost per campaign
@@ -68,7 +68,7 @@ section "Paid campaigns, last 30 days" — table campaign · spend · installs �
 trials · paid · CAC · payback months, with an unambiguous "not connected /
 no Google Ads link" state. Read-only; no spend controls (that is V3).
 
-## 3. Paywall views from apps — `todo`
+## 3. Paywall views from apps — `todo` — NEXT SESSION
 
 Why: "checkout → paid" is blank for Selvenn because `checkout_view` only
 fires on Founder OS pay pages. The collector already accepts the event.
