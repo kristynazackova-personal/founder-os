@@ -1,0 +1,1 @@
+ALTER TABLE "connect_checklists" ADD COLUMN "draft" jsonb DEFAULT '{}'::jsonb NOT NULL;

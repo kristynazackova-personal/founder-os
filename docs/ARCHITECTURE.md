@@ -39,7 +39,10 @@ tests/                    vitest — domain units + PGlite integration (checkout
    Postgres with a mapped subscriptions table) and analytics (Postgres users
    table, Mixpanel, GA4); `isRevenueSource` decides. The Connect tab lists
    them as cards; each has a step-by-step page whose ticks persist in
-   `connect_checklists` (`components/connect/guides.tsx`).
+   `connect_checklists` (`components/connect/guides.tsx`). "Save for later"
+   stores a draft of the non-secret fields in the same row (`DRAFT_FIELDS`
+   allow-list; connection strings lose their password) and clears it on a
+   successful connect.
 2. **Assess.** `services/diagnosis.runAssessment` pulls every source through
    its adapter into `NormalizedRevenueData`, merges it with live wrapped
    checkout rows, adds funnel signals from `attribution_events` (gaps filled

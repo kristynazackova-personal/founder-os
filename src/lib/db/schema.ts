@@ -75,6 +75,8 @@ export const connectChecklists = pgTable(
     appId: uuid("app_id").notNull().references(() => apps.id, { onDelete: "cascade" }),
     source: text("source").notNull(),
     done: jsonb("done").$type<string[]>().notNull().default([]),
+    /** Non-secret form fields saved for later (never keys, passwords or tokens). */
+    draft: jsonb("draft").$type<Record<string, string>>().notNull().default({}),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("connect_checklists_app_source_idx").on(t.appId, t.source)],

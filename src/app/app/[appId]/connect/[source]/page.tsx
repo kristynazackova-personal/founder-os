@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
 import { listSources, sourceIdentity } from "@/lib/services/sources";
-import { getChecklist } from "@/lib/services/connectChecklists";
+import { getChecklist, getDraft } from "@/lib/services/connectChecklists";
 import { stripeConnectConfigured } from "@/lib/env";
 import { disconnectSourceAction } from "@/app/actions/sources";
 import { CONNECT_GUIDES, isSourceType, SourceIcon } from "@/components/connect/guides";
@@ -11,14 +11,15 @@ import { ConnectChecklist } from "@/components/connect/Checklist";
 import { AppStoreForm, Ga4Form, LemonSqueezyForm, MixpanelForm, PaddleForm, PostgresForm, StripeKeyForm } from "@/components/ConnectForms";
 import { Alert, fmtDate } from "@/components/ui";
 
-export default async function ConnectSourcePage({ params, searchParams }: { params: Promise<{ appId: string; source: string }>; searchParams: Promise<{ connected?: string; disconnected?: string; replace?: string; stripe?: string; error?: string; empty?: string; signups?: string; subs?: string }> }) {
+export default async function ConnectSourcePage({ params, searchParams }: { params: Promise<{ appId: string; source: string }>; searchParams: Promise<{ connected?: string; disconnected?: string; replace?: string; stripe?: string; error?: string; empty?: string; signups?: string; subs?: string; draft?: string }> }) {
   const user = await requireUser();
   const { appId, source } = await params;
   const q = await searchParams;
   const app = await getAppForUser(appId, user.id);
   if (!app || !isSourceType(source)) notFound();
   const guide = CONNECT_GUIDES[source];
-  const [sources, done] = await Promise.all([listSources(app.id), getChecklist(app.id, source)]);
+  const [sources, done, draft] = await Promise.all([listSources(app.id), getChecklist(app.id, source), getDraft(app.id, source)]);
+  const hasDraft = Object.keys(draft).length > 0;
   const row = sources.find((s) => s.type === source) ?? null;
   const connected = Boolean(row) && !q.replace;
   const base = `/app/${app.id}/connect/${source}`;
@@ -38,17 +39,17 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
         ) : null}
       </div>
     ) : source === "lemonsqueezy" ? (
-      <LemonSqueezyForm appId={app.id} />
+      <LemonSqueezyForm appId={app.id} draft={draft} />
     ) : source === "paddle" ? (
       <PaddleForm appId={app.id} />
     ) : source === "appstore" ? (
-      <AppStoreForm appId={app.id} />
+      <AppStoreForm appId={app.id} draft={draft} />
     ) : source === "mixpanel" ? (
-      <MixpanelForm appId={app.id} />
+      <MixpanelForm appId={app.id} draft={draft} />
     ) : source === "postgres" ? (
-      <PostgresForm appId={app.id} />
+      <PostgresForm appId={app.id} draft={draft} />
     ) : (
-      <Ga4Form appId={app.id} />
+      <Ga4Form appId={app.id} draft={draft} />
     );
 
   return (
@@ -75,6 +76,8 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
         </Alert>
       ) : null}
       {q.disconnected ? <Alert kind="info">{guide.name} disconnected.</Alert> : null}
+      {q.draft ? <Alert kind="info">Draft saved. Keys, secrets and passwords are never kept in a draft — paste them again when you finish.</Alert> : null}
+      {!q.draft && hasDraft && !connected ? <Alert kind="info">You have a saved draft; the fields below are filled from it.</Alert> : null}
       {q.stripe === "connected" ? <Alert kind="good">Stripe connected. Your diagnosis has been refreshed.</Alert> : null}
       {q.error ? <Alert kind="bad">{q.error}</Alert> : null}
 
