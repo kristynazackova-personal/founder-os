@@ -6,7 +6,6 @@ import {
   WebhookVerificationError,
   type CheckoutMode,
   type CheckoutProvider,
-  type CreateCheckoutInput,
   type CreateCheckoutResult,
   type CreateProductInput,
   type CreateProductResult,
@@ -49,7 +48,7 @@ export class MockProvider implements CheckoutProvider {
     return { productId: `mockprod_${shortId(12)}`, priceId: null };
   }
 
-  async createCheckout(input: CreateCheckoutInput): Promise<CreateCheckoutResult> {
+  async createCheckout(): Promise<CreateCheckoutResult> {
     const sessionId = `mocksess_${shortId(16)}`;
     return { url: `${env.appUrl}/pay/mock/${sessionId}`, sessionId };
   }

@@ -1,0 +1,56 @@
+"use client";
+
+import { useActionState } from "react";
+import { createAppAction, type FormState } from "@/app/actions/apps";
+
+export function NewAppForm() {
+  const [state, action, pending] = useActionState<FormState, FormData>(createAppAction, undefined);
+  return (
+    <form action={action} className="card space-y-4 p-6">
+      <div>
+        <label className="label" htmlFor="name">
+          App name
+        </label>
+        <input id="name" name="name" className="input" required placeholder="e.g. Bookly" />
+      </div>
+      <div>
+        <label className="label" htmlFor="url">
+          Published URL
+        </label>
+        <input id="url" name="url" className="input" placeholder="https://bookly.lovable.app" inputMode="url" />
+        <p className="help">Optional, but it&apos;s how the snippet and checkout links know where home is.</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="platform">
+            Built with
+          </label>
+          <select id="platform" name="platform" className="select" defaultValue="lovable">
+            <option value="lovable">Lovable</option>
+            <option value="bolt">Bolt</option>
+            <option value="replit">Replit</option>
+            <option value="base44">Base44</option>
+            <option value="other">Something else</option>
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="launchedAt">
+            Launched on
+          </label>
+          <input id="launchedAt" name="launchedAt" type="date" className="input" />
+        </div>
+      </div>
+      <div>
+        <label className="label" htmlFor="projectLink">
+          Project link
+        </label>
+        <input id="projectLink" name="projectLink" className="input" placeholder="https://lovable.dev/projects/…" inputMode="url" />
+        <p className="help">Optional.</p>
+      </div>
+      {state?.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
+      <button type="submit" className="btn btn-primary w-full" disabled={pending}>
+        {pending ? "Creating…" : "Continue to connect payment data"}
+      </button>
+    </form>
+  );
+}
