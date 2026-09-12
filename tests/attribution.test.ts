@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { aggregateByChannel, classifyChannel } from "@/lib/domain/attribution";
+import { aggregateByChannel, aggregateInstalls, classifyChannel } from "@/lib/domain/attribution";
+import { installRowsFromReport } from "@/lib/sources/ga4";
 
 describe("classifyChannel", () => {
   it("uses utm first", () => {
@@ -52,5 +53,27 @@ describe("aggregateByChannel", () => {
     expect(store.installs).toBe(2);
     expect(store.signups).toBe(1);
     expect(rows.find((r) => r.channel === "reddit")!.installs).toBe(0);
+  });
+});
+
+describe("aggregateInstalls", () => {
+  it("buckets GA4 first_open rows by channel and treats GA4 placeholders as direct", () => {
+    const rows = aggregateInstalls([
+      { source: "google", medium: "cpc", campaign: "App campaign CZ", installs: 5 },
+      { source: "google", medium: "cpc", campaign: "App campaign US", installs: 2 },
+      { source: "(direct)", medium: "(none)", campaign: "(direct)", installs: 9 },
+      { source: "(not set)", medium: "(not set)", campaign: "(not set)", installs: 1 },
+      { source: "reddit", medium: "referral", campaign: null, installs: 0 },
+    ]);
+    expect(rows.map((r) => [r.channel, r.installs])).toEqual([
+      ["direct", 10],
+      ["paid", 7],
+    ]);
+    expect(rows[1].campaigns).toEqual(["App campaign CZ", "App campaign US"]);
+  });
+  it("reads a GA4 report into rows", () => {
+    const rows = installRowsFromReport({ rows: [{ dimensionValues: [{ value: "google" }, { value: "cpc" }, { value: "X" }], metricValues: [{ value: "3" }] }] });
+    expect(rows).toEqual([{ source: "google", medium: "cpc", campaign: "X", installs: 3 }]);
+    expect(installRowsFromReport({})).toEqual([]);
   });
 });

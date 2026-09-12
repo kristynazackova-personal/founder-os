@@ -27,7 +27,8 @@ This repository holds the business plan, the PRDs, and the V1 application.
 4. **Attribution snippet** — one line, < 5 KB, anonymous id only. Pageview,
    signup, activation, checkout view, purchase, 30-day return, by channel.
    Native apps post `install` (plus the same funnel events) straight to
-   `/api/collect`, bucketed as "App Store / Play Store".
+   `/api/collect`, bucketed as "App Store / Play Store". A connected GA4
+   property also shows Firebase `first_open` installs by first-touch channel.
 5. **Billing for Founder OS** — free until $500 lifetime revenue through
    checkout, then $39/mo; Stripe-connected founders $29/mo after 14 days.
 

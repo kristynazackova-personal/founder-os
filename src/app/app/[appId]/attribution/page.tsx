@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
 import { channelReport } from "@/lib/services/attribution";
+import { fetchInstalls } from "@/lib/services/sources";
 import { env } from "@/lib/env";
 import { CHANNEL_LABEL } from "@/lib/domain/attribution";
 import { formatMoney } from "@/lib/domain/money";
@@ -14,7 +16,7 @@ export default async function AttributionPage({ params }: { params: Promise<{ ap
   const { appId } = await params;
   const app = await getAppForUser(appId, user.id);
   if (!app) notFound();
-  const report = await channelReport(app.id);
+  const [report, installs] = await Promise.all([channelReport(app.id), fetchInstalls(app)]);
   const snippet = `<script async src="${env.appUrl}/fos.js" data-key="${app.siteKey}"></script>`;
   const activation = app.activationEvent ?? "the activation event";
   const lovablePrompt = `Add this script tag to index.html, inside <head>: ${snippet}
@@ -85,6 +87,52 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
           {guide}
         </>
       )}
+
+      <section className="card p-6">
+        <h2 className="font-semibold">App installs, last {installs.days} days</h2>
+        <p className="help">
+          Firebase&apos;s automatic <code>first_open</code> from your connected GA4 property, by the user&apos;s first-touch source — this is the install count Google Ads App campaigns report against. Installs can&apos;t be joined to the snippet&apos;s ids, so they sit next to the channel table rather than in it; the app&apos;s own <code>install</code> calls (step 3) are what fill the Installs column below.
+        </p>
+        {!installs.connected ? (
+          <p className="mt-3 text-sm text-[var(--muted)]">
+            Not connected.{" "}
+            <Link href={`/app/${app.id}/connect/ga4`} className="font-semibold underline">
+              Connect Google Analytics 4
+            </Link>{" "}
+            to see installs here.
+          </p>
+        ) : installs.error ? (
+          <div className="mt-3">
+            <Alert kind="bad">GA4 could not be read: {installs.error}</Alert>
+          </div>
+        ) : installs.rows.length ? (
+          <>
+            <p className="mt-3 text-sm">
+              <span className="text-2xl font-bold tracking-tight">{installs.total}</span> <span className="text-[var(--muted)]">installs</span>
+            </p>
+            <table className="data mt-3">
+              <thead>
+                <tr>
+                  <th>Channel</th>
+                  <th>Installs</th>
+                  <th>Campaigns</th>
+                </tr>
+              </thead>
+              <tbody>
+                {installs.rows.map((r) => (
+                  <tr key={r.channel}>
+                    <td className="font-semibold">{CHANNEL_LABEL[r.channel]}</td>
+                    <td>{r.installs}</td>
+                    <td className="text-[var(--muted)]">{r.campaigns.length ? r.campaigns.join(", ") : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-[var(--muted)]">No first_open events in the last {installs.days} days.</p>
+        )}
+      </section>
 
       <section className="card p-6">
         <h2 className="font-semibold">Channels, last 90 days</h2>

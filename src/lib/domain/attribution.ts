@@ -119,3 +119,33 @@ export function aggregateByChannel(visitors: Iterable<VisitorRow>): ChannelRepor
   }
   return [...map.values()].sort((a, b) => b.purchases - a.purchases || b.signups - a.signups || b.visitors - a.visitors);
 }
+
+/** One GA4 `first_open` row: the user's first-touch source / medium / campaign as GA4 reports them. */
+export type InstallRow = { source: string | null; medium: string | null; campaign: string | null; installs: number };
+export type InstallsByChannel = { channel: Channel; installs: number; campaigns: string[] };
+
+const GA4_UNSET = new Set(["", "(direct)", "(none)", "(not set)", "(organic)"]);
+function ga4Value(v: string | null | undefined): string | null {
+  const t = (v ?? "").trim();
+  return GA4_UNSET.has(t.toLowerCase()) ? null : t;
+}
+
+/**
+ * Bucket GA4 first_open rows into channels. Installs can't be joined to the
+ * snippet's anonymous ids (Firebase has its own), so this is a separate
+ * count next to the channel table — same channel vocabulary, though, so an
+ * app-campaign install (source google / medium cpc) lands in "Paid ads".
+ */
+export function aggregateInstalls(rows: InstallRow[]): InstallsByChannel[] {
+  const map = new Map<Channel, InstallsByChannel>();
+  for (const r of rows) {
+    if (!(r.installs > 0)) continue;
+    const channel = classifyChannel({ utmSource: ga4Value(r.source), utmMedium: ga4Value(r.medium), utmCampaign: ga4Value(r.campaign) });
+    const row = map.get(channel) ?? { channel, installs: 0, campaigns: [] };
+    row.installs += r.installs;
+    const campaign = ga4Value(r.campaign);
+    if (campaign && !row.campaigns.includes(campaign)) row.campaigns.push(campaign);
+    map.set(channel, row);
+  }
+  return [...map.values()].sort((a, b) => b.installs - a.installs);
+}

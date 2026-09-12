@@ -1,5 +1,6 @@
 import { createSign } from "node:crypto";
 import { jsonFetch } from "../checkout/provider";
+import type { InstallRow } from "../domain/attribution";
 import type { AnalyticsAdapter, Ga4Credentials } from "./types";
 
 /**
@@ -53,3 +54,32 @@ export const ga4Adapter: AnalyticsAdapter = {
     };
   },
 };
+
+/** Rows of a first_open report with dimensions [firstUserSource, firstUserMedium, firstUserCampaignName]. */
+export function installRowsFromReport(report: RunReport): InstallRow[] {
+  return (report.rows ?? []).map((r) => ({
+    source: r.dimensionValues?.[0]?.value ?? null,
+    medium: r.dimensionValues?.[1]?.value ?? null,
+    campaign: r.dimensionValues?.[2]?.value ?? null,
+    installs: Number(r.metricValues?.[0]?.value ?? 0) || 0,
+  }));
+}
+
+/** App installs in the last `days` days: GA4 / Firebase `first_open`, split by the user's first-touch source, medium and campaign. */
+export async function fetchGa4Installs(credentials: Ga4Credentials, days = 30): Promise<InstallRow[]> {
+  const sa = JSON.parse(credentials.serviceAccountJson) as ServiceAccount;
+  const token = await serviceAccountToken(sa);
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(credentials.propertyId)}:runReport`;
+  const report = await jsonFetch<RunReport>(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dateRanges: [{ startDate: `${days}daysAgo`, endDate: "today" }],
+      dimensions: [{ name: "firstUserSource" }, { name: "firstUserMedium" }, { name: "firstUserCampaignName" }],
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: "first_open" } } },
+      limit: 500,
+    }),
+  });
+  return installRowsFromReport(report);
+}

@@ -4,12 +4,13 @@ import type { App, RevenueSource } from "../db/schema";
 import { decryptJson, encryptJson } from "../crypto";
 import { mergeRevenueData, type AnalyticsSignals, type NormalizedRevenueData } from "../domain/metrics";
 import type { RevenueSource as RevenueSourceRow } from "../db/schema";
+import { aggregateInstalls, type InstallsByChannel } from "../domain/attribution";
 import { analyticsAdapter, ANALYTICS_SOURCE_TYPES, isRevenueSource, isSqlIdentifier, revenueAdapter, type AppStoreCredentials, type Ga4Credentials, type MixpanelCredentials, type PostgresCredentials, type SourceType } from "../sources";
 import { probeAppStore } from "../sources/appstore";
 import { probeMixpanel } from "../sources/mixpanel";
 import { parsePriceMap, probePostgres } from "../sources/postgres";
 import { ProviderError } from "../checkout/provider";
-import { ga4Adapter } from "../sources/ga4";
+import { fetchGa4Installs, ga4Adapter } from "../sources/ga4";
 import { validateLemonSqueezyKey } from "../sources/lemonsqueezy";
 import { validatePaddleKey } from "../sources/paddle";
 import { isRestrictedStripeKey, probeRestrictedStripeKey } from "../sources/stripe";
@@ -269,4 +270,20 @@ export async function fetchAnalyticsSignals(app: App): Promise<{ signals: Partia
     }
   }
   return { signals, used, errors };
+}
+
+export const INSTALLS_DAYS = 30;
+
+/** App installs from a connected GA4 property (Firebase `first_open`), bucketed by channel. Fail-soft: never throws. */
+export async function fetchInstalls(app: App): Promise<{ connected: boolean; rows: InstallsByChannel[]; total: number; days: number; error: string | null }> {
+  const db = await getDb();
+  const [row] = await db.select().from(schema.revenueSources).where(and(eq(schema.revenueSources.appId, app.id), eq(schema.revenueSources.type, "ga4"))).limit(1);
+  if (!row) return { connected: false, rows: [], total: 0, days: INSTALLS_DAYS, error: null };
+  try {
+    const creds = decryptJson(row.credentialsEnc) as Ga4Credentials;
+    const rows = aggregateInstalls(await fetchGa4Installs(creds, INSTALLS_DAYS));
+    return { connected: true, rows, total: rows.reduce((n, r) => n + r.installs, 0), days: INSTALLS_DAYS, error: null };
+  } catch (err) {
+    return { connected: true, rows: [], total: 0, days: INSTALLS_DAYS, error: err instanceof Error ? err.message : String(err) };
+  }
 }
