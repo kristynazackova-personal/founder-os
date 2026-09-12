@@ -140,7 +140,9 @@ export function GoogleAdsForm({ appId, draft = {}, secretsOnFile = [] }: { appId
         <label className="label">Refresh token</label>
         <textarea name="refreshToken" className="textarea h-20 font-mono text-xs" required={!secretsOnFile.includes("refreshToken")} placeholder="1//0g…" />
         <SecretOnFile name="refreshToken" secretsOnFile={secretsOnFile} />
-        <p className="help">An OAuth refresh token with the <code>adwords</code> scope. Stored encrypted and never shown again.</p>
+        <p className="help">
+          An OAuth refresh token carrying <code>https://www.googleapis.com/auth/adwords</code> — not an Analytics or Data Manager token. Stored encrypted and never shown again.
+        </p>
       </div>
       <Status state={state} />
       <div className="flex gap-2">

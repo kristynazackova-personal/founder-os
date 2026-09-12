@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { SourceType } from "@/lib/sources";
 import { env } from "@/lib/env";
+import { CopyButton } from "@/components/CopyButton";
+import { ADWORDS_SCOPE } from "@/lib/sources/googleads";
 
 export type GuideStep = { key: string; title: string; body: ReactNode };
 
@@ -250,10 +252,36 @@ GRANT SELECT ON public.subscriptions TO founder_os_ro;`}</pre>
       },
       {
         key: "oauth",
-        title: "Grant read access and copy the refresh token",
+        title: "Authorise ONE scope and copy the refresh token",
         body: (
           <>
-            Google Ads has no read-only key, so access comes from an OAuth grant carrying the <code>{"https://www.googleapis.com/auth/adwords"}</code> scope. The quickest route is {ext("https://developers.google.com/oauthplayground/", "the OAuth playground")}: open the gear, tick <em>Use your own OAuth credentials</em>, paste the client id and secret this deployment is configured with, authorise that scope as the Google account that can see the ads account, then exchange the code and copy the <em>refresh token</em>. It is a long string starting <code>1//</code>.
+            <p>
+              Google Ads has no read-only key, so access comes from an OAuth grant. Exactly one scope is needed, and it is the only one that works:
+            </p>
+            <div className="mt-2 flex items-start gap-2">
+              <pre className="code flex-1">{ADWORDS_SCOPE}</pre>
+              <CopyButton text={ADWORDS_SCOPE} label="Copy scope" />
+            </div>
+            <p className="mt-3">
+              Easiest route is {ext("https://developers.google.com/oauthplayground/", "the OAuth playground")}:
+            </p>
+            <ol className="mt-1 list-decimal space-y-1 pl-5">
+              <li>
+                Open the gear (top right) → tick <em>Use your own OAuth credentials</em> → paste the client id and secret this deployment is configured with.
+              </li>
+              <li>
+                Paste the scope above into the <em>Input your own scopes</em> box on the left (or pick <em>Google Ads API</em> → the same string from the list), then <em>Authorize APIs</em>.
+              </li>
+              <li>
+                Sign in as <strong>the Google account that can see the ads account</strong> — the one listed in Google Ads under <em>Admin → Access and security</em>. It does not have to be the account that owns the OAuth client or the Cloud project: the client only identifies the app, while the account you sign in as decides whose data the token can read. If the ads account is reached through a manager account, sign in with access to that manager and fill in the login customer id below.
+              </li>
+              <li>
+                <em>Exchange authorization code for tokens</em>, then copy the <strong>refresh token</strong> — a long string starting <code>1//</code>. The access token beside it expires in an hour; it is not the one to paste.
+              </li>
+            </ol>
+            <p className="mt-3">
+              <strong>Two scopes that look right and are not:</strong> <code>analytics.readonly</code> is Google Analytics, and <code>datamanager</code> is for uploading conversions. A token minted for either is rejected here, so a refresh token you already use elsewhere almost certainly needs re-minting for the scope above. You can reuse the same OAuth client, just not the same token.
+            </p>
           </>
         ),
       },
