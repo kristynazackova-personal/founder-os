@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { dbStatus, getDb } from "@/lib/db";
 import { env } from "@/lib/env";
+import { googleAdsConfigured } from "@/lib/sources/googleads";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,10 @@ export async function GET() {
       checkoutProvider: env.checkoutProvider,
       encryptionKeySet: Boolean(env.encryptionKey),
       sessionSecretSet: env.sessionSecret !== "dev-session-secret-change-me",
+      // Booleans only — whether the deployment can offer Google Ads at all,
+      // which is otherwise only discoverable by trying to connect an account.
+      googleAdsConfigured: googleAdsConfigured(),
+      googleAdsApiVersion: env.googleAdsApiVersion,
       node: process.version,
       commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? process.env.GIT_COMMIT_SHA?.slice(0, 7) ?? null,
     },
