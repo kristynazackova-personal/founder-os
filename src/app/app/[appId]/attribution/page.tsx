@@ -5,7 +5,8 @@ import { getAppForUser } from "@/lib/services/apps";
 import { channelReport } from "@/lib/services/attribution";
 import { fetchCampaigns, fetchInstalls } from "@/lib/services/sources";
 import { latestAssessment } from "@/lib/services/diagnosis";
-import { summarizeCampaigns } from "@/lib/domain/campaigns";
+import { summarizeCampaigns, UNATTRIBUTED_CAMPAIGN } from "@/lib/domain/campaigns";
+import { fmtDate as fmtDay } from "@/components/ui";
 import type { Metrics } from "@/lib/domain/metrics";
 import { env } from "@/lib/env";
 import { CHANNEL_LABEL } from "@/lib/domain/attribution";
@@ -181,7 +182,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
               </thead>
               <tbody>
                 {campaigns.rows.map((r) => (
-                  <tr key={r.campaign}>
+                  <tr key={r.campaign} className={r.campaign === UNATTRIBUTED_CAMPAIGN ? "text-[var(--muted)]" : undefined}>
                     <td className="font-semibold">{r.campaign}</td>
                     <td>{formatMoney(r.spendCents)}</td>
                     <td>{r.clicks}</td>
@@ -199,7 +200,19 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
             {campaignsRaw.scope === "session" ? <p className="help mt-2">Spend is read on session scope (the property rejected first-touch scope for cost metrics); installs and purchases stay first-touch.</p> : null}
           </>
         ) : (
-          <p className="mt-3 text-sm text-[var(--muted)]">No campaign spend or attributed events in the last {campaignsRaw.days} days. Spend only appears once the Google Ads account is linked to this GA4 property.</p>
+          <div className="mt-3 space-y-2 text-sm text-[var(--muted)]">
+            <p>
+              GA4 property <span className="font-mono">{campaignsRaw.propertyId}</span> returned {campaignsRaw.ads.length} ad row{campaignsRaw.ads.length === 1 ? "" : "s"} and {campaignsRaw.events.length} event row{campaignsRaw.events.length === 1 ? "" : "s"} for {campaignsRaw.from ? fmtDay(campaignsRaw.from) : "—"} → today
+              {campaignsRaw.scope ? ` (${campaignsRaw.scope === "firstUser" ? "first-touch" : "session"} scope)` : ""}.
+            </p>
+            <p>
+              {campaignsRaw.eventSettings?.history === "forward"
+                ? `Your event settings read only from ${fmtDay(new Date(campaignsRaw.eventSettings.since))} on — earlier spend is deliberately ignored. Change that under Connect → GA4 → Change.`
+                : campaignsRaw.ads.length === 0
+                  ? "No ad rows at all usually means this property is not the one linked to the Google Ads account — for an app, that is the Firebase project's GA4 property, not the website's. Check the property id under Connect → Google Analytics 4."
+                  : "Rows came back but carried no spend, clicks or funnel users in the window."}
+            </p>
+          </div>
         )}
       </section>
 

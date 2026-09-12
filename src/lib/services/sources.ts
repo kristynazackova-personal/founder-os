@@ -5,7 +5,7 @@ import { decryptJson, encryptJson } from "../crypto";
 import { mergeRevenueData, type AnalyticsSignals, type NormalizedRevenueData } from "../domain/metrics";
 import type { RevenueSource as RevenueSourceRow } from "../db/schema";
 import { aggregateInstalls, type InstallsByChannel } from "../domain/attribution";
-import { EVENT_SETTINGS_KEY, parseEventSettings } from "../domain/eventSettings";
+import { EVENT_SETTINGS_KEY, parseEventSettings, readFrom, type EventSettings } from "../domain/eventSettings";
 import { analyticsAdapter, ANALYTICS_SOURCE_TYPES, isRevenueSource, isSqlIdentifier, revenueAdapter, type AppStoreCredentials, type Ga4Credentials, type MixpanelCredentials, type PostgresCredentials, type SourceType } from "../sources";
 import { probeAppStore } from "../sources/appstore";
 import { probeMixpanel } from "../sources/mixpanel";
@@ -295,15 +295,31 @@ export async function fetchInstalls(app: App): Promise<{ connected: boolean; row
 }
 
 /** Ad spend + attributed funnel events per Google Ads campaign from a connected GA4 property. Fail-soft: never throws. */
-export async function fetchCampaigns(app: App): Promise<{ connected: boolean; ads: CampaignAdRow[]; events: CampaignEventRow[]; scope: CampaignScope | null; days: number; error: string | null }> {
+export type CampaignsRead = {
+  connected: boolean;
+  ads: CampaignAdRow[];
+  events: CampaignEventRow[];
+  scope: CampaignScope | null;
+  days: number;
+  error: string | null;
+  /** What was asked, so an empty answer can be explained: which property, from when, under which event settings. */
+  propertyId: string | null;
+  from: Date | null;
+  eventSettings: EventSettings | null;
+};
+
+export async function fetchCampaigns(app: App, now = new Date()): Promise<CampaignsRead> {
   const db = await getDb();
   const [row] = await db.select().from(schema.revenueSources).where(and(eq(schema.revenueSources.appId, app.id), eq(schema.revenueSources.type, "ga4"))).limit(1);
-  if (!row) return { connected: false, ads: [], events: [], scope: null, days: INSTALLS_DAYS, error: null };
+  const empty: CampaignsRead = { connected: false, ads: [], events: [], scope: null, days: INSTALLS_DAYS, error: null, propertyId: null, from: null, eventSettings: null };
+  if (!row) return empty;
+  const eventSettings = parseEventSettings(row.meta);
+  const from = readFrom(eventSettings, INSTALLS_DAYS, now);
   try {
     const creds = decryptJson(row.credentialsEnc) as Ga4Credentials;
-    const { ads, events, scope } = await fetchGa4Campaigns(creds, INSTALLS_DAYS, { events: parseEventSettings(row.meta) });
-    return { connected: true, ads, events, scope, days: INSTALLS_DAYS, error: null };
+    const { ads, events, scope } = await fetchGa4Campaigns(creds, INSTALLS_DAYS, { events: eventSettings }, now);
+    return { ...empty, connected: true, ads, events, scope, propertyId: creds.propertyId, from, eventSettings };
   } catch (err) {
-    return { connected: true, ads: [], events: [], scope: null, days: INSTALLS_DAYS, error: err instanceof Error ? err.message : String(err) };
+    return { ...empty, connected: true, error: err instanceof Error ? err.message : String(err), propertyId: row.externalId, from, eventSettings };
   }
 }

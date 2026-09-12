@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { summarizeCampaigns } from "@/lib/domain/campaigns";
+import { summarizeCampaigns, UNATTRIBUTED_CAMPAIGN } from "@/lib/domain/campaigns";
 import { campaignAdRowsFromReport, campaignEventRowsFromReport } from "@/lib/sources/ga4";
 
 describe("summarizeCampaigns", () => {
@@ -19,7 +19,8 @@ describe("summarizeCampaigns", () => {
       ],
       { monthlyRevenuePerPayingCents: 1_500 },
     );
-    expect(rows.map((r) => r.campaign)).toEqual(["App CZ", "App US"]);
+    expect(rows.map((r) => r.campaign)).toEqual(["App CZ", "App US", UNATTRIBUTED_CAMPAIGN]);
+    expect(rows[2].installs).toBe(500); // organic first_open under "(not set)" is kept, last
     const cz = rows[0];
     expect(cz.costPerInstallCents).toBe(300);
     expect(cz.costPerTrialCents).toBe(1_500);
@@ -30,8 +31,16 @@ describe("summarizeCampaigns", () => {
     expect(us.cacCents).toBeNull();
     expect(us.paybackMonths).toBeNull();
     expect(total.spendCents).toBe(20_000);
-    expect(total.installs).toBe(50);
+    expect(total.installs).toBe(550);
     expect(total.cacCents).toBe(10_000);
+    expect(total.spendCents).toBe(20_000); // the (not set) ad row had no cost
+  });
+  it("keeps spend GA4 files under (not set) as an unattributed row instead of dropping it", () => {
+    const { rows, total } = summarizeCampaigns([{ campaign: "(not set)", clicks: 90, impressions: 1000, costCents: 4_500 }], [{ campaign: "(not set)", event: "first_open", users: 30 }], { monthlyRevenuePerPayingCents: null });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].campaign).toBe(UNATTRIBUTED_CAMPAIGN);
+    expect(rows[0].costPerInstallCents).toBe(150);
+    expect(total.spendCents).toBe(4_500);
   });
   it("has no payback without a known price", () => {
     const { rows } = summarizeCampaigns([{ campaign: "A", clicks: 1, impressions: 1, costCents: 100 }], [{ campaign: "A", event: "purchase", users: 1 }], { monthlyRevenuePerPayingCents: null });
