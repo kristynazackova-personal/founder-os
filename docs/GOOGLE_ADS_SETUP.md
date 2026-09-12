@@ -54,15 +54,22 @@ access to the ads account.
      applies to unverified apps on a sensitive scope like `adwords`.
 4. **OAuth client** — *APIs & Services* → *Credentials* → *Create
    credentials* → *OAuth client ID* → application type **Web application**.
-   Under *Authorized redirect URIs* add:
+   Leave *Authorized JavaScript origins* **empty** — nothing here runs in
+   a browser. Under *Authorized redirect URIs* add exactly one entry, with
+   no trailing slash:
 
    ```
    https://developers.google.com/oauthplayground
    ```
 
    That URI is what lets the playground complete the exchange; without it
-   the grant fails with `redirect_uri_mismatch`. Copy the client id and
-   secret.
+   the grant fails with `redirect_uri_mismatch`, and so does a trailing
+   slash, since Google matches redirect URIs character for character. Copy
+   the client id and secret now; the secret is awkward to retrieve later.
+
+   A click-through *Connect with Google* flow in the app (not built — the
+   founder pastes a token today) would need its own callback URI here, e.g.
+   `https://<deployment>/api/connect/google/callback`. Harmless to pre-add.
 
 ## Troubleshooting
 
