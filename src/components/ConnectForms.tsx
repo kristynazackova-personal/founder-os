@@ -74,7 +74,7 @@ export function Ga4Guide() {
           .
         </li>
         <li>
-          <span className="font-semibold">Give it read access.</span> Back in Google Analytics: <em>Admin → Property → Property access management → Add users</em>, paste the service account&apos;s email, role <em>Viewer</em>.
+          <span className="font-semibold">Give it read access in Google Analytics.</span> The service account is not on any list yet — you type its address in. Open the property, then <em>Admin</em> (gear, bottom left) → under the <em>Property</em> column, <em>Property access management</em> → the blue <em>+</em> button top right → <em>Add users</em>. Paste the service account&apos;s email (the one ending in <code>iam.gserviceaccount.com</code>) into the email box and press Enter, untick <em>Notify new users by email</em>, choose the <em>Viewer</em> role, click <em>Add</em>. It then appears in the list; wait a minute before connecting. A role on the Cloud project does not count — GA4 keeps its own access list. If there is no <em>+</em> button, your own account is only a Viewer or Analyst on the property; someone with Editor or Administrator has to add it.
         </li>
       </ol>
       <p className="mt-3 text-[var(--muted)]">
