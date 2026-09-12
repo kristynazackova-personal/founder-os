@@ -16,3 +16,8 @@ Rules that are easy to break:
 - Test-mode money never reaches metrics or billing.
 - Schema changes: edit `src/lib/db/schema.ts`, then `npm run db:generate` and commit `drizzle/`.
 - `npm test`, `npm run check`, `npm run lint`, `npm run build` must pass.
+
+Roadmap for the current customer: `docs/ROADMAP-revenue-selvenn.md` — eight
+items, built one per session in order. **The next session works on item 1
+only** (trial funnel + lapse detection); update the item's status line when
+it ships.
