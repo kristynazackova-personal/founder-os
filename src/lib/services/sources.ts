@@ -11,6 +11,23 @@ import { track } from "../track";
 
 export type SourceView = Pick<RevenueSource, "id" | "type" | "externalId" | "status" | "connectedAt" | "lastSyncedAt" | "lastError" | "meta">;
 
+/** What a connected source shows in the UI: identifiers only, never the credential. */
+export function sourceIdentity(s: Pick<RevenueSource, "type" | "externalId" | "meta">): string {
+  const m = s.meta as Record<string, unknown>;
+  switch (s.type) {
+    case "stripe":
+      return s.externalId ? `Account ${s.externalId}` : "Connected account";
+    case "lemonsqueezy":
+      return `${s.externalId ? `Store ${s.externalId} · ` : ""}key ····${String(m.keyLast4 ?? "")}`;
+    case "paddle":
+      return `${m.sandbox ? "Sandbox" : "Live"} key ····${String(m.keyLast4 ?? "")}`;
+    case "ga4":
+      return `Property ${s.externalId ?? "?"}${m.serviceAccountEmail ? ` · ${String(m.serviceAccountEmail)}` : ""}`;
+    default:
+      return s.externalId ?? "—";
+  }
+}
+
 export async function listSources(appId: string): Promise<SourceView[]> {
   const db = await getDb();
   const rows = await db.select().from(schema.revenueSources).where(eq(schema.revenueSources.appId, appId));
@@ -38,14 +55,14 @@ export async function removeSource(appId: string, type: SourceType): Promise<voi
 export async function connectLemonSqueezy(app: App, apiKey: string, storeId: string | null): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!apiKey.trim()) return { ok: false, error: "Paste your Lemon Squeezy API key." };
   if (!(await validateLemonSqueezyKey(apiKey.trim()))) return { ok: false, error: "Lemon Squeezy rejected that key. Create a read-only API key in Settings → API." };
-  await upsertSource(app, "lemonsqueezy", { apiKey: apiKey.trim(), storeId: storeId?.trim() || undefined }, storeId?.trim() || null);
+  await upsertSource(app, "lemonsqueezy", { apiKey: apiKey.trim(), storeId: storeId?.trim() || undefined }, storeId?.trim() || null, { keyLast4: apiKey.trim().slice(-4) });
   return { ok: true };
 }
 
 export async function connectPaddle(app: App, apiKey: string): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!apiKey.trim()) return { ok: false, error: "Paste your Paddle API key." };
   if (!(await validatePaddleKey(apiKey.trim()))) return { ok: false, error: "Paddle rejected that key. Create a key with read access to subscriptions and transactions." };
-  await upsertSource(app, "paddle", { apiKey: apiKey.trim() }, null, { sandbox: apiKey.includes("sdbx") });
+  await upsertSource(app, "paddle", { apiKey: apiKey.trim() }, null, { sandbox: apiKey.includes("sdbx"), keyLast4: apiKey.trim().slice(-4) });
   return { ok: true };
 }
 
@@ -65,7 +82,7 @@ export async function connectGa4(app: App, propertyId: string, serviceAccountJso
   } catch (err) {
     return { ok: false, error: `GA4 refused the request: ${err instanceof Error ? err.message : String(err)}. Add ${parsed.client_email} as a Viewer on the property.` };
   }
-  await upsertSource(app, "ga4", creds, pid);
+  await upsertSource(app, "ga4", creds, pid, { serviceAccountEmail: parsed.client_email });
   return { ok: true };
 }
 

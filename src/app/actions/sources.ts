@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
 import { connectGa4, connectLemonSqueezy, connectPaddle, removeSource } from "@/lib/services/sources";
@@ -22,7 +23,7 @@ export async function connectLemonSqueezyAction(appId: string, _prev: FormState,
   const res = await connectLemonSqueezy(app, String(formData.get("apiKey") ?? ""), String(formData.get("storeId") ?? "") || null);
   if (!res.ok) return { error: res.error };
   await afterConnect(appId);
-  return { ok: true };
+  redirect(`/app/${appId}/connect?connected=1`);
 }
 
 export async function connectPaddleAction(appId: string, _prev: FormState, formData: FormData): Promise<FormState> {
@@ -32,7 +33,7 @@ export async function connectPaddleAction(appId: string, _prev: FormState, formD
   const res = await connectPaddle(app, String(formData.get("apiKey") ?? ""));
   if (!res.ok) return { error: res.error };
   await afterConnect(appId);
-  return { ok: true };
+  redirect(`/app/${appId}/connect?connected=1`);
 }
 
 export async function connectGa4Action(appId: string, _prev: FormState, formData: FormData): Promise<FormState> {
@@ -42,7 +43,7 @@ export async function connectGa4Action(appId: string, _prev: FormState, formData
   const res = await connectGa4(app, String(formData.get("propertyId") ?? ""), String(formData.get("serviceAccountJson") ?? ""));
   if (!res.ok) return { error: res.error };
   await afterConnect(appId);
-  return { ok: true };
+  redirect(`/app/${appId}/connect?connected=1`);
 }
 
 export async function disconnectSourceAction(appId: string, type: SourceType): Promise<void> {
