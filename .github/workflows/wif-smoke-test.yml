@@ -30,6 +30,10 @@ jobs:
       ANTHROPIC_ORGANIZATION_ID: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
       ANTHROPIC_FEDERATION_RULE_ID: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
       ANTHROPIC_SERVICE_ACCOUNT_ID: ${{ vars.ANTHROPIC_SERVICE_ACCOUNT_ID }}
+      # The Console's own snippet sends this. The docs call it optional for a
+      # single-workspace rule; a request rejected before any rule is evaluated
+      # leaves no row in the authentication history, which is what we saw.
+      ANTHROPIC_WORKSPACE_ID: ${{ vars.ANTHROPIC_WORKSPACE_ID }}
     steps:
       - name: Check the variables are set
         run: |
@@ -55,6 +59,8 @@ jobs:
             *-*-*-*-*) ;;
             *) echo "::error::ANTHROPIC_ORGANIZATION_ID should be a UUID from the Console's Settings -> Organization, not the GitHub owner id."; exit 1 ;;
           esac
+          [ -n "$ANTHROPIC_WORKSPACE_ID" ] \
+            || echo "::warning::ANTHROPIC_WORKSPACE_ID is not set; sending the request without it."
           echo "All three set."
       - name: Fetch the GitHub OIDC token
         run: |
@@ -94,14 +100,18 @@ jobs:
       - name: Exchange it for an Anthropic token
         run: |
           set -euo pipefail
+          # workspace_id is included only when set, so the request matches the
+          # Console's snippet without breaking if the field is genuinely absent.
           BODY=$(jq -n \
             --arg assertion "$JWT" \
             --arg rule "$ANTHROPIC_FEDERATION_RULE_ID" \
             --arg org "$ANTHROPIC_ORGANIZATION_ID" \
             --arg sa "$ANTHROPIC_SERVICE_ACCOUNT_ID" \
+            --arg ws "$ANTHROPIC_WORKSPACE_ID" \
             '{grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
               assertion: $assertion, federation_rule_id: $rule,
-              organization_id: $org, service_account_id: $sa}')
+              organization_id: $org, service_account_id: $sa}
+             + (if $ws == "" then {} else {workspace_id: $ws} end)')
           STATUS=$(curl -sS -o /tmp/oauth.json -w '%{http_code}' \
             https://api.anthropic.com/v1/oauth/token \
             -H 'content-type: application/json' -d "$BODY")
