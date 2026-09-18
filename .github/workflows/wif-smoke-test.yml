@@ -1,0 +1,102 @@
+# Proves the Anthropic Workload Identity Federation setup works end to end.
+#
+# The Console wizard's last step listens for a real token exchange, and only a
+# running GitHub Actions job can obtain the JWT it needs - there is no way to
+# do this from a laptop. Pushing to main triggers this, which is what the
+# federation rule matches (event_name: push, ref: refs/heads/main).
+#
+# Delete this workflow once the exchange is confirmed. It is a probe, not CI.
+name: WIF smoke test
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  exchange:
+    runs-on: ubuntu-latest
+    env:
+      # From the Console. None of these is a secret - they are identifiers.
+      # The organization id is a UUID from Settings -> Organization. It is NOT
+      # the GitHub numeric owner id that went into the federation rule.
+      ANTHROPIC_ORGANIZATION_ID: "00000000-0000-0000-0000-000000000000"
+      ANTHROPIC_FEDERATION_RULE_ID: "fdrl_REPLACE_ME"
+      ANTHROPIC_SERVICE_ACCOUNT_ID: "svac_REPLACE_ME"
+      # Only needed when the rule covers more than one workspace. Ours covers
+      # one, so it is left out of the request body below.
+      ANTHROPIC_WORKSPACE_ID: ""
+    steps:
+      - name: Fetch the GitHub OIDC token
+        run: |
+          set -euo pipefail
+          # The audience has to be requested explicitly. GitHub's default
+          # audience is the owner URL, which the rule will not accept.
+          JWT=$(curl -sS \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://api.anthropic.com" \
+            | jq -r .value)
+          if [ -z "$JWT" ] || [ "$JWT" = "null" ]; then
+            echo "::error::No OIDC token. Is permissions.id-token set to write?"
+            exit 1
+          fi
+          echo "::add-mask::$JWT"
+          echo "JWT=$JWT" >> "$GITHUB_ENV"
+          # The claims, not the signature. Useful when the rule does not match:
+          # compare these against the rule's conditions.
+          echo "Claims the rule is matched against:"
+          echo "$JWT" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null \
+            | jq '{iss, sub, aud, repository, repository_owner, repository_owner_id, ref, event_name}'
+
+      - name: Exchange it for an Anthropic token
+        run: |
+          set -euo pipefail
+          BODY=$(jq -n \
+            --arg assertion "$JWT" \
+            --arg rule "$ANTHROPIC_FEDERATION_RULE_ID" \
+            --arg org "$ANTHROPIC_ORGANIZATION_ID" \
+            --arg sa "$ANTHROPIC_SERVICE_ACCOUNT_ID" \
+            '{grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+              assertion: $assertion, federation_rule_id: $rule,
+              organization_id: $org, service_account_id: $sa}')
+          STATUS=$(curl -sS -o /tmp/oauth.json -w '%{http_code}' \
+            https://api.anthropic.com/v1/oauth/token \
+            -H 'content-type: application/json' -d "$BODY")
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Exchange failed with HTTP $STATUS."
+            echo "The API deliberately returns an opaque 401. The real reason is on"
+            echo "https://platform.claude.com/settings/workload-identity-federation?tab=history"
+            echo "match_subject_prefix means the sub above does not fit the rule."
+            exit 1
+          fi
+          TOKEN=$(jq -r .access_token /tmp/oauth.json)
+          echo "::add-mask::$TOKEN"
+          echo "ACCESS_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          # Never print the token itself. Its shape is enough to confirm.
+          case "$TOKEN" in
+            sk-ant-oat01-*) echo "Exchanged. Valid for $(jq -r .expires_in /tmp/oauth.json)s." ;;
+            *) echo "::error::Unexpected token format."; exit 1 ;;
+          esac
+
+      - name: Call the API with it
+        run: |
+          set -euo pipefail
+          STATUS=$(curl -sS -o /tmp/msg.json -w '%{http_code}' \
+            https://api.anthropic.com/v1/messages \
+            -H "authorization: Bearer $ACCESS_TOKEN" \
+            -H 'anthropic-version: 2023-06-01' \
+            -H 'content-type: application/json' \
+            -d '{"model":"claude-opus-5","max_tokens":16,
+                 "messages":[{"role":"user","content":"Reply with the word: ok"}]}')
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::The token was minted but the API rejected it (HTTP $STATUS)."
+            echo "Check the rule's OAuth scope and that the service account is a"
+            echo "member of the rule's workspace."
+            jq -r '.error.message // empty' /tmp/msg.json
+            exit 1
+          fi
+          echo "Claude replied: $(jq -r '.content[] | select(.type=="text") | .text' /tmp/msg.json)"
+          echo "Federation works. Delete this workflow."
