@@ -12,6 +12,7 @@ export const B2C_SECTIONS = [
   { seg: "/acquisition", key: "acquisition", label: "Acquisition", sub: "where signups come from, and what each channel's users did next" },
   { seg: "/activation", key: "activation", label: "Activation & retention", sub: "did day two happen, and did the week — cohorts by signup week" },
   { seg: "/revenue", key: "revenue", label: "Revenue", sub: "checkout → trial → paid, across every connected rail" },
+  { seg: "/loops", key: "loops", label: "Loops", sub: "push and lifecycle email — locked until a provider is connected" },
   { seg: "/coverage", key: "coverage", label: "Coverage", sub: "what this dashboard cannot answer yet, and which connection fixes it" },
 ] as const;
 

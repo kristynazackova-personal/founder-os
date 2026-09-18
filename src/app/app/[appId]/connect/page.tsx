@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
 import { listSources, sourceIdentity } from "@/lib/services/sources";
 import { CONNECT_GUIDES, CONNECT_ORDER, SourceIcon } from "@/components/connect/guides";
+import { PlannedConnectors } from "@/components/connect/planned";
 import { Alert, PageHeader } from "@/components/ui";
 
 export default async function ConnectPage({ params, searchParams }: { params: Promise<{ appId: string }>; searchParams: Promise<{ welcome?: string; error?: string }> }) {
@@ -49,6 +50,8 @@ export default async function ConnectPage({ params, searchParams }: { params: Pr
           );
         })}
       </div>
+
+      <PlannedConnectors />
 
       <section className="card p-6">
         <h2 className="font-semibold">Nothing to connect yet?</h2>

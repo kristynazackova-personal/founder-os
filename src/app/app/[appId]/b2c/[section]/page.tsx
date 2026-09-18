@@ -1,14 +1,14 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
-import { loadAcquisitionPage, loadActivationPage, loadCoveragePage, loadRevenuePage } from "@/lib/services/b2cAnalytics";
+import { loadAcquisitionPage, loadActivationPage, loadCoveragePage, loadLoopsPage, loadRevenuePage } from "@/lib/services/b2cAnalytics";
 import { PageHeader } from "@/components/ui";
 import { SourceErrors } from "@/components/b2c/tiles";
 import { B2C_SECTIONS } from "../B2cNav";
-import { AcquisitionView, ActivationView, CoverageView, RevenueView, WindowLine } from "../sections";
+import { AcquisitionView, ActivationView, CoverageView, LoopsView, RevenueView, WindowLine } from "../sections";
 import { weeksFrom } from "../weeks";
 
-const SECTIONS = ["acquisition", "activation", "revenue", "coverage"] as const;
+const SECTIONS = ["acquisition", "activation", "revenue", "loops", "coverage"] as const;
 type Section = (typeof SECTIONS)[number];
 
 export default async function B2cSectionPage({
@@ -60,6 +60,17 @@ export default async function B2cSectionPage({
         <WindowLine {...data.window} />
         <SourceErrors errors={data.sourceErrors} />
         <RevenueView data={data} />
+      </div>
+    );
+  }
+  if (section === "loops") {
+    const data = await loadLoopsPage(app, opts);
+    return (
+      <div className="flex flex-col gap-4">
+        {header}
+        <WindowLine {...data.window} />
+        <SourceErrors errors={data.sourceErrors} />
+        <LoopsView data={data} appId={app.id} />
       </div>
     );
   }

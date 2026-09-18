@@ -3,18 +3,40 @@ import { getDb, schema } from "../db";
 import type { App } from "../db/schema";
 import { shortId } from "../crypto";
 import { track } from "../track";
+import type { Industry, Nature } from "../domain/gates";
+import { generateGatesForApp } from "./gates";
 
 export const PLATFORMS = ["lovable", "bolt", "replit", "base44", "other"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 export const PLATFORM_LABEL: Record<Platform, string> = { lovable: "Lovable", bolt: "Bolt", replit: "Replit", base44: "Base44", other: "Other" };
 
-export async function createApp(userId: string, input: { name: string; url: string | null; platform: Platform; projectLink: string | null; launchedAt: Date | null }): Promise<App> {
+export async function createApp(
+  userId: string,
+  input: { name: string; url: string | null; platform: Platform; projectLink: string | null; launchedAt: Date | null; industry: Industry; nature: Nature },
+): Promise<App> {
   const db = await getDb();
   const [app] = await db
     .insert(schema.apps)
-    .values({ userId, name: input.name, url: input.url, platform: input.platform, projectLink: input.projectLink, launchedAt: input.launchedAt, siteKey: `fos_${shortId(14)}` })
+    .values({
+      userId,
+      name: input.name,
+      url: input.url,
+      platform: input.platform,
+      projectLink: input.projectLink,
+      launchedAt: input.launchedAt,
+      industry: input.industry,
+      nature: input.nature,
+      siteKey: `fos_${shortId(14)}`,
+    })
     .returning();
-  await track("app_connected", { userId, appId: app.id, props: { platform: input.platform, hasUrl: Boolean(input.url) } });
+  await track("app_connected", { userId, appId: app.id, props: { platform: input.platform, hasUrl: Boolean(input.url), industry: input.industry, nature: input.nature } });
+  // Gates exist before the founder sees a single tile: the category layer is
+  // written synchronously, the competitor pass refines it in the background.
+  try {
+    await generateGatesForApp(app);
+  } catch (err) {
+    console.error("[apps] gate seeding failed:", err instanceof Error ? err.message : err);
+  }
   return app;
 }
 
@@ -42,7 +64,7 @@ export async function getAppBySiteKey(siteKey: string): Promise<App | null> {
   return app ?? null;
 }
 
-export async function updateApp(appId: string, patch: Partial<Pick<App, "name" | "url" | "platform" | "projectLink" | "launchedAt" | "activationEvent" | "checkoutMode" | "lastStage" | "lastConfidence" | "snippetInstalledAt" | "firstPurchaseAt">>): Promise<void> {
+export async function updateApp(appId: string, patch: Partial<Pick<App, "name" | "url" | "platform" | "projectLink" | "launchedAt" | "activationEvent" | "checkoutMode" | "lastStage" | "lastConfidence" | "snippetInstalledAt" | "firstPurchaseAt" | "industry" | "nature">>): Promise<void> {
   const db = await getDb();
   await db.update(schema.apps).set(patch).where(eq(schema.apps.id, appId));
 }

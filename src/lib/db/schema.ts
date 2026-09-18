@@ -41,6 +41,18 @@ export const apps = pgTable(
     checkoutMode: text("checkout_mode").notNull().default("test"),
     lastStage: integer("last_stage"),
     lastConfidence: text("last_confidence"),
+    /** What the business is, asked at creation — drives the gates below (domain/gates.ts). */
+    industry: text("industry"),
+    /** How it sells: app_subscription | web_subscription | freemium | one_off | marketplace_fee. */
+    nature: text("nature"),
+    /**
+     * The thresholds this app's B2C metrics are judged against, as a GateSet.
+     * Written from published category benchmarks the moment the app is created,
+     * then refined by a competitor research pass when one can run. Never
+     * invented: every gate carries its own source.
+     */
+    gates: jsonb("gates").$type<Record<string, unknown>>(),
+    gatesGeneratedAt: timestamp("gates_generated_at", { withTimezone: true }),
     snippetInstalledAt: timestamp("snippet_installed_at", { withTimezone: true }),
     firstPurchaseAt: timestamp("first_purchase_at", { withTimezone: true }),
     createdAt: createdAt(),

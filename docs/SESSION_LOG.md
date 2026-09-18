@@ -201,3 +201,63 @@ is a link): Overview, Acquisition, Activation & retention, Revenue, Coverage.
   names it.
 - Cohorts are keyed on the snippet's anonymous id, so a user who switches
   device counts twice. Fixing that needs an identity the snippet does not have.
+
+## 2026-09-18 (later) — gates per app, Loops locked, notes in the app
+
+Five follow-ups to the B2C dashboard, all on the same branch.
+
+### Gates are derived, not hard-coded
+
+Two new answers at app creation — `industry` and `nature` (how it charges) —
+drive the thresholds every B2C tile is judged against. `nature` matters more
+than `industry` for conversion and is asked separately for that reason.
+
+Two layers in `src/lib/domain/gates.ts`:
+
+- **Category bands**: published benchmarks per category, each with its own
+  source string, written synchronously at creation. Deterministic, offline,
+  no key — so an app is judged from its first render, and this layer alone is
+  a complete product.
+- **A competitor pass** (`services/gates.ts`): optional, per app, background,
+  fail-soft. `parseResearchedGates` keeps only what carries a metric in range
+  AND a source — **a gate with no provenance is worse than no gate**, and the
+  parser's refusals are the part under test. Needs
+  `GATE_RESEARCH_API_KEY`; without it nothing runs and nothing degrades.
+
+The band numbers were looked up rather than invented (all-category mobile
+medians, health & fitness, education, fintech, trial → paid, freemium, SMB and
+B2B churn — September 2026). Each sits beside its source string in the
+catalog, and that string is what the tile prints.
+
+`judgeAgainstGate` reuses the rate rule: under 30 it says "n too small to
+judge" and still shows the gate; a null value is an absence, not a failure;
+churn is the one metric where lower is better. Changing industry or nature
+re-derives the set, or the tiles would keep judging against the old category.
+
+### Loops kept and locked
+
+The Loops page is back with its real layout, every figure reading "—", a
+banner naming what unlocks it, and no estimates anywhere. Push and lifecycle
+email are listed on the Connect page as **planned** connectors
+(`components/connect/planned.tsx`) — rendered as dashed cards, deliberately
+NOT links, because a card that cannot be completed should not look like one
+that can.
+
+### Notes live in the app
+
+`src/lib/domain/notes.ts` carries four measurement notes, each declaring the
+surfaces it appears on (so a note cannot exist without a home) and all of
+them listed on Coverage: the install event being the only platform signal;
+cohorts keyed on a device rather than a human; `checkout_view` being only as
+good as the app calling it; and Loops being locked. These were the three
+caveats from the previous entry's "Open" list — they are now in front of the
+reader instead of in a file nobody opens.
+
+### Open
+
+- The competitor pass has never run against a real key in this environment.
+  The prompt, the parser and the merge are unit-tested; the round trip is not.
+- `industry`/`nature` are asked at creation and editable in settings, but
+  existing apps have neither, so they fall back to `other` +
+  `web_subscription` until someone sets them. `gatesOf` handles that.
+- Push and email connectors are placeholders only — no adapter, no schema.

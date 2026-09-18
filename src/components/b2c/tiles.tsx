@@ -12,6 +12,8 @@
  */
 import type { ReactNode } from "react";
 import type { FunnelStep, Tile, TriangleRow, Verdict } from "@/lib/domain/b2c";
+import { GATE_HIGHER_IS_BETTER, GATE_METRIC_LABEL, INDUSTRY_LABEL, NATURE_LABEL, type GateSet } from "@/lib/domain/gates";
+import type { MeasurementNote } from "@/lib/domain/notes";
 import { funnelShares } from "@/lib/domain/b2c";
 
 /** Web is blue, app is orange, the ink accent marks totals and the current point. */
@@ -306,5 +308,81 @@ export function Bullets({ items }: { items: { verdict: Verdict; text: ReactNode 
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * A measurement note: something the reader has to know to read a number
+ * correctly, printed next to the number rather than left in a doc.
+ */
+export function Notes({ notes }: { notes: MeasurementNote[] }) {
+  if (notes.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2.5">
+      {notes.map((n) => (
+        <div key={n.key} className="flex gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+          <span className="mt-0.5 flex-none text-[var(--muted)]">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" /><path d="M12 8h.01M11 12h1v4h1" />
+            </svg>
+          </span>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold">{n.title}</div>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">{n.body}</p>
+            {n.action ? <p className="mt-1.5 text-xs">{n.action}</p> : null}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A page whose numbers cannot exist yet: the layout is real, the figures are not filled in. */
+export function LockedBanner({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-stone-300 bg-white p-5">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex-none text-[var(--muted)]">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </span>
+        <div>
+          <div className="text-sm font-semibold">{title}</div>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-[var(--muted)]">{children}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The thresholds this app is judged against, and where each one came from. */
+export function GatesCard({ gates }: { gates: GateSet }) {
+  const asPct = (f: number) => `${(f * 100).toFixed(f < 0.1 ? 1 : 0)}%`;
+  return (
+    <Section
+      title="What these numbers are judged against"
+      sub={
+        gates.origin === "category"
+          ? `Published benchmarks for ${INDUSTRY_LABEL[gates.profile.industry].toLowerCase()} sold as ${NATURE_LABEL[gates.profile.nature].toLowerCase()}. Set when the app was created.`
+          : `Refined from comparable products${gates.competitors.length ? ` — ${gates.competitors.join("; ")}` : ""}.`
+      }
+    >
+      <DataTable
+        numericFrom={1}
+        head={["Metric", "Gate", "Category band", "Where it comes from"]}
+        rows={gates.gates.map((g) => [
+          GATE_METRIC_LABEL[g.metric],
+          `${GATE_HIGHER_IS_BETTER[g.metric] ? "≥" : "≤"} ${asPct(g.target)}`,
+          g.band ? `${asPct(g.band.low)}–${asPct(g.band.high)}` : "—",
+          <span key="s" className="text-xs text-[var(--muted)]">{g.source}{g.origin === "researched" ? " · competitor pass" : ""}</span>,
+        ])}
+      />
+      {gates.notes.length ? (
+        <ul className="mt-1 flex flex-col gap-1 text-xs text-[var(--muted)]">
+          {gates.notes.map((n, i) => <li key={i}>{n}</li>)}
+        </ul>
+      ) : null}
+    </Section>
   );
 }

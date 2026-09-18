@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createAppAction, type FormState } from "@/app/actions/apps";
+import { INDUSTRIES, INDUSTRY_LABEL, NATURES, NATURE_LABEL } from "@/lib/domain/gates";
 
 export function NewAppForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(createAppAction, undefined);
@@ -40,6 +41,32 @@ export function NewAppForm() {
           <input id="launchedAt" name="launchedAt" type="date" className="input" />
         </div>
       </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="industry">
+            What kind of product
+          </label>
+          <select id="industry" name="industry" className="select" defaultValue="other">
+            {INDUSTRIES.map((i) => (
+              <option key={i} value={i}>{INDUSTRY_LABEL[i]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="nature">
+            How it charges
+          </label>
+          <select id="nature" name="nature" className="select" defaultValue="web_subscription">
+            {NATURES.map((n) => (
+              <option key={n} value={n}>{NATURE_LABEL[n]}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <p className="help -mt-1">
+        These two answers set the thresholds your metrics are judged against — published benchmarks for your
+        category at first, then refined from comparable products. You can change them later, and the gates re-derive.
+      </p>
       <div>
         <label className="label" htmlFor="projectLink">
           Project link

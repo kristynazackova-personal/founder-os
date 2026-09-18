@@ -22,6 +22,9 @@ import {
   type ChannelRow, type Cohort, type FunnelStep, type Tile, type TriangleRow, type Visitor, type VisitorFacts, type Week,
 } from "../domain/b2c";
 import { mergeRevenueData, type NormalizedSubscription } from "../domain/metrics";
+import { gateFor, judgeAgainstGate, type GateMetric, type GateSet } from "../domain/gates";
+import { MEASUREMENT_NOTES, notesFor, type MeasurementNote } from "../domain/notes";
+import { gatesOf } from "./gates";
 import { monthlyEquivalentCents } from "../domain/money";
 import { wrappedRevenueData } from "./checkout";
 import { fetchExternalRevenue } from "./sources";
@@ -45,6 +48,9 @@ export type B2cBase = {
   window: B2cWindow;
   tiles: Tile[];
   sourceErrors: Record<string, string>;
+  /** What the reader has to know to read these numbers correctly. */
+  notes: MeasurementNote[];
+  gates: GateSet;
 };
 
 /** Load every snippet event for the app since `since`, grouped per visitor. */
@@ -84,6 +90,8 @@ type Loaded = {
   now: Date;
   errors: Record<string, string>;
   app: App;
+  /** The thresholds this app is judged against (domain/gates.ts). */
+  gates: GateSet;
 };
 
 /**
@@ -117,6 +125,7 @@ async function load(app: App, opts: B2cOpts): Promise<Loaded> {
     now,
     errors,
     app,
+    gates: gatesOf(app),
   };
 }
 
@@ -136,6 +145,16 @@ const arrivedIn = (facts: VisitorFacts[], weeks: Week[]): VisitorFacts[] => {
 };
 
 const series = (cohorts: Cohort[], pick: (c: Cohort) => number | null): (number | null)[] => cohorts.map(pick);
+
+/**
+ * Judge a ratio against this app's gate for that metric. Falls back to "no
+ * gate" rather than inventing one, and never passes or fails on a handful of
+ * people (the same denominator rule the rate itself obeys).
+ */
+function judged(l: Loaded, metric: GateMetric, num: number, den: number): Pick<Tile, "target" | "verdict" | "verdictLabel"> {
+  const j = judgeAgainstGate(rate(num, den), gateFor(l.gates, metric), den, MIN_RATE_DENOMINATOR);
+  return { target: j.target || undefined, verdict: j.verdict, verdictLabel: j.label };
+}
 
 const NO_SNIPPET_TILE = (key: string, label: string): Tile =>
   notMeasurable(key, label, "the snippet has never reported an event", "Install the snippet on the Attribution tab — one line in <head>, plus a signup and activation call.", ["Snippet"]);
@@ -173,9 +192,7 @@ function coreTiles(l: Loaded): Tile[] {
       label: `North star · second activation ≤ ${NORTH_STAR_DAYS} d`,
       value: ratioValue(ns, nsEligible),
       n: nLine(ns, nsEligible, "cohorts whose 7 days have elapsed"),
-      target: "KPI · no gate set for this app yet",
-      verdict: "none",
-      verdictLabel: "KPI",
+      ...judged(l, "north_star", ns, nsEligible),
       sources: ["Snippet"],
       delta: deltaOf(rate(ns, nsEligible), priorNs, { unit: "pts" }),
       series: series(seriesCohorts, (c) => rate(c.northStar, c.northStarEligible)),
@@ -186,8 +203,7 @@ function coreTiles(l: Loaded): Tile[] {
       label: `Activated ≤ ${ACTIVATION_HOURS} h`,
       value: ratioValue(act, signups),
       n: nLine(act, signups, "activation or purchase within a day of signup"),
-      verdict: "none",
-      verdictLabel: "no gate yet",
+      ...judged(l, "activation", act, signups),
       sources: ["Snippet"],
       delta: deltaOf(rate(act, signups), priorAct, { unit: "pts" }),
       series: series(seriesCohorts, (c) => rate(c.activated, c.signups)),
@@ -211,9 +227,7 @@ function coreTiles(l: Loaded): Tile[] {
       value: ratioValue(d1.hit, d1.eligible),
       small: d7.eligible >= MIN_RATE_DENOMINATOR ? `/ ${pct(rate(d7.hit, d7.eligible))}` : `/ ${d7.hit} of ${d7.eligible}`,
       n: nLine(d1.hit, d1.eligible, `D7 ${d7.hit} of ${d7.eligible}`),
-      target: "Consumer band: D1 ≈ 25% · D7 ≈ 8% (public app benchmarks)",
-      verdict: judgeBand(rate(d7.hit, d7.eligible), { min: 0.08 }),
-      verdictLabel: d7.eligible < MIN_RATE_DENOMINATOR ? "n too small to judge" : "vs band",
+      ...judged(l, "d7", d7.hit, d7.eligible),
       sources: ["Snippet"],
       series: series(seriesCohorts, (c) => rate(c.retention.find((r) => r.day === 7)?.hit ?? 0, c.retention.find((r) => r.day === 7)?.eligible ?? 0)),
       docAnchor: "retention",
@@ -245,9 +259,7 @@ export async function loadOverviewPage(app: App, opts: B2cOpts): Promise<Overvie
       label: "Signup → paid",
       value: ratioValue(purchases, signups),
       n: nLine(purchases, signups, "snippet purchases against signups in the window"),
-      target: "Consumer band: 1–3% of registered-free users",
-      verdict: judgeBand(rate(purchases, signups), { min: 0.01 }),
-      verdictLabel: signups < MIN_RATE_DENOMINATOR ? "read as a floor · tiny n" : "vs band",
+      ...judged(l, "signup_to_paid", purchases, signups),
       sources: ["Snippet"],
       series: series(l.seriesCohorts, (c) => rate(c.purchased, c.signups)),
       docAnchor: "signup-to-paid",
@@ -288,6 +300,8 @@ export async function loadOverviewPage(app: App, opts: B2cOpts): Promise<Overvie
     tiles,
     byWeek: { label: `${SERIES_WEEKS} complete weeks`, rows },
     changes: overviewChanges(l, rev),
+    notes: notesFor("overview"),
+    gates: l.gates,
     sourceErrors: { ...l.errors, ...(rev.error ? { revenue: rev.error } : {}) },
   };
 }
@@ -440,6 +454,8 @@ export async function loadAcquisitionPage(app: App, opts: B2cOpts): Promise<Acqu
     channels: channelBreakdown(l.facts.filter((f) => f.signupAt !== null && f.signupAt >= (l.windowWeeks[0]?.startMs ?? 0)))
       .map((c) => ({ ...c, label: CHANNEL_LABEL[c.channel as keyof typeof CHANNEL_LABEL] ?? c.channel })),
     funnel: snippetFunnel(arrivals),
+    notes: notesFor("acquisition"),
+    gates: l.gates,
     sourceErrors: l.errors,
   };
 }
@@ -486,7 +502,7 @@ export async function loadActivationPage(app: App, opts: B2cOpts): Promise<Activ
         {
           key: "activated", label: `Activated ≤ ${ACTIVATION_HOURS} h`, value: ratioValue(act, signups),
           n: nLine(act, signups, "reached the activation event within a day"),
-          verdict: "none", verdictLabel: "no gate yet", sources: ["Snippet"],
+          ...judged(l, "activation", act, signups), sources: ["Snippet"],
           series: series(l.seriesCohorts, (c) => rate(c.activated, c.signups)),
         },
         {
@@ -498,7 +514,7 @@ export async function loadActivationPage(app: App, opts: B2cOpts): Promise<Activ
         {
           key: "north_star", label: `North star · second activation ≤ ${NORTH_STAR_DAYS} d`, value: ratioValue(ns, nsEligible),
           n: nLine(ns, nsEligible, "only cohorts whose window has elapsed"),
-          verdict: "none", verdictLabel: "KPI", sources: ["Snippet"],
+          ...judged(l, "north_star", ns, nsEligible), sources: ["Snippet"],
           series: series(l.seriesCohorts, (c) => rate(c.northStar, c.northStarEligible)),
         },
         {
@@ -506,9 +522,7 @@ export async function loadActivationPage(app: App, opts: B2cOpts): Promise<Activ
           value: ratioValue(d1.hit, d1.eligible),
           small: `/ ${ratioValue(d7.hit, d7.eligible)} / ${ratioValue(d30.hit, d30.eligible)}`,
           n: `D1 ${d1.hit} of ${d1.eligible} · D7 ${d7.hit} of ${d7.eligible} · D30 ${d30.hit} of ${d30.eligible}`,
-          target: "Consumer band: D1 ≈ 25% · D7 ≈ 8% · D30 ≈ 4%",
-          verdict: judgeBand(rate(d7.hit, d7.eligible), { min: 0.08 }),
-          verdictLabel: d7.eligible < MIN_RATE_DENOMINATOR ? "n too small to judge" : "vs band",
+          ...judged(l, "d7", d7.hit, d7.eligible),
           sources: ["Snippet"],
         },
       ];
@@ -519,6 +533,8 @@ export async function loadActivationPage(app: App, opts: B2cOpts): Promise<Activ
     triangle: cohortTriangle(l.facts, l.weeks.slice(-SERIES_WEEKS), l.now),
     activeUsersPerWeek: weekly,
     timeToValue: { medianMinutes: quantile(gaps, 0.5), p75Minutes: quantile(gaps, 0.75), measured: gaps.length },
+    notes: notesFor("activation"),
+    gates: l.gates,
     sourceErrors: l.errors,
   };
 }
@@ -569,8 +585,9 @@ export async function loadRevenuePage(app: App, opts: B2cOpts): Promise<RevenueP
       key: "trial_to_paid", label: "Trial → paid",
       value: rev.trialStarts === 0 ? "—" : ratioValue(rev.trialConversions, rev.trialStarts),
       n: rev.trialStarts === 0 ? "no trial starts in the window" : nLine(rev.trialConversions, rev.trialStarts, "trials that reached a paid period"),
-      target: "Short-trial band ≈ 25%",
-      verdict: "none", verdictLabel: rev.trialStarts === 0 ? "not measurable" : "vs band",
+      ...(rev.trialStarts === 0
+        ? { verdict: "none" as const, verdictLabel: "not measurable" }
+        : judged(l, "trial_to_paid", rev.trialConversions, rev.trialStarts)),
       sources: rev.sources.length ? rev.sources : ["Stripe"],
       caveat: "Only rails that report trial and first-paid dates can answer this — Apple's reports do, some do not.",
     },
@@ -589,6 +606,8 @@ export async function loadRevenuePage(app: App, opts: B2cOpts): Promise<RevenueP
     funnel,
     byRail: rev.byRail,
     cohortPaid: l.seriesCohorts.map((c) => ({ label: c.week.label, signups: c.signups, purchased: c.purchased })),
+    notes: notesFor("revenue"),
+    gates: l.gates,
     sourceErrors: { ...l.errors, ...(rev.error ? { revenue: rev.error } : {}) },
   };
 }
@@ -650,10 +669,10 @@ export async function loadCoveragePage(app: App, opts: B2cOpts): Promise<Coverag
       fix: "Connect Google Ads directly, or type the spend in on the Attribution tab — both feed the campaign table there.",
     },
     {
-      metric: "Push and lifecycle email",
+      metric: "Push and lifecycle email (Loops)",
       state: "missing",
-      why: "Founder OS never sees your app's push or email sends — there is no source for them",
-      fix: "Out of scope by design. Read those in your own tooling; this dashboard covers what the snippet and the payment rails can prove.",
+      why: "no push or email provider is connected, so Founder OS cannot see a single send",
+      fix: "The Loops tab is laid out and locked. Connect a push or email provider under Settings → Connect your Platforms and it fills in.",
     },
     {
       metric: "In-app onboarding steps",
@@ -679,7 +698,48 @@ export async function loadCoveragePage(app: App, opts: B2cOpts): Promise<Coverag
       },
     ],
     rows,
+    notes: MEASUREMENT_NOTES,
+    gates: l.gates,
     sourceErrors: { ...l.errors, ...(rev.error ? { revenue: rev.error } : {}) },
+  };
+}
+
+
+// ---------------------------------------------------------------- loops
+
+export type LoopsRow = { trigger: string; sent: string; opened: string; returned: string };
+
+export type LoopsPage = B2cBase & {
+  /** Locked until a push or email provider is connected. The layout is real; the numbers are not filled in. */
+  locked: boolean;
+  rows: LoopsRow[];
+  nextStepRows: LoopsRow[];
+};
+
+/**
+ * The day-two engine: push and lifecycle email. Founder OS cannot see either
+ * until a provider is connected, so the page is LOCKED rather than removed —
+ * it shows the shape of the answer, every figure reading "—", and says which
+ * connection fills it. Nothing here is ever estimated.
+ */
+export async function loadLoopsPage(app: App, opts: B2cOpts): Promise<LoopsPage> {
+  const l = await load(app, opts);
+  const blank = (trigger: string): LoopsRow => ({ trigger, sent: "—", opened: "—", returned: "—" });
+
+  return {
+    window: windowOf(l),
+    locked: true,
+    tiles: [
+      notMeasurable("push_opened", "Push opened", "no push provider is connected", "Connect one under Settings → Connect your Platforms.", ["Push"]),
+      notMeasurable("push_returned", "Push → returned ≤ 48 h", "no push provider is connected", "This is the figure that matters: an open that produces nothing is not a win.", ["Push"]),
+      notMeasurable("email_returned", "Email → returned ≤ 48 h", "no email provider is connected", "Connect SendGrid, Resend, Postmark or Customer.io.", ["Email"]),
+      notMeasurable("reachable", "Reachable audience", "no push or email provider is connected", "Opted-in devices and addresses, once a provider can be read.", ["Push", "Email"]),
+    ],
+    rows: [blank("Daily reminder"), blank("Re-engagement"), blank("Trial reminder"), blank("Win-back"), blank("Weekly digest")],
+    nextStepRows: [blank("In-app card"), blank("Push"), blank("Email")],
+    notes: notesFor("loops"),
+    gates: l.gates,
+    sourceErrors: l.errors,
   };
 }
 
@@ -688,6 +748,7 @@ export const B2C_PAGES = {
   acquisition: loadAcquisitionPage,
   activation: loadActivationPage,
   revenue: loadRevenuePage,
+  loops: loadLoopsPage,
   coverage: loadCoveragePage,
 } as const;
 

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { updateAppAction, type FormState } from "@/app/actions/apps";
+import { INDUSTRIES, INDUSTRY_LABEL, NATURES, NATURE_LABEL } from "@/lib/domain/gates";
 import type { App } from "@/lib/db/schema";
 
 export function AppSettingsForm({ app }: { app: App }) {
@@ -37,6 +38,28 @@ export function AppSettingsForm({ app }: { app: App }) {
         <label className="label">Project link</label>
         <input name="projectLink" className="input" defaultValue={app.projectLink ?? ""} />
       </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label">What kind of product</label>
+          <select name="industry" className="select" defaultValue={app.industry ?? "other"}>
+            {INDUSTRIES.map((i) => (
+              <option key={i} value={i}>{INDUSTRY_LABEL[i]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">How it charges</label>
+          <select name="nature" className="select" defaultValue={app.nature ?? "web_subscription"}>
+            {NATURES.map((n) => (
+              <option key={n} value={n}>{NATURE_LABEL[n]}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <p className="help -mt-1">
+        These set the gates your B2C metrics are judged against. Changing either re-derives them from published
+        benchmarks for the new category, so the tiles stop judging you against the old one.
+      </p>
       <div>
         <label className="label">Activation event</label>
         <input name="activationEvent" className="input" defaultValue={app.activationEvent ?? ""} placeholder="e.g. exports first report" />

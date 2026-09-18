@@ -4,8 +4,8 @@
  * returns is the only contract between them.
  */
 import Link from "next/link";
-import type { AcquisitionPage, ActivationPage, CoveragePage, OverviewPage, RevenuePage } from "@/lib/services/b2cAnalytics";
-import { Bullets, CohortGrid, DataTable, FunnelRows, Legend, Section, SERIES, TileGrid, WeeklyBars } from "@/components/b2c/tiles";
+import type { AcquisitionPage, ActivationPage, CoveragePage, LoopsPage, OverviewPage, RevenuePage } from "@/lib/services/b2cAnalytics";
+import { Bullets, CohortGrid, DataTable, FunnelRows, GatesCard, Legend, LockedBanner, Notes, Section, SERIES, TileGrid, WeeklyBars } from "@/components/b2c/tiles";
 
 const PLATFORM_LEGEND = [
   { color: SERIES.web, label: "Web" },
@@ -33,12 +33,14 @@ export function OverviewView({ data }: { data: OverviewPage }) {
                 { verdict: "none", text: "Cohorts are ISO weeks by signup date. A retention cell appears only once its window has fully elapsed." },
                 { verdict: "none", text: "A rate needs a denominator of 30. Below that you get the count pair — “3 of 11” — because a percentage of eleven people is noise." },
                 { verdict: "none", text: "“—” means no connected source can answer it. It never means zero. The Coverage tab lists every one and what would fix it." },
+                { verdict: "none", text: "Gates come from published benchmarks for your category, refined from comparable products. Every one names its source." },
                 { verdict: "none", text: <>This sits alongside <b>Diagnosis</b> and <b>Attribution</b>, which are unchanged.</> },
               ]}
             />
           </Section>
         </div>
       </div>
+      <GatesCard gates={data.gates} />
     </>
   );
 }
@@ -62,6 +64,7 @@ export function AcquisitionView({ data }: { data: AcquisitionPage }) {
       <Section title="The snippet funnel" sub="distinct visitors per step, from first touch in this window">
         <FunnelRows steps={data.funnel} />
       </Section>
+      <Notes notes={data.notes} />
     </>
   );
 }
@@ -91,6 +94,7 @@ export function ActivationView({ data }: { data: ActivationPage }) {
           </p>
         </Section>
       </div>
+      <Notes notes={data.notes} />
     </>
   );
 }
@@ -112,6 +116,7 @@ export function RevenueView({ data }: { data: RevenuePage }) {
           </Section>
         </div>
       </div>
+      <Notes notes={data.notes} />
     </>
   );
 }
@@ -144,10 +149,42 @@ export function CoverageView({ data, appId }: { data: CoveragePage; appId: strin
           items={[
             { verdict: "none", text: <>Snippet and events: <Link href={`/app/${appId}/attribution`} className="underline">Attribution</Link>.</> },
             { verdict: "none", text: <>Payment rails and analytics sources: <Link href={`/app/${appId}/settings`} className="underline">Settings → Connect your Platforms</Link>.</> },
-            { verdict: "none", text: "Push and lifecycle email are deliberately absent — Founder OS has no source for your app's sends, and a guessed number is worse than a blank one." },
+            { verdict: "none", text: <>Push and lifecycle email: the <b>Loops</b> tab is laid out and locked until a provider is connected. Nothing on it is estimated in the meantime.</> },
           ]}
         />
       </Section>
+      <GatesCard gates={data.gates} />
+      <Notes notes={data.notes} />
+    </>
+  );
+}
+
+
+export function LoopsView({ data, appId }: { data: LoopsPage; appId: string }) {
+  return (
+    <>
+      <LockedBanner title="Locked until a push or email provider is connected">
+        Push and lifecycle email are the day-two engine, and Founder OS cannot see a single send of either — they
+        happen in your tooling, not ours. The layout below is what the page will show; every figure reads
+        &ldquo;—&rdquo; until a provider can be read, and nothing here is estimated in the meantime.{" "}
+        <Link href={`/app/${appId}/settings`} className="underline">Add a push or email provider</Link>.
+      </LockedBanner>
+      <TileGrid tiles={data.tiles} />
+      <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <Section title="By trigger" sub="one row per send · returned = active within 48 hours of it">
+          <DataTable
+            head={["Trigger", "Sent", "Opened", "Returned"]}
+            rows={data.rows.map((r) => [r.trigger, r.sent, r.opened, r.returned])}
+          />
+        </Section>
+        <Section title="By surface" sub="where the nudge was shown">
+          <DataTable
+            head={["Surface", "Shown", "Tapped", "Returned"]}
+            rows={data.nextStepRows.map((r) => [r.trigger, r.sent, r.opened, r.returned])}
+          />
+        </Section>
+      </div>
+      <Notes notes={data.notes} />
     </>
   );
 }
