@@ -26,6 +26,7 @@ import { aiConfigured } from "@/lib/services/ai";
 import type { Metrics } from "@/lib/domain/metrics";
 import { PageHeader } from "@/components/ui";
 import { GenerateButton, RewriteBox, StageAnswers, VersionList } from "@/components/pmf/PmfEditor";
+import { PREFILL_STAGE } from "@/lib/domain/pmfPrefill";
 
 function StageHeader({ stage, current, answered, total }: { stage: PmfStage; current: boolean; answered: number; total: number }) {
   return (
@@ -53,6 +54,7 @@ function StageHeader({ stage, current, answered, total }: { stage: PmfStage; cur
 
 function StageCard({
   appId,
+  appUrl,
   framework,
   stage,
   current,
@@ -60,6 +62,7 @@ function StageCard({
   doc,
 }: {
   appId: string;
+  appUrl: string | null;
   framework: PmfFramework;
   stage: PmfStage;
   current: boolean;
@@ -91,7 +94,16 @@ function StageCard({
         ))}
       </div>
 
-      <StageAnswers appId={appId} framework={framework.id} stage={stage.key} doc={doc} />
+      <StageAnswers
+        appId={appId}
+        framework={framework.id}
+        stage={stage.key}
+        doc={doc}
+        // Only the first stage can be prefilled, and only where the framework
+        // otherwise refuses to answer for the founder - see domain/pmfPrefill.ts.
+        prefill={framework.aiRole === "pressure_test" && stage.key === PREFILL_STAGE}
+        appUrl={appUrl}
+      />
 
       <div className="mt-5">
         <div className="text-xs font-semibold tracking-wide text-[var(--muted)] uppercase">Do this</div>
@@ -268,6 +280,7 @@ export default async function PmfPage({
         <StageCard
           key={s.key}
           appId={app.id}
+          appUrl={app.url}
           framework={framework}
           stage={s}
           current={s.key === currentStage}

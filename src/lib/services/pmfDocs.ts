@@ -22,6 +22,9 @@ import { nextVersion, parseModelValues, parseStoredValues, scaffoldDoc, type Pmf
 import { DEFAULT_FRAMEWORK, asFrameworkId, frameworkOf, type PmfFramework, type PmfFrameworkId } from "../domain/pmfFrameworks";
 import { parseTable, readTable, renderTableForPrompt, serializeTable, withRowLabelColumn, type PmfTable } from "../domain/pmfTable";
 import { columnPrompt, promptFor, rowPrompt, tableStageForField } from "../domain/pmfPrompts";
+import { PREFILL_STAGE, prefillFields, prefillPrompt } from "../domain/pmfPrefill";
+import { sourceSummary } from "../domain/businessCase";
+import { extractUploadText, fetchWebsiteText } from "./businessCase";
 import { profileOf } from "./gates";
 import { aiConfigured, askForJson } from "./ai";
 import { latestAssessment } from "./diagnosis";
@@ -306,3 +309,74 @@ export async function saveTable(app: App, framework: PmfFrameworkId, field: stri
   await appendVersion(app.id, f.id, { [field]: serializeTable(table) }, { source: "edited" });
   return table;
 }
+
+export type PrefillResult = { filled: string[]; asked: string[]; sources: string; error: string | null };
+
+/**
+ * Prefill stage 1 from the founder's own website and business case.
+ *
+ * Deliberately separate from everything below it. Stage 1 describes a
+ * business that already exists, so the tool may answer it; every stage after
+ * it is the founder's thinking, and stays behind its own button. See
+ * domain/pmfPrefill.ts for why that line is where it is.
+ *
+ * Only stage-1 keys are ever written, whatever the model returns, and a field
+ * the evidence could not answer comes back as a `[to fill]` question rather
+ * than a guess - so the founder can see at a glance what it knew and what it
+ * is asking them.
+ */
+export async function prefillGoalStage(
+  app: App,
+  framework: PmfFrameworkId,
+  opts: { useWebsite: boolean; file?: File | null },
+): Promise<PrefillResult> {
+  const f = frameworkOf(framework);
+  const keys = new Set(prefillFields(f).map((x) => x.key));
+  if (keys.size === 0) return { filled: [], asked: [], sources: "nothing yet", error: "This framework has no stage to prefill." };
+  if (!aiConfigured()) return { filled: [], asked: [], sources: "nothing yet", error: "Prefilling needs a model key on this deployment." };
+
+  const problems: string[] = [];
+  let website: string | null = null;
+  let document: string | null = null;
+
+  if (opts.useWebsite) {
+    const res = await fetchWebsiteText(app.url);
+    website = res.text;
+    if (res.error) problems.push(res.error);
+  }
+  if (opts.file && opts.file.size > 0) {
+    const res = await extractUploadText(opts.file);
+    document = res.text;
+    if (res.error) problems.push(res.error);
+  }
+
+  const sources = sourceSummary({ website, document });
+  if (!website && !document) {
+    return { filled: [], asked: [], sources, error: problems.join(" ") || "Nothing to read. Tick the website, upload a document, or both." };
+  }
+
+  const ctx = await contextFor(app);
+  const business = [app.name, ctx.scaffoldInput.industryLabel, ctx.scaffoldInput.natureLabel, app.url ?? ""].filter(Boolean).join(" \u00b7 ");
+  const res = await askForJson(prefillPrompt(f, { business, website, document }), { timeoutMs: 60_000 });
+  const values = parseModelValues(f, res.json);
+
+  // Whatever came back, only stage 1 is written. A model that answers a later
+  // stage here would be answering for the founder, which is the one thing this
+  // framework does not do.
+  const stageOnly: Partial<Record<PmfFieldKey, string>> = {};
+  for (const [k, v] of Object.entries(values)) if (keys.has(k) && v) stageOnly[k] = v;
+  if (Object.keys(stageOnly).length === 0) {
+    return { filled: [], asked: [], sources, error: res.error ?? "The model returned nothing usable for this stage." };
+  }
+
+  await appendVersion(app.id, f.id, stageOnly, { source: "generated" });
+  const label = (key: string) => f.fields.find((x) => x.key === key)?.label ?? key;
+  return {
+    filled: Object.keys(stageOnly).filter((k) => !stageOnly[k]!.startsWith("[to fill]")).map(label),
+    asked: Object.keys(stageOnly).filter((k) => stageOnly[k]!.startsWith("[to fill]")).map(label),
+    sources,
+    error: problems.length > 0 ? problems.join(" ") : null,
+  };
+}
+
+export { PREFILL_STAGE };

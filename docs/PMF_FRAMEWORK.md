@@ -126,6 +126,52 @@ framework did not ask for, any non-string, any blank, and bounds the rest.
 says so and points at the edit form, which also writes a version. Generation
 still works without a key - it just stops at the scaffold.
 
+## Stage 1 is prefilled; nothing else is
+
+The build framework refuses to answer for the founder - that is `aiRole:
+"pressure_test"` and it is the point. Stage 1 is the single exemption, and the
+line is drawn deliberately.
+
+Stage 1 asks what the product does, what the user gets, what the FOUNDER wants
+out of it and what six months looks like. That is a description of a business
+which already exists, usually on its own landing page. Her first rule protects
+the IDEAS - the segments, the pains, the solutions - and was never meant to
+make someone retype their own homepage. Every stage below stage 1 stays behind
+its own button, one at a time: there is no "run the whole thing" control, and
+deliberately so, because stage 3 derives from a stage 2 the founder is meant to
+have read and corrected first.
+
+**Evidence**: the founder ticks their website, uploads a business case, or
+both. The site is fetched and reduced to its visible words; an upload may be
+PDF, Word `.docx`, or plain text, up to 10 MB. Both are normalised and capped
+at 40,000 characters - stage 1 is four sentences, and a longer document is not
+a better one. Everything fails soft and says why: a site rendered entirely by
+JavaScript, a scanned PDF with no text layer, a file type nobody can read.
+
+**The one field it must not guess.** "What do YOU want out of it" is the most
+load-bearing answer in the framework - it is what drops the pay-strength column
+for an impact-first founder, and it steers every table below. A landing page is
+marketing copy written for customers, and it will happily imply a revenue
+motive the founder does not hold. The prompt is told to ask rather than infer
+unless they say it plainly, and it holds: fed a page reading "Pro from
+$8/month", the prefill still returned `[to fill] What do you, the founder, want
+out of FocusTimer?` rather than inventing a revenue goal.
+
+A field it cannot answer comes back as a `[to fill]` question, and the status
+line names which ones, so the founder can see what it knew and what it is
+asking. Only stage-1 keys are ever written, whatever the model returns.
+
+Where it lives: `domain/businessCase.ts` (pure: file kinds, limits, HTML to
+text), `domain/pmfPrefill.ts` (the prompt and its rules),
+`services/businessCase.ts` (the fetch and the parsers),
+`prefillGoalStage` in `services/pmfDocs.ts`, `PrefillPanel` in
+`components/pmf/PmfEditor.tsx`.
+
+**`pdfjs-dist` and `mammoth` must stay in `serverExternalPackages`.** Bundled
+by Turbopack they fail at runtime with an unhelpful message, and the unit tests
+import them directly so they pass regardless. Only running the real app catches
+it.
+
 ## Three of the build stages are tables
 
 Target user, problem and solutions are lists with parameters, not paragraphs.

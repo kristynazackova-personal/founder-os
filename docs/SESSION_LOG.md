@@ -679,3 +679,45 @@ The segment now has a skeleton, and the card has `:active` and
 
 Worth keeping in mind: "the button does not work" is often "the button does not
 answer". Measure the hit area before widening it.
+
+---
+
+## 2026-09-18 (prefill) - stage 1 from a website or an uploaded business case
+
+Stage 1 of the build framework can now be filled in from the founder's own
+website and/or a business case they upload (PDF, Word `.docx`, plain text, up
+to 10 MB). They edit it and save like any other stage. `docs/PMF_FRAMEWORK.md`
+has the design; what is worth keeping here is why the line sits where it does
+and what the real run caught.
+
+**Why stage 1 and nothing else.** The framework's `pressure_test` role exists
+to stop the tool answering for the founder, and that is right for segments,
+pains and solutions - the thinking. Stage 1 is a description of a business that
+already exists on its own landing page. Refusing to prefill it was never
+protecting anything; it was making someone retype their homepage. Every stage
+below it stays behind its own button, one at a time, and there is deliberately
+no "run the rest" control: stage 3 derives from a stage 2 the founder is meant
+to have read and corrected first.
+
+**The field it must not guess.** "What do YOU want out of it" is what drops the
+pay-strength column for an impact-first founder and steers every table below
+it. Marketing copy will imply a revenue motive that the founder does not hold.
+Fed a page reading "Pro from $8/month", the prefill returned `[to fill] What do
+you, the founder, want out of FocusTimer?` rather than inventing one. That
+behaviour is the feature; if a future prompt edit makes it confidently answer
+that field from a landing page, it is a regression however good the sentence
+reads.
+
+**Turbopack broke both parsers, and the tests could not see it.**
+`pdfjs-dist` and `mammoth` bundled by Turbopack fail at runtime with "That file
+could not be read" and nothing in the logs. The unit tests import them directly
+and passed, and so did typecheck, lint and build. Only uploading a real PDF
+through the real form showed it. They are in `serverExternalPackages` now,
+beside pglite, and the parser catch logs the underlying error so the next
+occurrence is not mute. This is the third time this session that a green
+toolchain hid a runtime fault - after the B2C pages 500ing and the truncated
+table JSON. Load the page.
+
+Also: server actions cap request bodies at 1 MB by default, so
+`experimental.serverActions.bodySizeLimit` is 12 MB. The real limit is enforced
+in the service, which can say why a file was refused.

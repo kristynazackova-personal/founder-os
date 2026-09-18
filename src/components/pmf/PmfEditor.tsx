@@ -9,7 +9,8 @@
  * here overwrites anything.
  */
 import { useActionState, useState } from "react";
-import { generatePmfAction, rewritePmfAction, savePmfAction, type PmfFormState } from "@/app/actions/pmf";
+import { generatePmfAction, prefillPmfAction, rewritePmfAction, savePmfAction, type PmfFormState } from "@/app/actions/pmf";
+import { ACCEPTED_UPLOAD_ATTR, ACCEPTED_UPLOAD_LABEL, MAX_UPLOAD_BYTES } from "@/lib/domain/businessCase";
 import { SOURCE_LABEL, isAnswered, isPlaceholder, type PmfDoc } from "@/lib/domain/pmfDoc";
 import { fieldsOfStage, frameworkOf, type PmfFrameworkId } from "@/lib/domain/pmfFrameworks";
 import { readTable } from "@/lib/domain/pmfTable";
@@ -34,13 +35,74 @@ export function GenerateButton({ appId, framework, label }: { appId: string; fra
   );
 }
 
-export function StageAnswers({ appId, framework, stage, doc }: { appId: string; framework: PmfFrameworkId; stage: string; doc: PmfDoc | null }) {
+
+/**
+ * Prefill stage 1 from what the founder already wrote about their business.
+ *
+ * Only this stage gets one. Everything below it is their thinking, and stays
+ * behind its own button, one stage at a time - deriving stage 3 from a stage 2
+ * nobody has read yet is how a worksheet becomes a wall of text.
+ */
+export function PrefillPanel({ appId, framework, appUrl }: { appId: string; framework: PmfFrameworkId; appUrl: string | null }) {
+  const [state, action, pending] = useActionState<PmfFormState, FormData>(prefillPmfAction.bind(null, appId, framework), undefined);
+  const [fileName, setFileName] = useState<string | null>(null);
+
+  return (
+    <form action={action} className="mt-5 flex flex-col gap-3 rounded-xl border border-dashed border-stone-300 bg-stone-50 p-5">
+      <div>
+        <div className="text-sm font-semibold">Start from what you have</div>
+        <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+          This stage describes a business that already exists, so it can be filled in for you. Everything below it is your
+          thinking, and stays yours. Anything it cannot tell from your own words it will ask rather than guess.
+        </p>
+      </div>
+
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="use_website"
+          defaultChecked={Boolean(appUrl)}
+          disabled={!appUrl}
+          className="mt-0.5 h-4 w-4"
+        />
+        <span className={appUrl ? "" : "text-[var(--muted)]"}>
+          {appUrl ? <>Read my website <span className="text-[var(--muted)]">({appUrl})</span></> : "No website on this business yet"}
+        </span>
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span>Or upload a business case</span>
+        <input
+          type="file"
+          name="document"
+          accept={ACCEPTED_UPLOAD_ATTR}
+          onChange={(e) => setFileName(e.currentTarget.files?.[0]?.name ?? null)}
+          className="block w-full text-xs file:mr-3 file:rounded-lg file:border file:border-stone-300 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold"
+        />
+        <span className="text-xs text-[var(--muted)]">
+          {fileName ?? `${ACCEPTED_UPLOAD_LABEL}, up to ${MAX_UPLOAD_BYTES / 1024 / 1024} MB. A scanned PDF has no text to read.`}
+        </span>
+      </label>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>
+          {pending ? "Reading it…" : "Fill in this stage"}
+        </button>
+        <Status state={state} />
+      </div>
+    </form>
+  );
+}
+
+export function StageAnswers({ appId, framework, stage, doc, prefill, appUrl }: { appId: string; framework: PmfFrameworkId; stage: string; doc: PmfDoc | null; prefill?: boolean; appUrl?: string | null }) {
   const [editing, setEditing] = useState(false);
   const [state, action, pending] = useActionState<PmfFormState, FormData>(savePmfAction.bind(null, appId, framework), undefined);
   const fields = fieldsOfStage(frameworkOf(framework), stage);
 
   if (!editing) {
     return (
+      <>
+      {prefill ? <PrefillPanel appId={appId} framework={framework} appUrl={appUrl ?? null} /> : null}
       <div className="mt-5 rounded-xl border border-stone-200 bg-stone-50 p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-xs font-semibold tracking-wide text-[var(--muted)] uppercase">Your answers</div>
@@ -71,6 +133,7 @@ export function StageAnswers({ appId, framework, stage, doc }: { appId: string; 
         </dl>
         <Status state={state} />
       </div>
+      </>
     );
   }
 

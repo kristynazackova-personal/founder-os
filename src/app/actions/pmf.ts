@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
 import type { PmfFieldKey } from "@/lib/domain/pmfDoc";
 import { asFrameworkId, frameworkOf } from "@/lib/domain/pmfFrameworks";
-import { generateDoc, generateTable, rewriteDoc, saveEdit, saveTable } from "@/lib/services/pmfDocs";
+import { generateDoc, generateTable, prefillGoalStage, rewriteDoc, saveEdit, saveTable } from "@/lib/services/pmfDocs";
 import { rowsFromForm, readTable } from "@/lib/domain/pmfTable";
 
 export type PmfFormState = { error?: string; ok?: string } | undefined;
@@ -97,5 +97,36 @@ export async function saveTableAction(appId: string, framework: string, field: s
     return { ok: `Saved ${table.rows.length} row${table.rows.length === 1 ? "" : "s"}.` };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Could not save the table." };
+  }
+}
+
+/**
+ * Prefill stage 1 from the founder's website and/or an uploaded business case.
+ *
+ * Separate from every other generator on purpose: it is the only one allowed
+ * to answer rather than ask, and it writes stage 1 and nothing else.
+ */
+export async function prefillPmfAction(appId: string, framework: string, _prev: PmfFormState, formData: FormData): Promise<PmfFormState> {
+  const user = await requireUser();
+  const app = await getAppForUser(appId, user.id);
+  if (!app) return { error: "App not found." };
+
+  const raw = formData.get("document");
+  const file = raw instanceof File && raw.size > 0 ? raw : null;
+  const useWebsite = formData.get("use_website") === "on";
+  if (!useWebsite && !file) return { error: "Tick your website, choose a document, or both." };
+
+  try {
+    const res = await prefillGoalStage(app, asFrameworkId(framework), { useWebsite, file });
+    done(appId);
+    if (res.error && res.filled.length === 0 && res.asked.length === 0) return { error: res.error };
+    const wrote = res.filled.length > 0 ? `Filled ${res.filled.length} field${res.filled.length === 1 ? "" : "s"} from ${res.sources}.` : `Read ${res.sources}.`;
+    const asked = res.asked.length > 0 ? ` It could not tell ${res.asked.join(", ")} from that, so it asked instead.` : "";
+    // A partial failure is still worth reporting: one source may have worked
+    // and the other not, and the founder should know which they are reading.
+    const note = res.error ? ` ${res.error}` : "";
+    return { ok: `${wrote}${asked}${note} Edit anything that is wrong, then save.` };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Prefill failed." };
   }
 }
