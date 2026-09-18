@@ -44,6 +44,13 @@ export type PmfFieldDef = {
   /** What a good answer contains. Shown under the field and sent to the model. */
   prompt: string;
   long?: boolean;
+  /**
+   * A table field: several rows, each scored against columns the tool derives
+   * from the stages above it (domain/pmfTable.ts, domain/pmfPrompts.ts). Her
+   * doc gives three stages a table and invites changing their parameters, so
+   * the columns are generated per business rather than fixed here.
+   */
+  table?: boolean;
 };
 
 export type PmfFramework = {
@@ -229,13 +236,13 @@ const BUILD_FIELDS: PmfFieldDef[] = [
   { key: "user_outcome", stage: "goal", label: "What outcome do you want for the user", prompt: "What is different in their day because this exists." },
   { key: "your_outcome", stage: "goal", label: "What do YOU want out of it", prompt: "Revenue, usefulness, thank-yous, a job, a portfolio piece. Be honest, it changes every later decision." },
   { key: "six_months", stage: "goal", label: "Success in six months looks like", prompt: "One concrete picture, not a range." },
-  { key: "segment_list", stage: "segment", label: "Every possible user or use case (MECE)", prompt: "One group per line, each with market size S/M/L, pay-strength L/M/H, and whether it is already solved elsewhere Y/N.", long: true },
+  { key: "segment_list", stage: "segment", label: "Every possible user or use case (MECE)", prompt: "One row per group, mutually exclusive and collectively exhaustive. The columns are chosen from your stage 1 answers.", table: true },
   { key: "chosen_segment", stage: "segment", label: "Chosen segment, and why", prompt: "One group, and the reason you picked it over the others you just listed." },
   { key: "assumptions", stage: "segment", label: "Open assumptions to test", prompt: "What you are assuming about these users that you have not verified. One per line.", long: true },
   { key: "journey", stage: "problem", label: "The user's current journey, in tiny steps", prompt: "What they do today without you, step by step, in their voice.", long: true },
-  { key: "pains", stage: "problem", label: "Pain points, scored", prompt: "One per line: where in the journey, how many users have it S/M/L, severity 1-10, competition solving it Y/N.", long: true },
+  { key: "pains", stage: "problem", label: "Pain points, scored", prompt: "One row per pain, anchored to a step of the journey. The columns are chosen from your goal and your chosen segment.", table: true },
   { key: "chosen_pains", stage: "problem", label: "The 1 to 3 pains you will solve first", prompt: "Which ones, and what made them win." },
-  { key: "solution_options", stage: "solutions", label: "Solution ideas, scored", prompt: "One per line: the idea, how well it solves the pain L/M/H, how hard to build L/M/H.", long: true },
+  { key: "solution_options", stage: "solutions", label: "Solution ideas, scored", prompt: "One row per candidate, each naming the pain it solves. The columns are chosen from your goal, segment and chosen pains.", table: true },
   { key: "chosen_solutions", stage: "solutions", label: "Chosen 1 to 3 solutions, and why", prompt: "The ones you will build, and the reason." },
   { key: "not_v1", stage: "solutions", label: "What v1 is NOT", prompt: "Three things you are explicitly refusing to build yet.", long: true },
   { key: "north_star_goal", stage: "metrics", label: "North-star goal (the real impact)", prompt: "The outcome you would be proud of, not a proxy for it." },

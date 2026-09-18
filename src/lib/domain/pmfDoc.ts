@@ -13,6 +13,7 @@
  * founder can always see what the tool wrote first and what they changed.
  */
 import { fieldsOfStage, type PmfFramework, type PmfFrameworkId } from "./pmfFrameworks";
+import { EMPTY_TABLE, readTable, serializeTable, tableAnswered } from "./pmfTable";
 
 export type PmfFieldKey = string;
 
@@ -40,15 +41,23 @@ export const UNANSWERED = "";
 
 export const isAnswered = (v: string | undefined): boolean => Boolean(v && v.trim().length > 0);
 
+export const fieldAnswered = (f: PmfFramework, doc: Pick<PmfDoc, "values"> | null, key: string): boolean => {
+  const value = doc?.values[key];
+  const def = f.fields.find((x) => x.key === key);
+  // An empty table is a form, not an answer, however long its JSON is.
+  if (def?.table) return tableAnswered(readTable(value));
+  return isAnswered(value) && !isPlaceholder(value);
+};
+
 export const answeredCount = (f: PmfFramework, doc: Pick<PmfDoc, "values"> | null): number =>
-  doc ? f.fields.filter((x) => isAnswered(doc.values[x.key])).length : 0;
+  doc ? f.fields.filter((x) => fieldAnswered(f, doc, x.key)).length : 0;
 
 export const completion = (f: PmfFramework, doc: Pick<PmfDoc, "values"> | null): number =>
   f.fields.length === 0 ? 0 : answeredCount(f, doc) / f.fields.length;
 
 /** Which stages still have an empty field, in framework order. */
 export function incompleteStages(f: PmfFramework, doc: Pick<PmfDoc, "values"> | null): string[] {
-  return f.stages.filter((s) => fieldsOfStage(f, s.key).some((x) => !isAnswered(doc?.values[x.key]))).map((s) => s.key);
+  return f.stages.filter((s) => fieldsOfStage(f, s.key).some((x) => !fieldAnswered(f, doc, x.key))).map((s) => s.key);
 }
 
 // ---------------------------------------------------------------- scaffold
@@ -77,6 +86,12 @@ export function scaffoldDoc(f: PmfFramework, input: ScaffoldInput, now = new Dat
   const context = `${appName}, a ${industryLabel.toLowerCase()} product sold as ${natureLabel.toLowerCase()}`;
   const values: Partial<Record<PmfFieldKey, string>> = {};
   for (const field of f.fields) {
+    if (field.table) {
+      // A table starts genuinely empty: its columns are derived from the
+      // answers above it, which do not exist yet at scaffold time.
+      values[field.key] = serializeTable(EMPTY_TABLE);
+      continue;
+    }
     // The prompt is the answer until the founder writes one. It carries the
     // business into the question so the page is about them from the start.
     values[field.key] = `${PLACEHOLDER_PREFIX} ${field.prompt} (${context}${field.stage === "qualitative" ? `, starting with ${who}` : ""})`;
@@ -90,6 +105,18 @@ export const isPlaceholder = (v: string | undefined): boolean => Boolean(v && v.
 
 // ---------------------------------------------------------------- model output
 
+/** A prose answer is a paragraph, not an essay. */
+export const MAX_TEXT_VALUE = 2_000;
+
+/**
+ * A table's value is its whole JSON - columns, anchors and up to twenty rows
+ * of cells - so it needs a far larger bound than a prose answer. Truncating
+ * one does not shorten it, it corrupts it: the JSON stops parsing and the
+ * table reads back empty. `parseTable` already bounds every part of it, so
+ * this is only a backstop against a value that is not a table at all.
+ */
+export const MAX_TABLE_VALUE = 100_000;
+
 /**
  * Keep only fields the framework asks for, trimmed and bounded. A model that
  * invents a field, or answers one with a paragraph of filler, gets that
@@ -99,11 +126,12 @@ export function parseModelValues(f: PmfFramework, input: unknown): Partial<Recor
   if (!input || typeof input !== "object") return {};
   const raw = (input as { values?: unknown }).values ?? input;
   if (!raw || typeof raw !== "object") return {};
-  const known = new Set(f.fields.map((x) => x.key));
+  const limits = new Map(f.fields.map((x) => [x.key, x.table ? MAX_TABLE_VALUE : MAX_TEXT_VALUE]));
   const out: Partial<Record<PmfFieldKey, string>> = {};
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (!known.has(k) || typeof v !== "string") continue;
-    const text = v.trim().slice(0, 2_000);
+    const limit = limits.get(k);
+    if (limit === undefined || typeof v !== "string") continue;
+    const text = v.trim().slice(0, limit);
     if (text.length === 0) continue;
     out[k as PmfFieldKey] = text;
   }

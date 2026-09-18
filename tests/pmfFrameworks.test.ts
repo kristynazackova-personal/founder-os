@@ -4,6 +4,7 @@ import {
   asFrameworkId, fieldsOfStage, frameworkOf, stageOfField,
 } from "@/lib/domain/pmfFrameworks";
 import { isPlaceholder, parseModelValues, scaffoldDoc } from "@/lib/domain/pmfDoc";
+import { readTable } from "@/lib/domain/pmfTable";
 import { PMF_STEPS } from "@/lib/domain/pmf";
 
 const NOW = new Date("2026-09-18T10:00:00Z");
@@ -70,12 +71,21 @@ describe("the build framework's first rule", () => {
     expect(PMF_FRAMEWORKS.build.rules[0]).toContain("The ideas should be yours");
   });
 
-  it("scaffolds every field as a question, never an answer", () => {
+  it("scaffolds every text field as a question, never an answer", () => {
     const doc = scaffoldDoc(PMF_FRAMEWORKS.build, INPUT, NOW);
     expect(doc.framework).toBe("build");
-    for (const field of PMF_FRAMEWORKS.build.fields) {
+    for (const field of PMF_FRAMEWORKS.build.fields.filter((f) => !f.table)) {
       expect(isPlaceholder(doc.values[field.key]), field.key).toBe(true);
       expect(doc.values[field.key]).toContain("Selvenn");
+    }
+  });
+
+  it("scaffolds a table field as genuinely empty, because its columns come from answers that do not exist yet", () => {
+    const doc = scaffoldDoc(PMF_FRAMEWORKS.build, INPUT, NOW);
+    for (const field of PMF_FRAMEWORKS.build.fields.filter((f) => f.table)) {
+      const table = readTable(doc.values[field.key]);
+      expect(table.columns, field.key).toEqual([]);
+      expect(table.rows, field.key).toEqual([]);
     }
   });
 });

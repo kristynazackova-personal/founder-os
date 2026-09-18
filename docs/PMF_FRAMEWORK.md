@@ -126,20 +126,78 @@ framework did not ask for, any non-string, any blank, and bounds the rest.
 says so and points at the edit form, which also writes a version. Generation
 still works without a key - it just stops at the scaffold.
 
+## Three of the build stages are tables
+
+Target user, problem and solutions are lists with parameters, not paragraphs.
+Her doc gives each of them a small table and then invites you to change it:
+
+> "Feel free to add or remove the parameters I proposed to look at based on
+> what you care about. E.g., do you not care about profit? Then don't look at
+> the willingness to pay or pay strength."
+
+So **the column set is an output of the framework, not part of its
+definition**. A table field is marked `table: true` in the registry, and its
+stored value is JSON holding its columns AND its rows together - a row can
+never be read against a column set it was not filled in under.
+
+**Columns come from the stages above, and only from those.** The generator
+feeds the model the answers from this table's stage and every stage before it,
+never the ones after, because a later stage is downstream of this one and
+feeding it back would be circular. Segments are derived from stage 1 (what it
+does, the user's outcome, what the FOUNDER wants, the six-month picture),
+pains from stage 1 plus the chosen segment, solutions from those plus the
+chosen pains. The strongest signal is *what do you want out of it*: an
+impact-first answer drops pay-strength, which is her own example, and it does
+exactly that in practice - a founder who wrote "usefulness and thank-yous, I
+do not care about profit" got size, urgency, already-solved, reachability,
+early-adopter tendency and can-you-talk-to-one-this-week, and no pay-strength
+column at all.
+
+**Three rules the table format cannot be allowed to break.**
+
+- *The first column names the row.* Six scoring parameters and no label is a
+  scorecard with nothing on it. `withRowLabelColumn` adds it back if the model
+  forgets, dropping the weakest parameter if that pushes the set past six.
+- *A cell has to fit its own control.* `[to fill]` questions belong in text
+  cells. A choice or scale cell takes a listed option or a number in range -
+  anything else is dropped by `cellValue`, on the way in from the model and on
+  the way in from the form alike, because the select cannot render it and the
+  page would show a dash while the document said something else.
+- *The founder's rows are theirs.* "Re-derive columns" is a deliberate button,
+  never automatic: re-deriving silently would rewrite the question after the
+  answers were given. The save form posts the stored column set back, so a row
+  is always saved against the columns that were on screen.
+
+**Where the reasoning lives.** `docs/research/pmf-build/` is one file per
+stage - what her doc fixes, what the prioritisation literature adds, and the
+condition each candidate column earns its place under.
+`src/lib/domain/pmfPrompts.ts` is the operational form of those files. Change
+the research first and the prompt second, or the reasoning goes missing the
+moment someone edits a rule.
+
+**It needs a model and it is not fast.** Two calls in sequence - columns, then
+rows against those columns - take 40 to 50 seconds. The button says what it is
+doing while it runs. Without a key the empty state says so and rows can still
+be added by hand.
+
 ## Where the code lives
 
 ```
 src/lib/domain/pmf.ts             the conversation framework's stages and quotes, pmfStateFor
 src/lib/domain/pmfFrameworks.ts   the registry: both frameworks, their fields, their aiRole
 src/lib/domain/pmfDoc.ts          the fields, the scaffold, versioning, model-output parsing
+src/lib/domain/pmfTable.ts        the table model: columns, rows, and what a cell may hold
+src/lib/domain/pmfPrompts.ts      the table prompts, generated from docs/research/pmf-build/
 src/lib/services/pmfDocs.ts       read, generate, edit, rewrite (append-only)
 src/lib/services/ai.ts            the one place a model gets called
 src/app/actions/pmf.ts            generate / save / rewrite, each revalidating the page
 src/components/pmf/PmfEditor.tsx  per-step answers, edit form, rewrite box, version list
+src/components/pmf/PmfTable.tsx   a table stage: derive columns, edit rows, save a version
 src/app/app/[appId]/pmf/page.tsx  the tab
 tests/pmf.test.ts                 step order, completeness, the em-dash rule, state picking
 tests/pmfDoc.test.ts              fields, scaffold, versioning, the parser's refusals
 tests/pmfFrameworks.test.ts       both frameworks' integrity, and that build never answers
+tests/pmfTable.test.ts            the table parser, the cell rules, the prompts
 ```
 
 Pure domain, no schema, no writes, and nothing on the page depends on a

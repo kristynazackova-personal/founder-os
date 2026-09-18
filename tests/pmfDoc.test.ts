@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   answeredCount, completion, incompleteStages, isPlaceholder,
+  MAX_TEXT_VALUE,
   nextVersion, parseModelValues, parseStoredValues, scaffoldDoc, type PmfDoc,
 } from "@/lib/domain/pmfDoc";
+import { MAX_COLUMNS, MAX_ROWS, readTable, serializeTable, tableAnswered, type PmfTable } from "@/lib/domain/pmfTable";
 import { PMF_FRAMEWORKS, fieldsOfStage } from "@/lib/domain/pmfFrameworks";
 import { extractJson } from "@/lib/services/ai";
 
@@ -135,5 +137,44 @@ describe("extractJson", () => {
     expect(extractJson('Sure!\n```json\n{"values":{"mechanism":"Cost."}}\n```')).toEqual({ values: { mechanism: "Cost." } });
     expect(extractJson("no json here")).toBeNull();
     expect(extractJson('{"broken": ')).toBeNull();
+  });
+});
+
+describe("a table field survives the round trip through storage", () => {
+  const BUILD = PMF_FRAMEWORKS.build;
+  const TABLE_FIELD = BUILD.fields.find((f) => f.table)!;
+
+  // A full table is far longer than a prose answer. Truncating it does not
+  // shorten it, it corrupts the JSON and the table reads back empty - which is
+  // exactly what happened before the cap became field-aware.
+  const big: PmfTable = {
+    columns: Array.from({ length: MAX_COLUMNS }, (_, i) => ({
+      key: `c${i}`,
+      label: `Column ${i}`,
+      kind: "text" as const,
+      anchors: "a".repeat(300),
+      why: "w".repeat(200),
+    })),
+    rows: Array.from({ length: MAX_ROWS }, (_, r) => ({
+      id: `r${r}`,
+      cells: Object.fromEntries(Array.from({ length: MAX_COLUMNS }, (_, i) => [`c${i}`, "x".repeat(600)])),
+    })),
+  };
+
+  it("stores the whole table, not the first 2,000 characters", () => {
+    const serialized = serializeTable(big);
+    expect(serialized.length).toBeGreaterThan(2_000);
+    const stored = parseStoredValues(BUILD, { [TABLE_FIELD.key]: serialized });
+    expect(stored[TABLE_FIELD.key]).toBe(serialized);
+    const back = readTable(stored[TABLE_FIELD.key]);
+    expect(back.columns).toHaveLength(MAX_COLUMNS);
+    expect(back.rows).toHaveLength(MAX_ROWS);
+    expect(tableAnswered(back)).toBe(true);
+  });
+
+  it("still bounds a prose field at 2,000 characters", () => {
+    const prose = BUILD.fields.find((f) => !f.table)!;
+    const stored = parseStoredValues(BUILD, { [prose.key]: "y".repeat(5_000) });
+    expect(stored[prose.key]).toHaveLength(MAX_TEXT_VALUE);
   });
 });

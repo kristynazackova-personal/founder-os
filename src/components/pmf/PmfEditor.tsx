@@ -12,6 +12,8 @@ import { useActionState, useState } from "react";
 import { generatePmfAction, rewritePmfAction, savePmfAction, type PmfFormState } from "@/app/actions/pmf";
 import { SOURCE_LABEL, isAnswered, isPlaceholder, type PmfDoc } from "@/lib/domain/pmfDoc";
 import { fieldsOfStage, frameworkOf, type PmfFrameworkId } from "@/lib/domain/pmfFrameworks";
+import { readTable } from "@/lib/domain/pmfTable";
+import { FrameworkTable } from "./PmfTable";
 
 function Status({ state }: { state: PmfFormState }) {
   if (!state) return null;
@@ -49,6 +51,14 @@ export function StageAnswers({ appId, framework, stage, doc }: { appId: string; 
         <dl className="mt-3 flex flex-col gap-3">
           {fields.map((f) => {
             const value = doc?.values[f.key];
+            if (f.table) {
+              return (
+                <div key={f.key}>
+                  <dt className="text-xs font-semibold">{f.label}</dt>
+                  <FrameworkTable appId={appId} framework={framework} field={f.key} table={readTable(value)} prompt={f.prompt} />
+                </div>
+              );
+            }
             return (
               <div key={f.key}>
                 <dt className="text-xs font-semibold">{f.label}</dt>
@@ -67,7 +77,7 @@ export function StageAnswers({ appId, framework, stage, doc }: { appId: string; 
   return (
     <form action={action} className="mt-5 flex flex-col gap-4 rounded-xl border border-stone-300 bg-white p-5">
       <div className="text-xs font-semibold tracking-wide text-[var(--muted)] uppercase">Editing - saving writes a new version</div>
-      {fields.map((f) => (
+      {fields.filter((f) => !f.table).map((f) => (
         <div key={f.key}>
           <label className="label" htmlFor={f.key}>
             {f.label}

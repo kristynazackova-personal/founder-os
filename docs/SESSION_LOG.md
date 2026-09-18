@@ -498,3 +498,70 @@ Google today only because gate research needed web-grounded search and the
 `GEMINI_API_KEY` fallback already existed in the founder's other stack.
 Anthropic's `web_search_20260209` server tool covers the same need, so
 switching is a contained change to that one file plus an `ANTHROPIC_API_KEY`.
+
+---
+
+## 2026-09-18 (tables) - the three list stages became real tables
+
+Target user, problem and solutions are lists with parameters, not paragraphs.
+Her doc gives each of them a small table and then hands the parameters back:
+*"feel free to add or remove the parameters I proposed to look at based on
+what you care about. E.g., do you not care about profit? Then don't look at
+the willingness to pay or pay strength."*
+
+So the column set is an OUTPUT of the framework, derived per business from the
+stages above the table, and the stored value of a table field is JSON carrying
+its columns and its rows together - a row can never be read against a column
+set it was not filled in under.
+
+### The research came first
+
+`docs/research/pmf-build/` - one file per stage plus `columns.md`, each
+separating what her doc fixes from what the prioritisation literature adds,
+with a candidate-column table stating the condition each column earns its
+place under and what it does NOT settle. `src/lib/domain/pmfPrompts.ts` is the
+operational form of those files: the rule in the code, the reasoning in the
+research, and the research changes first.
+
+It settled the questions her doc leaves open. Frequency belongs beside
+severity (severity alone ranks a rare catastrophe above a daily nuisance).
+Urgency predicts early traction better than size, which is the beachhead
+argument. Three to six columns, because below three there is nothing to
+compare on and above six nobody fills it in. No RICE at this size: it wants a
+reach number and person-months of effort, and a founder who has not run the
+interviews has neither, so the score would be two guesses in a trench coat.
+
+### Verified against the real model, not just the tests
+
+A business whose founder wrote *"usefulness and thank-yous, I do not care
+about profit"* got size, urgency, already-solved, reachability, early-adopter
+tendency and can-you-talk-to-one-this-week. No pay-strength column - her own
+example, reproduced without being hard-coded.
+
+Three things only a real run showed:
+
+- **A 2,000-character cap silently ate every table.** `parseModelValues`
+  bounded a stored value at 2,000 characters, which is right for a paragraph
+  and fatal for JSON: truncation does not shorten a table, it corrupts it, and
+  `readTable` then returns an empty one. Generation reported success and the
+  page showed the empty state. The cap is per field now, 100,000 for a table.
+- **The model returned six parameters and nothing to score.** Asked for
+  columns, it gave columns - no column naming the row. The prompt asks for it
+  and `withRowLabelColumn` adds it back, dropping the weakest parameter if
+  that would push the set past six.
+- **`[to fill]` questions landed in choice cells and vanished.** A select has
+  no such option, so the page showed a dash while the document said something
+  else. `cellValue` now reads every cell against its own column - a listed
+  option, a number in range, or nothing - on the way in from the model and on
+  the way in from the form alike. Questions belong in text cells.
+
+The generated rows come back named and unscored, which is right: her caution
+says S/M/L for a consumer segment is a judgement to ask for, never to assert.
+
+### Cost of it
+
+Two model calls in sequence (columns, then rows against those columns) take 40
+to 50 seconds. Fine on Railway, which runs a long-lived server; it would not
+survive a serverless function timeout. "Re-derive columns" stays a deliberate
+button - re-deriving on its own would rewrite the question after the answers
+were given.

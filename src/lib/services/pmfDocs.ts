@@ -20,6 +20,8 @@ import type { App } from "../db/schema";
 import { INDUSTRY_LABEL, NATURE_LABEL } from "../domain/gates";
 import { nextVersion, parseModelValues, parseStoredValues, scaffoldDoc, type PmfDoc, type PmfDocSource, type PmfFieldKey } from "../domain/pmfDoc";
 import { DEFAULT_FRAMEWORK, asFrameworkId, frameworkOf, type PmfFramework, type PmfFrameworkId } from "../domain/pmfFrameworks";
+import { parseTable, readTable, serializeTable, withRowLabelColumn, type PmfTable } from "../domain/pmfTable";
+import { columnPrompt, promptFor, rowPrompt, tableStageForField } from "../domain/pmfPrompts";
 import { profileOf } from "./gates";
 import { aiConfigured, askForJson } from "./ai";
 import { latestAssessment } from "./diagnosis";
@@ -227,4 +229,75 @@ export async function rewriteDoc(app: App, framework: PmfFrameworkId, comment: s
   const values = parseModelValues(f, res.json);
   if (Object.keys(values).length === 0) return { doc: null, error: res.error ?? "The rewrite came back empty. Nothing was saved." };
   return { doc: await appendVersion(app.id, f.id, values, { source: "rewritten", comment: trimmed }), error: null };
+}
+
+// ---------------------------------------------------------------- tables
+
+/**
+ * Generate one table: its columns first, then its rows against those columns.
+ *
+ * Two calls rather than one, because the column set is a decision in its own
+ * right - her doc treats the parameters as something to choose per business -
+ * and asking for both at once produces rows shaped to columns the model has
+ * not committed to yet.
+ *
+ * The prompts are in domain/pmfPrompts.ts, condensed from the research in
+ * docs/research/pmf-build/. Rows are prompts with their cells filled in as
+ * questions: the framework's first rule is not suspended by a table.
+ */
+export async function generateTable(app: App, framework: PmfFrameworkId, field: string): Promise<{ table: PmfTable | null; error: string | null }> {
+  const stage = tableStageForField(field);
+  if (!stage) return { table: null, error: "That field is not a table." };
+  if (!aiConfigured()) return { table: null, error: "Generating a table needs a model key on this deployment. Add rows by hand instead." };
+
+  const f = frameworkOf(framework);
+  const spec = promptFor(stage);
+  const doc = await latestDoc(app.id, f.id);
+  const ctx = await contextFor(app);
+  const business = [
+    app.name,
+    ctx.scaffoldInput.industryLabel,
+    ctx.scaffoldInput.natureLabel,
+    app.url ?? "",
+  ].filter(Boolean).join(" · ");
+
+  // Only the answers ABOVE this table, in framework order - that is what the
+  // columns are derived from, and feeding later stages back would be circular.
+  const stageIndex = f.stages.findIndex((x) => x.key === spec.stage);
+  const above = f.fields.filter((x) => {
+    const at = f.stages.findIndex((st) => st.key === x.stage);
+    return at >= 0 && at <= stageIndex && x.key !== field && !x.table;
+  });
+  const answers = above
+    .map((x) => {
+      const v = doc?.values[x.key];
+      return v && !v.startsWith("[to fill]") ? `${x.label}: ${v}` : null;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  const colRes = await askForJson(columnPrompt(spec, { business, answers }));
+  const derived = parseTable(colRes.json).columns;
+  if (derived.length === 0) return { table: null, error: colRes.error ?? "The model returned no usable columns." };
+  const columns = withRowLabelColumn(derived, spec.rowLabel.label, spec.rowLabel.prompt);
+
+  const rendered = columns
+    .map((c) => `- ${c.key} (${c.label}, ${c.kind}${c.options ? `: ${c.options.join(" / ")}` : c.kind === "scale" ? `: ${c.min} to ${c.max}` : ""})${c.anchors ? ` - ${c.anchors}` : ""}`)
+    .join("\n");
+  const rowRes = await askForJson(rowPrompt(spec, { business, answers, columns: rendered }));
+  const rows = parseTable({ columns, rows: (rowRes.json as { rows?: unknown } | null)?.rows }).rows;
+
+  const table: PmfTable = { columns, rows };
+  await appendVersion(app.id, f.id, { [field]: serializeTable(table) }, { source: "generated" });
+  return { table, error: null };
+}
+
+/** Save edited rows against the columns already stored, which the form cannot change. */
+export async function saveTable(app: App, framework: PmfFrameworkId, field: string, rows: PmfTable["rows"]): Promise<PmfTable> {
+  const f = frameworkOf(framework);
+  const doc = await latestDoc(app.id, f.id);
+  const existing = readTable(doc?.values[field]);
+  const table = parseTable({ columns: existing.columns, rows });
+  await appendVersion(app.id, f.id, { [field]: serializeTable(table) }, { source: "edited" });
+  return table;
 }

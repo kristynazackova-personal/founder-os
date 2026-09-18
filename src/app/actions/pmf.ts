@@ -5,7 +5,8 @@ import { requireUser } from "@/lib/auth";
 import { getAppForUser } from "@/lib/services/apps";
 import type { PmfFieldKey } from "@/lib/domain/pmfDoc";
 import { asFrameworkId, frameworkOf } from "@/lib/domain/pmfFrameworks";
-import { generateDoc, rewriteDoc, saveEdit } from "@/lib/services/pmfDocs";
+import { generateDoc, generateTable, rewriteDoc, saveEdit, saveTable } from "@/lib/services/pmfDocs";
+import { rowsFromForm, readTable } from "@/lib/domain/pmfTable";
 
 export type PmfFormState = { error?: string; ok?: string } | undefined;
 
@@ -63,4 +64,38 @@ export async function rewritePmfAction(appId: string, framework: string, _prev: 
   if (error || !doc) return { error: error ?? "Could not rewrite." };
   done(app.id);
   return { ok: `Rewritten as version ${doc.version}.` };
+}
+
+/** Derive this table's columns from the answers above it, then draft rows. */
+// The second argument is React's previous form state, which this action does
+// not read: the signature comes from useActionState, not from us.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function generateTableAction(appId: string, framework: string, field: string, _prev: PmfFormState): Promise<PmfFormState> {
+  const user = await requireUser();
+  const app = await getAppForUser(appId, user.id);
+  if (!app) return { error: "App not found." };
+  const { table, error } = await generateTable(app, asFrameworkId(framework), field);
+  if (error || !table) return { error: error ?? "Could not build the table." };
+  done(app.id);
+  return { ok: `${table.columns.length} columns and ${table.rows.length} suggested rows.` };
+}
+
+/**
+ * Save edited rows. The columns are NOT taken from the form - they come from
+ * the stored table, so a row can never be saved against a column set the
+ * founder was not looking at.
+ */
+export async function saveTableAction(appId: string, framework: string, field: string, _prev: PmfFormState, formData: FormData): Promise<PmfFormState> {
+  const user = await requireUser();
+  const app = await getAppForUser(appId, user.id);
+  if (!app) return { error: "App not found." };
+  const stored = readTable(String(formData.get("__columns") ?? ""));
+  const rows = rowsFromForm(stored.columns, formData.entries());
+  try {
+    const table = await saveTable(app, asFrameworkId(framework), field, rows);
+    done(app.id);
+    return { ok: `Saved ${table.rows.length} row${table.rows.length === 1 ? "" : "s"}.` };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Could not save the table." };
+  }
 }
