@@ -721,3 +721,18 @@ table JSON. Load the page.
 Also: server actions cap request bodies at 1 MB by default, so
 `experimental.serverActions.bodySizeLimit` is 12 MB. The real limit is enforced
 in the service, which can say why a file was refused.
+
+**Follow-up, same day: the URL is shown and editable.** The prefill panel now
+displays the address it will run against, prefilled from the business URL in
+Settings, as a text field. Editing it changes that run only; a separate
+checkbox, unticked by default, offers to save it back to Settings. Rewriting a
+business setting as a side effect of a research run is not something to do
+silently. `domain/url.ts` holds the one normaliser both the panel and the
+Settings action use, so they cannot disagree about whether the address changed.
+
+The trap: the field must NOT be `type="url"`. The browser's own validation
+rejects a bare `focustimer.com` before the form is submitted at all - which is
+exactly the input `normalizeUrl` exists to accept - and the founder gets a
+native message they cannot act on. It silently swallowed two submissions in
+testing and looked like the button was dead. `type="text"` with
+`inputMode="url"`, and let the server say what is wrong.

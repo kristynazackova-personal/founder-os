@@ -141,8 +141,16 @@ its own button, one at a time: there is no "run the whole thing" control, and
 deliberately so, because stage 3 derives from a stage 2 the founder is meant to
 have read and corrected first.
 
-**Evidence**: the founder ticks their website, uploads a business case, or
-both. The site is fetched and reduced to its visible words; an upload may be
+**Evidence**: the founder reads their website, uploads a business case, or
+both. The panel SHOWS the address it will run against - prefilled from the
+business URL in Settings - and it is editable, so a run can be pointed at a
+landing page, a different product or a competitor without touching the
+business record. Changing it there changes only that run; a separate,
+unticked-by-default checkbox offers to save it back to Settings, because
+quietly rewriting a business setting from a side panel is how a founder loses
+a URL they did not know they were editing. `domain/url.ts` normalises the
+address for both the panel and Settings, so the two can never disagree about
+whether it changed. The site is fetched and reduced to its visible words; an upload may be
 PDF, Word `.docx`, or plain text, up to 10 MB. Both are normalised and capped
 at 40,000 characters - stage 1 is four sentences, and a longer document is not
 a better one. Everything fails soft and says why: a site rendered entirely by

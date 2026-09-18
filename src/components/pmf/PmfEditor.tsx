@@ -57,18 +57,38 @@ export function PrefillPanel({ appId, framework, appUrl }: { appId: string; fram
         </p>
       </div>
 
-      <label className="flex items-start gap-2 text-sm">
+      <div className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-3">
+        <label className="flex items-start gap-2 text-sm font-medium">
+          <input type="checkbox" name="use_website" defaultChecked className="mt-0.5 h-4 w-4" />
+          <span>Read this website</span>
+        </label>
         <input
-          type="checkbox"
-          name="use_website"
-          defaultChecked={Boolean(appUrl)}
-          disabled={!appUrl}
-          className="mt-0.5 h-4 w-4"
+          // Deliberately not type="url": the browser's own validation rejects
+          // a bare "focustimer.com" before the form is ever submitted, and
+          // that is exactly what normalizeUrl is built to accept. Native
+          // validation here refuses input the server would have handled, with
+          // a message the founder cannot act on.
+          type="text"
+          name="website_url"
+          defaultValue={appUrl ?? ""}
+          placeholder="https://your-product.com"
+          inputMode="url"
+          autoComplete="url"
+          className="input text-sm"
+          aria-label="Website to read"
         />
-        <span className={appUrl ? "" : "text-[var(--muted)]"}>
-          {appUrl ? <>Read my website <span className="text-[var(--muted)]">({appUrl})</span></> : "No website on this business yet"}
-        </span>
-      </label>
+        <p className="text-xs leading-relaxed text-[var(--muted)]">
+          {appUrl ? (
+            <>The research runs against this address. It is your business URL from Settings - change it here to point this run somewhere else.</>
+          ) : (
+            <>The research runs against this address. This business has no URL in Settings yet.</>
+          )}
+        </p>
+        <label className="flex items-start gap-2 text-xs text-[var(--muted)]">
+          <input type="checkbox" name="save_url" className="mt-0.5 h-3.5 w-3.5" />
+          <span>Also save this as the business URL in Settings</span>
+        </label>
+      </div>
 
       <label className="flex flex-col gap-1 text-sm">
         <span>Or upload a business case</span>

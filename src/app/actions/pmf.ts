@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import { getAppForUser } from "@/lib/services/apps";
+import { getAppForUser, updateApp } from "@/lib/services/apps";
+import { normalizeUrl, sameUrl } from "@/lib/domain/url";
 import type { PmfFieldKey } from "@/lib/domain/pmfDoc";
 import { asFrameworkId, frameworkOf } from "@/lib/domain/pmfFrameworks";
 import { generateDoc, generateTable, prefillGoalStage, rewriteDoc, saveEdit, saveTable } from "@/lib/services/pmfDocs";
@@ -114,10 +115,24 @@ export async function prefillPmfAction(appId: string, framework: string, _prev: 
   const raw = formData.get("document");
   const file = raw instanceof File && raw.size > 0 ? raw : null;
   const useWebsite = formData.get("use_website") === "on";
-  if (!useWebsite && !file) return { error: "Tick your website, choose a document, or both." };
+  const typed = String(formData.get("website_url") ?? "").trim();
+  const websiteUrl = useWebsite ? normalizeUrl(typed) : null;
+
+  if (useWebsite && typed && !websiteUrl) return { error: `"${typed}" is not a web address I can read.` };
+  if (!websiteUrl && !file) return { error: "Give a website address, choose a document, or both." };
 
   try {
-    const res = await prefillGoalStage(app, asFrameworkId(framework), { useWebsite, file });
+    const res = await prefillGoalStage(app, asFrameworkId(framework), { websiteUrl, file });
+
+    // Changing the address here only changes THIS run, unless they ask for it
+    // to stick. Quietly rewriting a business setting from a side panel is how
+    // a founder loses a URL they did not know they were editing.
+    let saved = "";
+    if (websiteUrl && formData.get("save_url") === "on" && !sameUrl(websiteUrl, app.url)) {
+      await updateApp(app.id, { url: websiteUrl });
+      revalidatePath(`/app/${appId}`, "layout");
+      saved = ` Saved ${websiteUrl} as this business's website.`;
+    }
     done(appId);
     if (res.error && res.filled.length === 0 && res.asked.length === 0) return { error: res.error };
     const wrote = res.filled.length > 0 ? `Filled ${res.filled.length} field${res.filled.length === 1 ? "" : "s"} from ${res.sources}.` : `Read ${res.sources}.`;
@@ -125,7 +140,7 @@ export async function prefillPmfAction(appId: string, framework: string, _prev: 
     // A partial failure is still worth reporting: one source may have worked
     // and the other not, and the founder should know which they are reading.
     const note = res.error ? ` ${res.error}` : "";
-    return { ok: `${wrote}${asked}${note} Edit anything that is wrong, then save.` };
+    return { ok: `${wrote}${asked}${note}${saved} Edit anything that is wrong, then save.` };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Prefill failed." };
   }

@@ -328,7 +328,7 @@ export type PrefillResult = { filled: string[]; asked: string[]; sources: string
 export async function prefillGoalStage(
   app: App,
   framework: PmfFrameworkId,
-  opts: { useWebsite: boolean; file?: File | null },
+  opts: { websiteUrl?: string | null; file?: File | null },
 ): Promise<PrefillResult> {
   const f = frameworkOf(framework);
   const keys = new Set(prefillFields(f).map((x) => x.key));
@@ -339,8 +339,10 @@ export async function prefillGoalStage(
   let website: string | null = null;
   let document: string | null = null;
 
-  if (opts.useWebsite) {
-    const res = await fetchWebsiteText(app.url);
+  // The URL is passed in, not read off the record: the founder can point this
+  // run at a different address without changing their business settings.
+  if (opts.websiteUrl) {
+    const res = await fetchWebsiteText(opts.websiteUrl);
     website = res.text;
     if (res.error) problems.push(res.error);
   }
