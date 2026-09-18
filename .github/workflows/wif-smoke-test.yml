@@ -20,16 +20,42 @@ jobs:
   exchange:
     runs-on: ubuntu-latest
     env:
-      # From the Console. None of these is a secret - they are identifiers.
-      # The organization id is a UUID from Settings -> Organization. It is NOT
-      # the GitHub numeric owner id that went into the federation rule.
-      ANTHROPIC_ORGANIZATION_ID: "00000000-0000-0000-0000-000000000000"
-      ANTHROPIC_FEDERATION_RULE_ID: "fdrl_REPLACE_ME"
-      ANTHROPIC_SERVICE_ACCOUNT_ID: "svac_REPLACE_ME"
-      # Only needed when the rule covers more than one workspace. Ours covers
-      # one, so it is left out of the request body below.
-      ANTHROPIC_WORKSPACE_ID: ""
+      # Repository variables, NOT secrets: Settings -> Secrets and variables ->
+      # Actions -> Variables. None of the three is a credential, and a masked
+      # secret would hide a wrong value in the logs instead of showing it.
+      #
+      # ANTHROPIC_ORGANIZATION_ID is a UUID from the Console's Settings ->
+      # Organization. It is NOT the GitHub numeric owner id that went into the
+      # federation rule's match conditions.
+      ANTHROPIC_ORGANIZATION_ID: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
+      ANTHROPIC_FEDERATION_RULE_ID: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
+      ANTHROPIC_SERVICE_ACCOUNT_ID: ${{ vars.ANTHROPIC_SERVICE_ACCOUNT_ID }}
     steps:
+      - name: Check the variables are set
+        run: |
+          set -euo pipefail
+          # An unset repository variable is an empty string, not an error, so
+          # without this the job sends a blank rule id and fails at the
+          # exchange - which reads like a broken rule rather than a typo.
+          missing=""
+          for v in ANTHROPIC_ORGANIZATION_ID ANTHROPIC_FEDERATION_RULE_ID ANTHROPIC_SERVICE_ACCOUNT_ID; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Not set as repository variables:$missing"
+            echo "Settings -> Secrets and variables -> Actions -> Variables tab."
+            exit 1
+          fi
+          case "$ANTHROPIC_FEDERATION_RULE_ID" in fdrl_*) ;; *)
+            echo "::error::ANTHROPIC_FEDERATION_RULE_ID should start with fdrl_"; exit 1 ;; esac
+          case "$ANTHROPIC_SERVICE_ACCOUNT_ID" in svac_*) ;; *)
+            echo "::error::ANTHROPIC_SERVICE_ACCOUNT_ID should start with svac_"; exit 1 ;; esac
+          # The commonest mix-up: pasting the GitHub numeric owner id here.
+          case "$ANTHROPIC_ORGANIZATION_ID" in
+            *-*-*-*-*) ;;
+            *) echo "::error::ANTHROPIC_ORGANIZATION_ID should be a UUID from the Console's Settings -> Organization, not the GitHub owner id."; exit 1 ;;
+          esac
+          echo "All three set."
       - name: Fetch the GitHub OIDC token
         run: |
           set -euo pipefail
