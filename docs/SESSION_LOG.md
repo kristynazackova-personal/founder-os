@@ -306,3 +306,47 @@ instruction and it is trivially easy to reintroduce.
 - Her mentoring quotes name no mentee, but the transcript they come from is
   a real client conversation in a private repo. Nothing identifying the
   mentee or his company was ported.
+
+## 2026-09-18 (end of day) - the PMF framework fills itself in, versioned
+
+The framework tab was read-only. Now it holds a document per business.
+
+- **A new business is filled top to bottom at creation.** The scaffold lands
+  synchronously inside `createApp`, so the tab is never empty; the model fill
+  appends v2 in the background when a key is configured.
+- **An existing business fills on demand.** No document means a "Fill in the
+  framework" button. Selvenn is exactly this case, and it needed no flag -
+  absence of a document is the signal.
+- **Editing appends.** One form per step so a founder can save the step they
+  are on; each save is a new version.
+- **A comment drives a rewrite**, also a new version, with the comment stored
+  next to the version it produced.
+
+### Decisions worth keeping
+
+- `pmf_documents` is append-only, unique on (app, version). A concurrent save
+  loses the index race, re-reads and rebases instead of clobbering. The first
+  draft is always still there.
+- **The scaffold never guesses.** Every field it writes is a question aimed at
+  that business, prefixed `[to fill]`. A guessed answer would be read as a
+  finding, which is worse than a blank. The model prompt carries the same rule
+  and is told not to invent a customer, a competitor number, a revenue figure
+  or an interview finding; `parseModelValues` drops anything the framework did
+  not ask for, plus non-strings and blanks, and bounds the rest to 2,000 chars.
+- Steps 3 to 5 depend on conversations that may not have happened, so the
+  prompt says to leave them as prompts unless there is evidence otherwise.
+- `services/ai.ts` is now the single model call site, shared with gate
+  research. Both features are optional and both have an offline path.
+- Every action revalidates the page. That is the connect-checklist bug and it
+  would have reproduced exactly here: write the version, show the old one.
+- Rewriting is the one thing that genuinely needs a key, so the box disables
+  itself and points at the edit form rather than pretending.
+
+### Open
+
+- No diff between versions, and no restore. The list shows what happened and
+  the comment behind it; rolling back means copying text forward by hand.
+- The model fill at creation is fire-and-forget, so a founder who lands on the
+  tab within a second or two sees the scaffold and has to reload.
+- No per-field provenance: once a version is written you can see that a model
+  filled it, not which fields it touched.

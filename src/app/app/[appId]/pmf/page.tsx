@@ -21,8 +21,12 @@ import {
 } from "@/lib/domain/pmf";
 import type { Metrics } from "@/lib/domain/metrics";
 import { PageHeader } from "@/components/ui";
+import { completion, incompleteSteps, type PmfDoc } from "@/lib/domain/pmfDoc";
+import { latestDoc, listDocs } from "@/lib/services/pmfDocs";
+import { aiConfigured } from "@/lib/services/ai";
+import { GenerateButton, RewriteBox, StepAnswers, VersionList } from "@/components/pmf/PmfEditor";
 
-function StepCard({ step, current, reason }: { step: PmfStep; current: boolean; reason?: string }) {
+function StepCard({ appId, step, current, reason, doc }: { appId: string; step: PmfStep; current: boolean; reason?: string; doc: PmfDoc | null }) {
   return (
     <section className={`card p-6 ${current ? "border-stone-900" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -59,6 +63,8 @@ function StepCard({ step, current, reason }: { step: PmfStep; current: boolean; 
         ))}
       </div>
 
+      <StepAnswers appId={appId} step={step.key} doc={doc} />
+
       <div className="mt-5">
         <div className="text-xs font-semibold tracking-wide text-[var(--muted)] uppercase">Do this</div>
         <ul className="mt-2 flex flex-col gap-1.5">
@@ -80,10 +86,12 @@ export default async function PmfPage({ params }: { params: Promise<{ appId: str
   const app = await getAppForUser(appId, user.id);
   if (!app) notFound();
 
-  const [assessment, snippet, livePlans] = await Promise.all([
+  const [assessment, snippet, livePlans, doc, versions] = await Promise.all([
     latestAssessment(app.id),
     snippetSignals(app.id),
     hasLivePlans(app.id),
+    latestDoc(app.id),
+    listDocs(app.id),
   ]);
   const metrics = (assessment?.metrics ?? null) as Metrics | null;
   const state = pmfStateFor({
@@ -134,9 +142,55 @@ export default async function PmfPage({ params }: { params: Promise<{ appId: str
         </ol>
       </section>
 
+      {doc === null ? (
+        <section className="card p-6">
+          <h2 className="font-semibold">Fill it in for {app.name}</h2>
+          <p className="help">
+            A business created from now on gets this filled top to bottom the moment it is created. {app.name} predates that,
+            so it fills on demand. The first version is written from what is already known about the business
+            {aiConfigured() ? " and then filled in further" : ""}, and anything it cannot know is left as a question aimed at
+            you rather than a guess.
+          </p>
+          <div className="mt-4">
+            <GenerateButton appId={app.id} label="Fill in the framework" />
+          </div>
+        </section>
+      ) : (
+        <section className="card flex flex-col gap-4 p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="font-semibold">Your answers</h2>
+              <p className="help">
+                Version {doc.version} · {Math.round(completion(doc) * 100)}% answered
+                {incompleteSteps(doc).length ? ` · still open at step ${PMF_STEPS.find((s) => s.key === incompleteSteps(doc)[0])?.n}` : " · complete"}
+              </p>
+            </div>
+            <GenerateButton appId={app.id} label="Fill in the gaps again" />
+          </div>
+          <RewriteBox appId={app.id} canRewrite={aiConfigured()} />
+        </section>
+      )}
+
       {PMF_STEPS.map((s) => (
-        <StepCard key={s.key} step={s} current={s.key === state.step} reason={s.key === state.step ? state.reason : undefined} />
+        <StepCard
+          key={s.key}
+          appId={app.id}
+          step={s}
+          current={s.key === state.step}
+          reason={s.key === state.step ? state.reason : undefined}
+          doc={doc}
+        />
       ))}
+
+      {versions.length > 1 ? (
+        <section className="card p-6">
+          <h2 className="font-semibold">Versions</h2>
+          <p className="help">Every edit and every rewrite appends. Nothing overwrites, so the first draft is still here.</p>
+          <div className="mt-3">
+            <VersionList docs={versions} />
+          </div>
+        </section>
+      ) : null}
 
       <section className="card p-6">
         <h2 className="font-semibold">The questions</h2>

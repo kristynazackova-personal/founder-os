@@ -5,6 +5,7 @@ import { shortId } from "../crypto";
 import { track } from "../track";
 import type { Industry, Nature } from "../domain/gates";
 import { generateGatesForApp } from "./gates";
+import { generateDoc } from "./pmfDocs";
 
 export const PLATFORMS = ["lovable", "bolt", "replit", "base44", "other"] as const;
 export type Platform = (typeof PLATFORMS)[number];
@@ -36,6 +37,14 @@ export async function createApp(
     await generateGatesForApp(app);
   } catch (err) {
     console.error("[apps] gate seeding failed:", err instanceof Error ? err.message : err);
+  }
+  // The PMF framework is filled top to bottom on creation: the scaffold lands
+  // synchronously so the tab is never empty, and the model fill appends on top
+  // when one is configured. A business that predates this fills on demand.
+  try {
+    await generateDoc(app);
+  } catch (err) {
+    console.error("[apps] PMF scaffold failed:", err instanceof Error ? err.message : err);
   }
   return app;
 }

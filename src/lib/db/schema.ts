@@ -295,3 +295,26 @@ export type Purchase = typeof purchases.$inferSelect;
 export type WrappedSubscription = typeof wrappedSubscriptions.$inferSelect;
 export type AttributionEvent = typeof attributionEvents.$inferSelect;
 export type AdSpend = typeof adSpend.$inferSelect;
+
+/**
+ * One filled-in PMF framework per version, per app (domain/pmfDoc.ts).
+ *
+ * Immutable: an edit or a rewrite writes a new row rather than updating one,
+ * so the founder can always see what the tool drafted and what they changed.
+ * The newest row for an app is the live document.
+ */
+export const pmfDocuments = pgTable(
+  "pmf_documents",
+  {
+    id: id(),
+    appId: uuid("app_id").notNull().references(() => apps.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    /** scaffold | generated | edited | rewritten */
+    source: text("source").notNull(),
+    /** The comment that asked for a rewrite, kept with the version it produced. */
+    comment: text("comment"),
+    values: jsonb("values").$type<Record<string, string>>().notNull().default({}),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("pmf_app_version_idx").on(t.appId, t.version)],
+);

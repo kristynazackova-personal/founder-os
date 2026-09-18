@@ -60,12 +60,54 @@ The framework is sequential on purpose. The failure it is built to prevent is
 running step 3 before step 2, which is why a founder with four customers is
 sent to the conversations rather than to competitor research.
 
+## The filled-in document
+
+The framework above is the questions. A **PMF document** is one business's
+answers to it, and it is versioned.
+
+**Fields.** `src/lib/domain/pmfDoc.ts` fixes fourteen fields across the five
+steps, so the edit form, the model prompt and the stored row can never
+disagree about what the framework asks for.
+
+**When it gets written.**
+
+| Trigger | Source | Notes |
+|---|---|---|
+| A business is created | `scaffold`, then `generated` | The scaffold is written synchronously, so the tab is never empty. The model fill appends v2 in the background when a key is configured. |
+| An existing business, on demand | `scaffold` / `generated` | A business that predates this feature has no document and gets a "Fill in the framework" button. Selvenn is the case this was built for. |
+| The founder edits a step | `edited` | Appends a version. |
+| The founder asks for a rewrite | `rewritten` | The comment is stored with the version it produced. |
+
+**Nothing is overwritten.** `pmf_documents` is append-only: one row per
+version, unique on (app, version), and the newest row is the live document.
+The first draft is always still there, next to what the founder changed. A
+concurrent save loses the unique-index race, re-reads and rebases rather than
+clobbering.
+
+**The scaffold never guesses.** Every field it writes is a question aimed at
+that specific business, prefixed `[to fill]`, because a guessed answer would
+be read as a finding. The model prompt carries the same rule: where it does
+not know something about this business it must write the question, and it is
+told explicitly not to invent a customer, a competitor's number, a revenue
+figure or an interview finding. `parseModelValues` then drops any field the
+framework did not ask for, any non-string, any blank, and bounds the rest.
+
+**Rewriting needs a model.** Without `GATE_RESEARCH_API_KEY` the rewrite box
+says so and points at the edit form, which also writes a version. Generation
+still works without a key - it just stops at the scaffold.
+
 ## Where the code lives
 
 ```
-src/lib/domain/pmf.ts          the framework as data, the quotes, pmfStateFor
+src/lib/domain/pmf.ts             the framework as data, the quotes, pmfStateFor
+src/lib/domain/pmfDoc.ts          the fields, the scaffold, versioning, model-output parsing
+src/lib/services/pmfDocs.ts       read, generate, edit, rewrite (append-only)
+src/lib/services/ai.ts            the one place a model gets called
+src/app/actions/pmf.ts            generate / save / rewrite, each revalidating the page
+src/components/pmf/PmfEditor.tsx  per-step answers, edit form, rewrite box, version list
 src/app/app/[appId]/pmf/page.tsx  the tab
-tests/pmf.test.ts              step order, completeness, the em-dash rule, state picking
+tests/pmf.test.ts                 step order, completeness, the em-dash rule, state picking
+tests/pmfDoc.test.ts              fields, scaffold, versioning, the parser's refusals
 ```
 
 Pure domain, no schema, no writes, and nothing on the page depends on a
