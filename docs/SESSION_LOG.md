@@ -146,3 +146,58 @@ arrive once a build carrying that code ships.
   date.
 - Roadmap item 3 next: paywall views from apps, which unblocks the
   checkout-to-paid conversion number.
+
+---
+
+## 2026-09-18 — B2C analytics (`/app/<id>/b2c`)
+
+A consumer-funnel dashboard modelled on Selvenn's `/admin/v2`, **added beside
+the existing analytics, not replacing any of it**. Diagnosis and Attribution
+are byte-for-byte unchanged; the only edit to existing code is one row in
+`src/components/AppTabs.tsx`. Reference: `docs/B2C_ANALYTICS.md`, definitions
+`docs/METRICS_AND_FUNNELS.md`.
+
+Five views under one window control (complete ISO weeks, in the URL, so a view
+is a link): Overview, Acquisition, Activation & retention, Revenue, Coverage.
+
+### What was worth deciding
+
+- **The presentation rules are the product here, not the metrics.** At
+  Founder OS denominators a bare percentage lies, so `domain/b2c.ts` enforces
+  them centrally: a rate needs a denominator of 30 or the value becomes the
+  count pair (`3 of 11`); the count always sits beside the rate; not
+  computable is `—`, never `0`; only complete ISO weeks; a cohort is held out
+  of a checkpoint until its window has elapsed, and a triangle cell is `null`
+  rather than 0%. Each of those is a test in `tests/b2c.test.ts`.
+- **No gates.** Selvenn's dashboard judges against Selvenn's own gates. A
+  multi-tenant tool has no business inventing a threshold for an app it did
+  not build, so this shows public market bands with their denominator and
+  labels them as bands.
+- **Platform comes from the install event**, the only platform signal the
+  snippet carries: a visitor is `app` if they ever reported an `install` or
+  arrived with a store source, else `web`. Coverage says so, because until a
+  build ships that calls `install`, everyone reads as web.
+- **"Loops" has no counterpart.** Founder OS never sees a customer's push or
+  email sends. Rather than a page of blanks, Coverage lists it as having no
+  source and says it is out of scope by design.
+- **The Coverage view is the honest half of the dashboard**: one row per
+  metric with its state (live / partial / no source), why, and the connection
+  that would fix it. Every `—` elsewhere has a row there.
+
+### Traps
+
+- `HOUR_MS` and a leftover `signups` binding tripped the lint gate — the
+  service does not need the hour constant, the domain module does.
+- Retention needs activity loaded from BEFORE the window: the loader fetches
+  `max(weeks × 2, 8)` weeks of history so D30 and the sparklines have
+  something to read.
+
+### Open
+
+- Nothing computes ad spend on these pages; that stays on Attribution, which
+  already has Google Ads, GA4 and manual entry feeding it.
+- `checkout_view` is only as good as the app calling it — roadmap item 3.
+  Until then "Checkout → paid" reads as a count pair or a blank, and Coverage
+  names it.
+- Cohorts are keyed on the snippet's anonymous id, so a user who switches
+  device counts twice. Fixing that needs an identity the snippet does not have.

@@ -9,6 +9,7 @@ const TABS = [
   { seg: "/pricing", label: "Pricing" },
   { seg: "/checkout", label: "Checkout" },
   { seg: "/attribution", label: "Attribution" },
+  { seg: "/b2c", label: "B2C analytics" },
   { seg: "/settings", label: "Settings" },
 ];
 

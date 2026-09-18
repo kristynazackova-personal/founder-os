@@ -21,6 +21,12 @@ Rules that are easy to break:
 > decided and the traps that cost time. Read it when resuming work, and
 > append to it as you go.
 
+`docs/B2C_ANALYTICS.md` covers the B2C analytics dashboard
+(`/app/<id>/b2c`) — the consumer funnel, added beside Diagnosis and
+Attribution rather than replacing them. Its presentation rules (a rate needs
+a denominator of 30, `—` never 0, complete ISO weeks only) live in
+`src/lib/domain/b2c.ts` and are the part to preserve.
+
 Roadmap for the current customer: `docs/ROADMAP-revenue-selvenn.md` — eight
 items, built one per session in order. Items 1, 2 and 2b shipped. **The next
 session works on item 3 only** (paywall views from apps); update the item's
