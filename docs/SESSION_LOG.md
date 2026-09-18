@@ -609,3 +609,48 @@ Generation is also visibly flaky at the row step: one run returned columns and
 zero rows, another failed outright in three seconds and recovered on a retry.
 Both degrade honestly (the status line reports the row count, an error shows
 in red), so this is a latency and reliability note rather than a defect.
+
+---
+
+## 2026-09-18 (WIF) - keyless GitHub Actions against the Claude API
+
+`founder-os` had no `.github` directory at all. It now has none again on
+purpose: a smoke-test workflow proved Workload Identity Federation works end
+to end, and was deleted, because a probe that runs on every push to `main` is
+not CI.
+
+What it proved: GitHub Actions mints an OIDC token, Anthropic exchanges it at
+`/v1/oauth/token` for a short-lived `sk-ant-oat01-` token, and that token makes
+a real `/v1/messages` call. No `ANTHROPIC_API_KEY` in repository secrets.
+
+Four things were wrong, and the order they surfaced in is the lesson.
+
+- **A diagnostic sank the job.** `base64 -d` returns non-zero on unpadded
+  base64url even after writing the decoded bytes. Under `pipefail` the last
+  line of a claims dump failed the step that had just succeeded in fetching the
+  token. Pad before decoding, and end a diagnostic in `|| true`.
+- **The organization id was the wrong UUID.** The workflow's guard could only
+  check that it was *a* UUID, not the right one.
+- **`workspace_id` was missing from the exchange.** The docs call it optional
+  for a single-workspace rule; the Console's generated snippet sends it
+  unconditionally. Believe the snippet.
+- **The subject was the hardened form.** These tokens carry
+  `repo:<owner>@<owner id>/<repo>@<repo id>:ref:refs/heads/main`, not the
+  documented `repo:<owner>/<repo>:ref:...`, so no rule written to the
+  documented shape can ever match. The upside: pinning the exact hardened
+  subject binds owner, repo AND branch by immutable numeric id in one value,
+  which is a stronger pin than the documented format offers.
+
+**The authentication history is the debugging tool, and its silence is
+evidence.** A 401 from this endpoint is deliberately opaque - the body is a
+fixed "Authentication failed" with nothing but a request id. The deny reason
+lives at `/settings/workload-identity-federation?tab=history`. An attempt that
+is missing from that page did not fail a rule check, it never reached one:
+that is a bad org id or rule id, not a bad match. Once the org id was right,
+the page immediately said `match_subject_prefix` and the last fix was one
+line.
+
+Scope, worth stating: this authenticates CI only. The app runs on Railway,
+which is not an OIDC provider Anthropic federates with, so anything calling a
+model from the running app still needs a service account key. `services/ai.ts`
+also still calls Gemini, so nothing in production uses this yet.
