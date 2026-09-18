@@ -107,9 +107,16 @@ jobs:
             -H 'content-type: application/json' -d "$BODY")
           if [ "$STATUS" != "200" ]; then
             echo "::error::Exchange failed with HTTP $STATUS."
-            echo "The API deliberately returns an opaque 401. The real reason is on"
+            # The message is fixed ("Authentication failed") but the error TYPE
+            # and the request id are not, and they separate "the rule did not
+            # match" from "there was no rule to match against" - which is what
+            # an exchange missing from the authentication history looks like.
+            echo "Response body:"
+            cat /tmp/oauth.json
+            echo
+            echo "Sent with: rule=$ANTHROPIC_FEDERATION_RULE_ID org=$ANTHROPIC_ORGANIZATION_ID sa=$ANTHROPIC_SERVICE_ACCOUNT_ID"
+            echo "Deny reasons are logged at"
             echo "https://platform.claude.com/settings/workload-identity-federation?tab=history"
-            echo "match_subject_prefix means the sub above does not fit the rule."
             exit 1
           fi
           TOKEN=$(jq -r .access_token /tmp/oauth.json)
