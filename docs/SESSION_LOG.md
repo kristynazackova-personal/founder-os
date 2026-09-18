@@ -654,3 +654,28 @@ Scope, worth stating: this authenticates CI only. The app runs on Railway,
 which is not an OIDC provider Anthropic federates with, so anything calling a
 model from the running app still needs a service account key. `services/ai.ts`
 also still calls Gemini, so nothing in production uses this yet.
+
+---
+
+## 2026-09-18 (tap target) - the business card, and the first loading state
+
+"Hard to click through the business name to its dashboard." The card was
+already a full-card `<Link>`, so the first job was finding out what was
+actually true. `elementFromPoint` at nine points across the card, at 1280 and
+390 wide, found two separate things.
+
+**The four corners were dead.** A rounded anchor clips its own hit area, so a
+point inside the visual corner falls through to the grid behind it. The fix is
+to make the anchor a square box and move the rounding to a card inside it; the
+visual is identical and all nine points now hit the link. Children are
+`pointer-events-none` so nothing inside can swallow a tap.
+
+**The bigger one was not the target at all.** `/app/<id>` runs the assessment,
+the diagnosis and the benchmark bands before it can render - 658 ms on a warm
+dev server, and there was no `loading.tsx` anywhere in the app, so a click
+produced no feedback of any kind. That reads as a missed tap, not a slow page.
+The segment now has a skeleton, and the card has `:active` and
+`focus-visible` states.
+
+Worth keeping in mind: "the button does not work" is often "the button does not
+answer". Measure the hit area before widening it.
