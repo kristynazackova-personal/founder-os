@@ -261,3 +261,48 @@ reader instead of in a file nobody opens.
   existing apps have neither, so they fall back to `other` +
   `web_subscription` until someone sets them. `gatesOf` handles that.
 - Push and email connectors are placeholders only — no adapter, no schema.
+
+## 2026-09-18 (later still) - Product Market Fit tab
+
+Pulled Kristyna's own PMF framework out of `my-personality`
+(`raw/mentoring/matium-guillen/2026-09-05.md`, a recorded session from
+2026-09-05) into founder-os as `src/lib/domain/pmf.ts`, and rendered it at
+`/app/<id>/pmf` behind a new "Product Market Fit" tab. Reference:
+`docs/PMF_FRAMEWORK.md`.
+
+### Finding it
+
+The framework is not a file. It exists as spoken advice inside a mentoring
+transcript, so the port quotes her verbatim rather than paraphrasing - the
+wording is the framework, and that repo's first rule is never invent. Two
+wrong turns first: the personal site repo (`kristynazackova`) has no
+framework in it, and `profile/story-bank.md` documents her modified STAR,
+which is an interview-answer framework, not this one. `list_repos` is what
+surfaced `my-personality`.
+
+### What shipped
+
+Five steps in her order - the bar ("if I don't get this, it's gonna hurt
+me"), qualitative before quantitative, market and competitor research with
+revenue per feature, prioritisation ("is the house gonna burn?"), then one
+revenue driver with a quarterly goal above and per-launch numbers under it.
+Plus her interview questions split by audience, the technique rules (open
+questions, never lead, watch a screen share), and a "not yet" block.
+
+`pmfStateFor` picks the step from paying customers, whether anything is
+reporting, and whether checkout is live. A founder with four customers is
+sent to the conversations, never to competitor research - that inversion is
+the failure the framework exists to prevent.
+
+A test asserts no ported string contains an em dash. That is her standing
+instruction and it is trivially easy to reintroduce.
+
+### Open
+
+- Only one transcript was mined. If she has taught this since, the later
+  sessions may have refined it.
+- The page is read-only. There is no per-app progress through the steps,
+  which would need a table.
+- Her mentoring quotes name no mentee, but the transcript they come from is
+  a real client conversation in a private repo. Nothing identifying the
+  mentee or his company was ported.
