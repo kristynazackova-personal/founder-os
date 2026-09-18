@@ -8,7 +8,7 @@
  * never blocks app creation.
  *
  * The research pass needs BOTH an AI provider that can read the web and a
- * model that will cite what it found. Without `GATE_RESEARCH_API_KEY` it does
+ * model that will cite what it found. Without `ANTHROPIC_API_KEY` it does
  * not run and the category gates stand - which is a complete product, not a
  * degraded one.
  */

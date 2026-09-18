@@ -67,7 +67,7 @@ Two layers, in `src/lib/domain/gates.ts`:
    citation: `parseResearchedGates` throws away anything without a number in
    range and a source, because **a gate with no provenance is worse than no
    gate**. It runs in the background, is fail-soft, and never blocks app
-   creation (`GATE_RESEARCH_API_KEY`; see `.env.example`).
+   creation (`ANTHROPIC_API_KEY`; see `.env.example`).
 
 Researched gates win per metric and category gates fill every gap
 (`mergeGates`), so a set is `category`, `researched` or `mixed`, and the

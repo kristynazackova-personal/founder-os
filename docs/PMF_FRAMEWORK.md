@@ -122,7 +122,7 @@ told explicitly not to invent a customer, a competitor's number, a revenue
 figure or an interview finding. `parseModelValues` then drops any field the
 framework did not ask for, any non-string, any blank, and bounds the rest.
 
-**Rewriting needs a model.** Without `GATE_RESEARCH_API_KEY` the rewrite box
+**Rewriting needs a model.** Without `ANTHROPIC_API_KEY` the rewrite box
 says so and points at the edit form, which also writes a version. Generation
 still works without a key - it just stops at the scaffold.
 

@@ -11,12 +11,8 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 
-/**
- * `ANTHROPIC_API_KEY` is the name to set. `GATE_RESEARCH_API_KEY` is accepted
- * because it is what this deployment already had when the only consumer was
- * gate research; either may hold the key, and neither is read anywhere else.
- */
-const KEY = process.env.ANTHROPIC_API_KEY ?? process.env.GATE_RESEARCH_API_KEY ?? "";
+/** One name for one secret. */
+const KEY = process.env.ANTHROPIC_API_KEY ?? "";
 
 /**
  * Opus, deliberately. Every call here is a judgement the founder will read as
