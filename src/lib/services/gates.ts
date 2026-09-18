@@ -14,6 +14,7 @@
  */
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "../db";
+import { aiConfigured, askForJson } from "./ai";
 import type { App } from "../db/schema";
 import {
   categoryGates, mergeGates, parseGateSet, parseResearchedGates,
@@ -51,10 +52,10 @@ export async function seedGates(appId: string, profile: BusinessProfile, now = n
 
 // ---------------------------------------------------------------- research
 
-const RESEARCH_MODEL = process.env.GATE_RESEARCH_MODEL ?? "gemini-2.5-flash";
-const RESEARCH_KEY = process.env.GATE_RESEARCH_API_KEY ?? process.env.GEMINI_API_KEY ?? "";
-
-export const gateResearchConfigured = (): boolean => RESEARCH_KEY.length > 0;
+// The provider, the key and the model all live in services/ai.ts. This used
+// to hold a second copy of them, which is how a deployment can end up with
+// the PMF tables working and gate research quietly not.
+export const gateResearchConfigured = (): boolean => aiConfigured();
 
 /** What the model is asked for. Kept here so the prompt is reviewable next to the parser that trusts it. */
 export function researchPrompt(app: Pick<App, "name" | "url">, profile: BusinessProfile): string {
@@ -85,28 +86,13 @@ type ResearchResult = { gates: ReturnType<typeof parseResearchedGates>; competit
  */
 export async function researchGates(app: Pick<App, "name" | "url">, profile: BusinessProfile, timeoutMs = 20_000): Promise<ResearchResult> {
   if (!gateResearchConfigured()) return { gates: [], competitors: [], error: "no research key configured" };
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(RESEARCH_MODEL)}:generateContent?key=${encodeURIComponent(RESEARCH_KEY)}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: researchPrompt(app, profile) }] }],
-          tools: [{ google_search: {} }],
-          generationConfig: { temperature: 0.2 },
-        }),
-        signal: controller.signal,
-      },
-    );
-    if (!res.ok) return { gates: [], competitors: [], error: `research HTTP ${res.status}` };
-    const body = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-    const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-    const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
-    if (!json) return { gates: [], competitors: [], error: "research returned no JSON" };
-    const parsed = JSON.parse(json) as { gates?: unknown; competitors?: unknown };
+    // Grounded: a gate is only kept when it can be attributed to a published
+    // figure, so the model has to be able to read the web to find one.
+    const res = await askForJson(researchPrompt(app, profile), { search: true, timeoutMs });
+    if (res.error) return { gates: [], competitors: [], error: res.error };
+    const parsed = (res.json ?? {}) as { gates?: unknown; competitors?: unknown };
+    if (!res.json) return { gates: [], competitors: [], error: "research returned no JSON" };
     return {
       gates: parseResearchedGates(parsed.gates),
       competitors: Array.isArray(parsed.competitors) ? parsed.competitors.filter((c): c is string => typeof c === "string").slice(0, 8) : [],
@@ -114,8 +100,6 @@ export async function researchGates(app: Pick<App, "name" | "url">, profile: Bus
     };
   } catch (err) {
     return { gates: [], competitors: [], error: err instanceof Error ? err.message : String(err) };
-  } finally {
-    clearTimeout(timer);
   }
 }
 

@@ -736,3 +736,47 @@ exactly the input `normalizeUrl` exists to accept - and the founder gets a
 native message they cannot act on. It silently swallowed two submissions in
 testing and looked like the button was dead. `type="text"` with
 `inputMode="url"`, and let the server say what is wrong.
+
+---
+
+## 2026-09-18 (Anthropic) - one provider, one place
+
+`services/ai.ts` calls the Claude API through `@anthropic-ai/sdk` instead of
+posting to Gemini's REST endpoint. Model `claude-opus-5`; grounding is
+Anthropic's `web_search_20260209` server tool in place of `google_search`.
+
+**There were two Gemini call sites, not one.** `services/gates.ts` held its own
+copy of the key, the model and the fetch, which is how a deployment can end up
+with the PMF tables working and gate research quietly not. It now calls
+`askForJson(..., { search: true })` like everything else, and
+`gateResearchConfigured()` is `aiConfigured()`. The docblock in `ai.ts` claimed
+to be "the one place a model gets called" the whole time it was not.
+
+**Env.** `ANTHROPIC_API_KEY`, with `GATE_RESEARCH_API_KEY` still read as an
+alias so an existing deployment keeps working by swapping the value.
+`GATE_RESEARCH_MODEL` is deliberately NOT read any more: a service still
+carrying `gemini-2.5-flash` in it would otherwise send that string to Anthropic
+and 404 every call. Override with `ANTHROPIC_MODEL` if ever needed.
+
+**Opus, not Sonnet.** Every call is a judgement the founder reads as a finding
+- which columns a table earns, what a landing page says the business is, which
+published figure a gate can be attributed to - at a handful of calls per
+business. The cheaper model saves nothing worth having here.
+
+**Three failure modes that are not exceptions**, now handled: a safety decline
+arrives as HTTP 200 with `stop_reason: "refusal"` and no usable content; a
+truncated answer arrives as `stop_reason: "max_tokens"` with JSON that would
+half-parse; and a grounded reply carries search-result and thinking blocks
+beside the text, so taking "the content" rather than the text blocks picks up
+the wrong thing.
+
+**Tested without a key and without the network.** `tests/ai.test.ts` points the
+SDK at a local HTTP server via `ANTHROPIC_BASE_URL` and asserts on the request
+it recorded - the model id, the tool block, the max_tokens - then feeds back
+real Messages response shapes. That covers what typecheck cannot, and costs
+nothing to run. One trap: the module reads the key at import, so the env has to
+be set and `vi.resetModules()` called before the first dynamic import, or every
+call short-circuits as unconfigured.
+
+Not verified against the live API: this sandbox has no Anthropic credentials
+and cannot reach the service.
