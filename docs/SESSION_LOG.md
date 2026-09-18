@@ -411,3 +411,50 @@ bug.
 - Audited at 390px only. Nothing checks 320px or landscape.
 - pglite on disk failed locally ("CREATE SCHEMA drizzle"); `PGLITE_MEMORY=1`
   works. Worth knowing before debugging a local 500 on signup.
+
+## 2026-09-18 (later) - a second framework on the PMF tab
+
+Added her written **Product Framework** doc as a second framework beside the
+mentoring one: `?framework=build`, its own document, its own versions.
+
+Nine stages in her order: goal, one segment (MECE, scored on size,
+pay-strength and whether it is already solved), the current journey then its
+pains scored on reach and severity, solutions scored on fit and build cost
+plus what v1 is NOT, impact metrics with retention at three horizons, jobs to
+be done in "as a <specific user>" form, platform and design guidelines, the
+LLM prompt as the product's engine with a test log, then a gate: all yes, or
+go back to that stage.
+
+### The decision worth keeping
+
+Its first rule is *"The ideas should be yours. I'm deliberately not handing
+you solutions - you won't love a product you didn't come up with."* That
+contradicts what the other framework's document does, which is let the tool
+draft answers.
+
+So `aiRole` is per framework. `build` is `pressure_test`: the tool writes the
+sharpest version of each question for this business and may challenge what
+the founder already wrote, and the prompt states that proposing a segment, a
+pain, a solution or a metric breaks the framework's first rule. A framework
+that tells you not to hand over answers should be implemented as a tool that
+cannot.
+
+### Structural changes
+
+- `domain/pmfFrameworks.ts` is the registry. `domain/pmf.ts` stays the record
+  of what she said in the session; the `conversation` framework wraps it, and
+  a test asserts the wrap has not drifted.
+- Fields moved off `pmfDoc.ts` onto the framework. `parseModelValues` is per
+  framework and drops a field belonging to the other one.
+- `pmf_documents` gained `framework`; the unique index is now (app,
+  framework, version), so the two version independently.
+- Creation scaffolds both, so either tab is usable on the first visit.
+
+### Open
+
+- The build framework is 27 fields over nine stages, which is about 11,500px
+  of page on a phone. Collapsing stages by default would help.
+- Its scored tables in the original doc (segments, pains, solutions) are
+  single long-text fields here. Structured rows with the scores as columns
+  would match the doc better.
+- The `pressure_test` path has never run against a real key.

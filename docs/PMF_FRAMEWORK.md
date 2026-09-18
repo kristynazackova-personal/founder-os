@@ -1,8 +1,35 @@
 # Product Market Fit
 
-The framework at `/app/<appId>/pmf`, and where it came from.
+Two frameworks at `/app/<appId>/pmf`, switched by `?framework=`, each with its
+own document and its own version history.
 
-## Provenance
+| id | Label | For | Source |
+|---|---|---|---|
+| `conversation` | The PMF conversation | A business that already has customers | A recorded mentoring session, Sep 2026 |
+| `build` | The product framework | Something being built or scoped | Her written Product Framework doc, Jun 2026 |
+
+`domain/pmfFrameworks.ts` is the registry; `domain/pmf.ts` stays the record of
+what she said in the session, and the `conversation` framework wraps it.
+
+## The build framework will not answer for you
+
+Its own first rule: *"The ideas should be yours. I'm deliberately not handing
+you solutions - you won't love a product you didn't come up with."*
+
+So a framework declares `aiRole`, and the two differ:
+
+- `conversation` is `fill`: the tool may draft answers from what it knows.
+- `build` is `pressure_test`: it may only write the sharpest version of each
+  question for this business, and challenge answers the founder already
+  wrote. The prompt states that proposing a segment, a pain, a solution or a
+  metric breaks the framework's first rule, and every returned field must
+  start with `[to fill]` unless it is pressure-testing existing words.
+
+Her second rule - *"Use your AI as you go… just make the decisions
+yourself"* - is why the box on that framework reads "pressure-test or
+re-frame" rather than "rewrite".
+
+## Provenance of the conversation framework
 
 This is not a framework assembled from blog posts. It is Kristyna's own,
 ported from her external-memory repo:
@@ -65,21 +92,24 @@ sent to the conversations rather than to competitor research.
 The framework above is the questions. A **PMF document** is one business's
 answers to it, and it is versioned.
 
-**Fields.** `src/lib/domain/pmfDoc.ts` fixes fourteen fields across the five
-steps, so the edit form, the model prompt and the stored row can never
-disagree about what the framework asks for.
+**Fields belong to the framework.** Each owns its field list (fourteen for
+`conversation`, twenty-seven across nine stages for `build`), so the edit
+form, the model prompt and the stored row can never disagree about what is
+asked. `parseModelValues` is per framework and drops a field belonging to the
+other one, so a build answer can never land in a conversation document.
 
 **When it gets written.**
 
 | Trigger | Source | Notes |
 |---|---|---|
-| A business is created | `scaffold`, then `generated` | The scaffold is written synchronously, so the tab is never empty. The model fill appends v2 in the background when a key is configured. |
+| A business is created | `scaffold`, then `generated` | BOTH frameworks are scaffolded synchronously, so either tab is usable on the first visit. The model pass appends v2 in the background when a key is configured. |
 | An existing business, on demand | `scaffold` / `generated` | A business that predates this feature has no document and gets a "Fill in the framework" button. Selvenn is the case this was built for. |
 | The founder edits a step | `edited` | Appends a version. |
 | The founder asks for a rewrite | `rewritten` | The comment is stored with the version it produced. |
 
 **Nothing is overwritten.** `pmf_documents` is append-only: one row per
-version, unique on (app, version), and the newest row is the live document.
+version, unique on (app, **framework**, version), so the two frameworks
+version independently and the newest row per framework is live.
 The first draft is always still there, next to what the founder changed. A
 concurrent save loses the unique-index race, re-reads and rebases rather than
 clobbering.
@@ -99,7 +129,8 @@ still works without a key - it just stops at the scaffold.
 ## Where the code lives
 
 ```
-src/lib/domain/pmf.ts             the framework as data, the quotes, pmfStateFor
+src/lib/domain/pmf.ts             the conversation framework's stages and quotes, pmfStateFor
+src/lib/domain/pmfFrameworks.ts   the registry: both frameworks, their fields, their aiRole
 src/lib/domain/pmfDoc.ts          the fields, the scaffold, versioning, model-output parsing
 src/lib/services/pmfDocs.ts       read, generate, edit, rewrite (append-only)
 src/lib/services/ai.ts            the one place a model gets called
@@ -108,6 +139,7 @@ src/components/pmf/PmfEditor.tsx  per-step answers, edit form, rewrite box, vers
 src/app/app/[appId]/pmf/page.tsx  the tab
 tests/pmf.test.ts                 step order, completeness, the em-dash rule, state picking
 tests/pmfDoc.test.ts              fields, scaffold, versioning, the parser's refusals
+tests/pmfFrameworks.test.ts       both frameworks' integrity, and that build never answers
 ```
 
 Pure domain, no schema, no writes, and nothing on the page depends on a

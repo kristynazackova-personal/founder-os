@@ -308,6 +308,8 @@ export const pmfDocuments = pgTable(
   {
     id: id(),
     appId: uuid("app_id").notNull().references(() => apps.id, { onDelete: "cascade" }),
+    /** Which framework these answers belong to (domain/pmfFrameworks.ts). */
+    framework: text("framework").notNull().default("conversation"),
     version: integer("version").notNull(),
     /** scaffold | generated | edited | rewritten */
     source: text("source").notNull(),
@@ -316,5 +318,5 @@ export const pmfDocuments = pgTable(
     values: jsonb("values").$type<Record<string, string>>().notNull().default({}),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("pmf_app_version_idx").on(t.appId, t.version)],
+  (t) => [uniqueIndex("pmf_app_framework_version_idx").on(t.appId, t.framework, t.version)],
 );

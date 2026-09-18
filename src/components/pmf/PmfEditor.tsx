@@ -10,8 +10,8 @@
  */
 import { useActionState, useState } from "react";
 import { generatePmfAction, rewritePmfAction, savePmfAction, type PmfFormState } from "@/app/actions/pmf";
-import type { PmfStepKey } from "@/lib/domain/pmf";
-import { SOURCE_LABEL, fieldsForStep, isAnswered, isPlaceholder, type PmfDoc } from "@/lib/domain/pmfDoc";
+import { SOURCE_LABEL, isAnswered, isPlaceholder, type PmfDoc } from "@/lib/domain/pmfDoc";
+import { fieldsOfStage, frameworkOf, type PmfFrameworkId } from "@/lib/domain/pmfFrameworks";
 
 function Status({ state }: { state: PmfFormState }) {
   if (!state) return null;
@@ -20,8 +20,8 @@ function Status({ state }: { state: PmfFormState }) {
   return null;
 }
 
-export function GenerateButton({ appId, label }: { appId: string; label: string }) {
-  const [state, action, pending] = useActionState<PmfFormState>(generatePmfAction.bind(null, appId), undefined);
+export function GenerateButton({ appId, framework, label }: { appId: string; framework: PmfFrameworkId; label: string }) {
+  const [state, action, pending] = useActionState<PmfFormState>(generatePmfAction.bind(null, appId, framework), undefined);
   return (
     <form action={action} className="flex flex-wrap items-center gap-3">
       <button type="submit" className="btn btn-primary" disabled={pending}>
@@ -32,10 +32,10 @@ export function GenerateButton({ appId, label }: { appId: string; label: string 
   );
 }
 
-export function StepAnswers({ appId, step, doc }: { appId: string; step: PmfStepKey; doc: PmfDoc | null }) {
+export function StageAnswers({ appId, framework, stage, doc }: { appId: string; framework: PmfFrameworkId; stage: string; doc: PmfDoc | null }) {
   const [editing, setEditing] = useState(false);
-  const [state, action, pending] = useActionState<PmfFormState, FormData>(savePmfAction.bind(null, appId), undefined);
-  const fields = fieldsForStep(step);
+  const [state, action, pending] = useActionState<PmfFormState, FormData>(savePmfAction.bind(null, appId, framework), undefined);
+  const fields = fieldsOfStage(frameworkOf(framework), stage);
 
   if (!editing) {
     return (
@@ -93,12 +93,12 @@ export function StepAnswers({ appId, step, doc }: { appId: string; step: PmfStep
   );
 }
 
-export function RewriteBox({ appId, canRewrite }: { appId: string; canRewrite: boolean }) {
-  const [state, action, pending] = useActionState<PmfFormState, FormData>(rewritePmfAction.bind(null, appId), undefined);
+export function RewriteBox({ appId, framework, canRewrite, pressureTest }: { appId: string; framework: PmfFrameworkId; canRewrite: boolean; pressureTest: boolean }) {
+  const [state, action, pending] = useActionState<PmfFormState, FormData>(rewritePmfAction.bind(null, appId, framework), undefined);
   return (
     <form action={action} className="flex flex-col gap-3">
       <label className="label" htmlFor="comment">
-        Ask for a rewrite
+        {pressureTest ? "Ask it to pressure-test or re-frame" : "Ask for a rewrite"}
       </label>
       <textarea
         id="comment"
@@ -107,13 +107,15 @@ export function RewriteBox({ appId, canRewrite }: { appId: string; canRewrite: b
         placeholder="e.g. We are not selling to agencies any more, only to in-house teams. Redo steps 2 and 3 for that."
       />
       <p className="help">
-        {canRewrite
-          ? "Your comment is kept with the version it produced, so you can see what you asked for and what came back."
-          : "Rewriting needs a model key on this deployment. Until then, edit the fields directly - that also writes a new version."}
+        {!canRewrite
+          ? "This needs a model key on this deployment. Until then, edit the fields directly - that also writes a new version."
+          : pressureTest
+            ? "This framework's rule is that the ideas are yours, so it will sharpen the questions and challenge what you wrote rather than answer for you. Your comment is kept with the version it produced."
+            : "Your comment is kept with the version it produced, so you can see what you asked for and what came back."}
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending || !canRewrite}>
-          {pending ? "Rewriting…" : "Rewrite as a new version"}
+          {pending ? "Working…" : pressureTest ? "Pressure-test as a new version" : "Rewrite as a new version"}
         </button>
         <Status state={state} />
       </div>

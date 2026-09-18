@@ -1,19 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
-  PMF_FIELDS, answeredCount, completion, fieldsForStep, incompleteSteps, isPlaceholder,
+  answeredCount, completion, incompleteStages, isPlaceholder,
   nextVersion, parseModelValues, parseStoredValues, scaffoldDoc, type PmfDoc,
 } from "@/lib/domain/pmfDoc";
-import { PMF_STEPS } from "@/lib/domain/pmf";
+import { PMF_FRAMEWORKS, fieldsOfStage } from "@/lib/domain/pmfFrameworks";
 import { extractJson } from "@/lib/services/ai";
 
 const NOW = new Date("2026-09-18T10:00:00Z");
+const F = PMF_FRAMEWORKS.conversation;
+const PMF_FIELDS = F.fields;
+const PMF_STEPS = F.stages;
 const INPUT = { appName: "Selvenn", url: "https://selvenn.com", industryLabel: "Mental health & wellbeing", natureLabel: "Mobile app subscription (with a trial)", payingUsers: 4 };
 
 describe("fields", () => {
   it("covers every step of the framework and nothing else", () => {
-    const steps = new Set(PMF_FIELDS.map((f) => f.step));
+    const steps = new Set(PMF_FIELDS.map((f) => f.stage));
     for (const s of PMF_STEPS) expect(steps.has(s.key)).toBe(true);
-    for (const s of PMF_STEPS) expect(fieldsForStep(s.key).length).toBeGreaterThan(0);
+    for (const s of PMF_STEPS) expect(fieldsOfStage(F, s.key).length).toBeGreaterThan(0);
     expect(new Set(PMF_FIELDS.map((f) => f.key)).size).toBe(PMF_FIELDS.length);
   });
 
@@ -26,7 +29,7 @@ describe("fields", () => {
 });
 
 describe("scaffoldDoc", () => {
-  const doc = scaffoldDoc(INPUT, NOW);
+  const doc = scaffoldDoc(F, INPUT, NOW);
 
   it("is version 1 and says it is only a draft", () => {
     expect(doc.version).toBe(1);
@@ -42,60 +45,61 @@ describe("scaffoldDoc", () => {
     }
     expect(doc.values.hurt_sentence).toContain("Selvenn");
     expect(doc.values.interview_plan).toContain("4 paying customers");
+    expect(doc.framework).toBe("conversation");
   });
 
   it("speaks of first customers when nobody has paid", () => {
-    const empty = scaffoldDoc({ ...INPUT, payingUsers: 0 }, NOW);
+    const empty = scaffoldDoc(F, { ...INPUT, payingUsers: 0 }, NOW);
     expect(empty.values.interview_plan).toContain("your first customers");
   });
 });
 
 describe("completion", () => {
-  const real: PmfDoc = { version: 2, source: "edited", comment: null, createdAt: NOW.toISOString(), values: { hurt_sentence: "They lose the evening check-in.", mechanism: "Revenue, roughly $10 a week." } };
+  const real: PmfDoc = { framework: "conversation", version: 2, source: "edited", comment: null, createdAt: NOW.toISOString(), values: { hurt_sentence: "They lose the evening check-in.", mechanism: "Revenue, roughly $10 a week." } };
 
   it("counts answered fields, placeholders included, and reports the open step", () => {
-    expect(answeredCount(real)).toBe(2);
-    expect(completion(real)).toBeCloseTo(2 / PMF_FIELDS.length);
-    expect(incompleteSteps(real)[0]).toBe("qualitative");
-    expect(incompleteSteps(null)).toEqual(PMF_STEPS.map((s) => s.key));
+    expect(answeredCount(F, real)).toBe(2);
+    expect(completion(F, real)).toBeCloseTo(2 / PMF_FIELDS.length);
+    expect(incompleteStages(F, real)[0]).toBe("qualitative");
+    expect(incompleteStages(F, null)).toEqual(PMF_STEPS.map((s) => s.key));
   });
 
   it("treats whitespace as unanswered", () => {
-    expect(answeredCount({ values: { hurt_sentence: "   " } })).toBe(0);
+    expect(answeredCount(F, { values: { hurt_sentence: "   " } })).toBe(0);
   });
 });
 
 describe("parseModelValues", () => {
   it("keeps known fields and drops everything else", () => {
-    const out = parseModelValues({ values: { hurt_sentence: " They lose it. ", invented_field: "nope", mechanism: 42 } });
+    const out = parseModelValues(F, { values: { hurt_sentence: " They lose it. ", invented_field: "nope", mechanism: 42 } });
     expect(out).toEqual({ hurt_sentence: "They lose it." });
   });
 
   it("accepts a bare object as well as one wrapped in values", () => {
-    expect(parseModelValues({ mechanism: "Cost." })).toEqual({ mechanism: "Cost." });
+    expect(parseModelValues(F, { mechanism: "Cost." })).toEqual({ mechanism: "Cost." });
   });
 
   it("drops empty strings rather than storing a blank answer", () => {
-    expect(parseModelValues({ values: { mechanism: "   " } })).toEqual({});
+    expect(parseModelValues(F, { values: { mechanism: "   " } })).toEqual({});
   });
 
   it("survives junk", () => {
-    expect(parseModelValues(null)).toEqual({});
-    expect(parseModelValues("text")).toEqual({});
-    expect(parseModelValues({ values: "text" })).toEqual({});
+    expect(parseModelValues(F, null)).toEqual({});
+    expect(parseModelValues(F, "text")).toEqual({});
+    expect(parseModelValues(F, { values: "text" })).toEqual({});
   });
 
   it("bounds a field so one runaway answer cannot fill the column", () => {
     const long = "x".repeat(5_000);
-    expect(parseModelValues({ values: { mechanism: long } }).mechanism?.length).toBe(2_000);
+    expect(parseModelValues(F, { values: { mechanism: long } }).mechanism?.length).toBe(2_000);
   });
 });
 
 describe("nextVersion", () => {
-  const v1: PmfDoc = { version: 1, source: "scaffold", comment: null, createdAt: NOW.toISOString(), values: { hurt_sentence: "[to fill] a", mechanism: "[to fill] b" } };
+  const v1: PmfDoc = { framework: "conversation", version: 1, source: "scaffold", comment: null, createdAt: NOW.toISOString(), values: { hurt_sentence: "[to fill] a", mechanism: "[to fill] b" } };
 
   it("increments and carries forward what the new values do not cover", () => {
-    const v2 = nextVersion(v1, { hurt_sentence: "They lose the coach." }, { source: "edited", now: NOW });
+    const v2 = nextVersion("conversation", v1, { hurt_sentence: "They lose the coach." }, { source: "edited", now: NOW });
     expect(v2.version).toBe(2);
     expect(v2.values.hurt_sentence).toBe("They lose the coach.");
     expect(v2.values.mechanism).toBe("[to fill] b"); // untouched, not dropped
@@ -103,26 +107,26 @@ describe("nextVersion", () => {
   });
 
   it("keeps the comment with the version it produced", () => {
-    const v2 = nextVersion(v1, { mechanism: "Revenue." }, { source: "rewritten", comment: "Only in-house teams now.", now: NOW });
+    const v2 = nextVersion("conversation", v1, { mechanism: "Revenue." }, { source: "rewritten", comment: "Only in-house teams now.", now: NOW });
     expect(v2.comment).toBe("Only in-house teams now.");
     expect(v2.source).toBe("rewritten");
   });
 
   it("starts at 1 when there is nothing before it", () => {
-    expect(nextVersion(null, {}, { source: "scaffold", now: NOW }).version).toBe(1);
+    expect(nextVersion("conversation", null, {}, { source: "scaffold", now: NOW }).version).toBe(1);
   });
 
   it("never mutates the version it came from", () => {
     const before = JSON.stringify(v1);
-    nextVersion(v1, { hurt_sentence: "changed" }, { source: "edited", now: NOW });
+    nextVersion("conversation", v1, { hurt_sentence: "changed" }, { source: "edited", now: NOW });
     expect(JSON.stringify(v1)).toBe(before);
   });
 });
 
 describe("storage round trip", () => {
   it("reads a stored jsonb map back, dropping anything unrecognised", () => {
-    expect(parseStoredValues({ mechanism: "Cost.", bogus: "x" })).toEqual({ mechanism: "Cost." });
-    expect(parseStoredValues(null)).toEqual({});
+    expect(parseStoredValues(F, { mechanism: "Cost.", bogus: "x" })).toEqual({ mechanism: "Cost." });
+    expect(parseStoredValues(F, null)).toEqual({});
   });
 });
 

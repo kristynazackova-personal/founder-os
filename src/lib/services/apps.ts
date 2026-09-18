@@ -6,6 +6,7 @@ import { track } from "../track";
 import type { Industry, Nature } from "../domain/gates";
 import { generateGatesForApp } from "./gates";
 import { generateDoc } from "./pmfDocs";
+import { PMF_FRAMEWORK_IDS } from "../domain/pmfFrameworks";
 
 export const PLATFORMS = ["lovable", "bolt", "replit", "base44", "other"] as const;
 export type Platform = (typeof PLATFORMS)[number];
@@ -41,10 +42,12 @@ export async function createApp(
   // The PMF framework is filled top to bottom on creation: the scaffold lands
   // synchronously so the tab is never empty, and the model fill appends on top
   // when one is configured. A business that predates this fills on demand.
-  try {
-    await generateDoc(app);
-  } catch (err) {
-    console.error("[apps] PMF scaffold failed:", err instanceof Error ? err.message : err);
+  for (const framework of PMF_FRAMEWORK_IDS) {
+    try {
+      await generateDoc(app, framework);
+    } catch (err) {
+      console.error(`[apps] PMF scaffold failed (${framework}):`, err instanceof Error ? err.message : err);
+    }
   }
   return app;
 }
