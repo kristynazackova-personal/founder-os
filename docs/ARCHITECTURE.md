@@ -8,7 +8,7 @@ src/
   app/                    routes (pages, server actions in app/actions, API route handlers)
   components/             client components (forms, pricing interview, copy buttons)
   lib/
-    domain/               pure, dependency-free logic — unit-tested, runs in browser and server
+    domain/               pure, dependency-free logic - unit-tested, runs in browser and server
       metrics.ts          normalised revenue data → Metrics
       stages.ts           placeStage / diagnose (docs/STAGES.md)
       pricing.ts          interview → recommendation → pricing page block
@@ -25,7 +25,7 @@ src/
   proxy.ts                optimistic redirect for signed-out visitors
 public/fos.js             the attribution snippet (< 5 KB)
 drizzle/                  SQL migrations (drizzle-kit generate); applied automatically on boot
-tests/                    vitest — domain units + PGlite integration (checkout flow, diagnosis)
+tests/                    vitest - domain units + PGlite integration (checkout flow, diagnosis)
 ```
 
 ## Data flow
@@ -46,7 +46,7 @@ tests/                    vitest — domain units + PGlite integration (checkout
 2. **Assess.** `services/diagnosis.runAssessment` pulls every source through
    its adapter into `NormalizedRevenueData`, merges it with live wrapped
    checkout rows, adds funnel signals from `attribution_events` (gaps filled
-   from Postgres, then Mixpanel, then GA4 — `fetchAnalyticsSignals`), and
+   from Postgres, then Mixpanel, then GA4 - `fetchAnalyticsSignals`), and
    stores an `assessments` row (metrics + stage + confidence + reasons). The
    diagnosis page reuses the last assessment for 6 hours; "Refresh" forces one.
 3. **Price.** The interview is saved on `pricing_interviews` with the
@@ -98,30 +98,30 @@ action per stage.
 
 After GA4 or Mixpanel is connected the founder lands on
 `/app/[appId]/connect/[source]/events`: read **all events** or **selected
-events** (checkbox list of everything the tool has collected — GA4 with
+events** (checkbox list of everything the tool has collected - GA4 with
 all-time counts, Mixpanel names), and **all time** or **only from now on**.
 Stored on `revenue_sources.meta.events` (`src/lib/domain/eventSettings.ts`,
 pure; `src/lib/services/eventCatalog.ts` reads/writes it and lists events),
 kept across a credential replace, editable from the connection page
 ("Change"). Every GA4 / Mixpanel read goes through `isEventAllowed` and
 `readFrom` (the "from now on" floor), so an unticked event is never
-requested. Postgres is a table mapping, not events — it has no such step.
+requested. Postgres is a table mapping, not events - it has no such step.
 
 ## Ad spend
 
 Three sources, in precedence order, merged by `summarizeCampaigns`:
 
-1. **Google Ads** (`src/lib/sources/googleads.ts`) — the authoritative
+1. **Google Ads** (`src/lib/sources/googleads.ts`) - the authoritative
    figure. GAQL over `campaign` for cost, clicks and impressions. The
    developer token and OAuth client are Founder OS's (env); the founder
    supplies a customer id and a refresh token with the `adwords` scope.
    `login-customer-id` is sent when the account sits under a manager.
-2. **GA4** (`advertiserAdCost`) — only populated when the property's Google
+2. **GA4** (`advertiserAdCost`) - only populated when the property's Google
    Ads link delivers cost, which it does not for iOS app campaigns. Cost is
    session-scoped there and GA4 answers a wrong-scope request with blank
    cost and a 200, so candidate dimensions are tried and judged on whether
    cost came back (`pickAdRows`).
-3. **Typed in** (`ad_spend` table) — fills whatever neither reports, per
+3. **Typed in** (`ad_spend` table) - fills whatever neither reports, per
    campaign or as one figure for all of them. Rows are marked in the UI.
 
 A reported figure always beats a typed one. Pure parts live in
@@ -130,7 +130,7 @@ A reported figure always beats a typed one. Pure parts live in
 ## The deployment URL is load-bearing
 
 `APP_URL` (`env.appUrl`) is baked into things that outlive it, so moving the
-deployment to a new domain — e.g. `completefounder.com` — is not just a DNS
+deployment to a new domain - e.g. `completefounder.com` - is not just a DNS
 change:
 
 - **The snippet a founder already pasted** carries the old host in its
@@ -162,7 +162,7 @@ callbacks. Anything else silently drops a customer's data.
 3. **Wait for the certificate.** Railway issues it automatically once the
    record resolves; the domain shows as validating until then.
 4. **Leave the `*.up.railway.app` domain attached.** Every snippet and pay
-   link already in the wild points at it — see above.
+   link already in the wild points at it - see above.
 5. **Set `APP_URL=https://completefounder.com`** so newly generated snippets
    and links use it. Nothing rewrites the old ones.
 6. **Verify:** `curl https://completefounder.com/api/health` and check

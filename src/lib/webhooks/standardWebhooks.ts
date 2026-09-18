@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 /**
- * Standard Webhooks (https://standardwebhooks.com) — the signature scheme
+ * Standard Webhooks (https://standardwebhooks.com) - the signature scheme
  * both Dodo Payments and Polar use. Headers: webhook-id, webhook-timestamp,
  * webhook-signature ("v1,<base64>" entries, space separated). Signed content
  * is `${id}.${timestamp}.${body}` HMAC-SHA256 with the raw secret bytes.

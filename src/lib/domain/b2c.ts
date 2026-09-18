@@ -1,5 +1,5 @@
 /**
- * B2C analytics — the pure core. No DB, no env, no network (this module runs
+ * B2C analytics - the pure core. No DB, no env, no network (this module runs
  * in the browser too), unit-checked in tests/b2c.test.ts.
  *
  * This is the consumer-funnel view of an app: acquisition → activation →
@@ -18,7 +18,7 @@
 
 // ---------------------------------------------------------------- constants
 
-/** Below this denominator a rate is not shown at all — the count pair is. */
+/** Below this denominator a rate is not shown at all - the count pair is. */
 export const MIN_RATE_DENOMINATOR = 30;
 /** Activation: a first-value event within this many hours of signup. */
 export const ACTIVATION_HOURS = 24;
@@ -157,7 +157,7 @@ export type VisitorEvent = { event: string; at: number };
 
 /**
  * One anonymous visitor, as the snippet saw them. `events` is every event they
- * fired, oldest first — the cohort maths needs the timestamps, not counts.
+ * fired, oldest first - the cohort maths needs the timestamps, not counts.
  */
 export type Visitor = {
   anonId: string;
@@ -175,7 +175,7 @@ export type VisitorFacts = {
   platform: "web" | "app";
   firstSeenAt: number;
   signupAt: number | null;
-  /** First activation or purchase — "first value". */
+  /** First activation or purchase - "first value". */
   firstValueAt: number | null;
   /** The SECOND one, which is what the north star counts. */
   secondValueAt: number | null;
@@ -234,7 +234,7 @@ const dayKeysBetween = (fromMs: number, toMs: number): string[] => {
 
 /**
  * Cohorts by signup week. A retention checkpoint counts a visitor only when
- * the whole checkpoint window has already passed for them — so a cohort that
+ * the whole checkpoint window has already passed for them - so a cohort that
  * signed up yesterday contributes to nothing but its own size.
  */
 export function buildCohorts(facts: VisitorFacts[], weeks: Week[], now: Date): Cohort[] {
@@ -297,7 +297,7 @@ export type TriangleRow = { label: string; n: number; cells: (number | null)[] }
 
 /**
  * Share of each signup cohort active in week N after signup. A cell is null
- * until its week has fully elapsed — never 0, which would read as churn.
+ * until its week has fully elapsed - never 0, which would read as churn.
  */
 export function cohortTriangle(facts: VisitorFacts[], weeks: Week[], now: Date, maxWeeks = TRIANGLE_WEEKS): TriangleRow[] {
   const nowMs = now.getTime();
@@ -381,7 +381,7 @@ export function snippetFunnel(facts: VisitorFacts[]): FunnelStep[] {
     step("reach", "Visit / install", () => true),
     step("signup", "Signup", (f) => f.signupAt !== null),
     step("activation", "Activation", (f) => f.firstValueAt !== null),
-    step("checkout_view", "Checkout viewed", (f) => f.checkoutViewAt !== null, "snippet event — undercounts until every build calls it"),
+    step("checkout_view", "Checkout viewed", (f) => f.checkoutViewAt !== null, "snippet event - undercounts until every build calls it"),
     step("purchase", "Purchase", (f) => f.purchaseAt !== null),
     step("repeat", "Second activation", (f) => f.secondValueAt !== null),
   ];

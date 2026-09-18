@@ -37,11 +37,11 @@ export const apps = pgTable(
     /** Public key used by the attribution snippet. */
     siteKey: text("site_key").notNull().unique(),
     activationEvent: text("activation_event"),
-    /** test | live — the wrapped-checkout mode the founder is currently editing. */
+    /** test | live - the wrapped-checkout mode the founder is currently editing. */
     checkoutMode: text("checkout_mode").notNull().default("test"),
     lastStage: integer("last_stage"),
     lastConfidence: text("last_confidence"),
-    /** What the business is, asked at creation — drives the gates below (domain/gates.ts). */
+    /** What the business is, asked at creation - drives the gates below (domain/gates.ts). */
     industry: text("industry"),
     /** How it sells: app_subscription | web_subscription | freemium | one_off | marketplace_fee. */
     nature: text("nature"),
@@ -239,7 +239,7 @@ export const attributionEvents = pgTable(
  * Ad spend the founder typed in, for the attribution card's rolling window.
  * GA4 only reports cost when the Google Ads link actually delivers it, which
  * it often does not for app campaigns, and the Google Ads API needs an
- * approved developer token — so a number the founder enters is the only
+ * approved developer token - so a number the founder enters is the only
  * source that always works. GA4 wins for any campaign it does report.
  */
 export const adSpend = pgTable(

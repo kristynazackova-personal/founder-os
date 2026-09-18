@@ -58,7 +58,7 @@ export function B2cNav({ appId }: { appId: string }) {
           </select>
         </label>
         <span className="text-xs text-[var(--muted)]">
-          Complete ISO weeks only — the running week is excluded so a partial week never reads as a collapse.
+          Complete ISO weeks only - the running week is excluded so a partial week never reads as a collapse.
         </span>
       </div>
     </div>

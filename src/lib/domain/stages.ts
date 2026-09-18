@@ -115,8 +115,8 @@ export function diagnose(
       { label: "Signups, 30d", value: n(m.signups30d), hint: m.signups30d === null ? "Install the snippet to see this" : undefined },
     ];
     const sentence = m.daysSinceLaunch !== null && m.daysSinceLaunch > 30
-      ? `Your app has been live ${m.daysSinceLaunch} days with no way to pay — every day without a price is a day of free usage you can't learn from.`
-      : "Your app is live but nobody can pay you yet — the next step is a price, not another feature.";
+      ? `Your app has been live ${m.daysSinceLaunch} days with no way to pay - every day without a price is a day of free usage you can't learn from.`
+      : "Your app is live but nobody can pay you yet - the next step is a price, not another feature.";
     const action = ctx.hasPricing
       ? { title: "Turn on checkout", detail: "Your pricing is ready. Create the plans and put the checkout link in your app.", href: ctx.hrefs.checkout }
       : { title: "Run the pricing interview", detail: "Eight questions, five minutes, a price you can defend and a pricing page block to paste in.", href: ctx.hrefs.pricing };
@@ -130,7 +130,7 @@ export function diagnose(
       { label: "Days since launch", value: n(m.daysSinceLaunch) },
     ];
     const sentence = (m.checkoutViews30d ?? 0) > 20
-      ? `${m.checkoutViews30d} people saw your checkout this month and none paid — that's a price or a promise problem, not a traffic problem.`
+      ? `${m.checkoutViews30d} people saw your checkout this month and none paid - that's a price or a promise problem, not a traffic problem.`
       : "Checkout is on, so the only job this week is putting it in front of the people who already use the app.";
     const action = ctx.hasSnippet
       ? { title: "Ask your ten most active users to pay", detail: "Message them one by one, link the checkout, and note every objection. Ten conversations beat any launch post.", href: ctx.hrefs.attribution }
@@ -144,7 +144,7 @@ export function diagnose(
       { label: "MRR", value: formatMoney(m.mrrUsdCents), hint: m.mrrUsdCents === 0 && m.revenue30dUsdCents > 0 ? `${formatMoney(m.revenue30dUsdCents)} one-time this month` : undefined },
       { label: "Checkout → paid", value: formatPercent(m.checkoutConversion30d), hint: m.checkoutConversion30d === null ? "Install the snippet to see this" : undefined },
     ];
-    const sentence = `You're at ${m.payingUsers} paying customer${m.payingUsers === 1 ? "" : "s"} and ${formatMoney(m.mrrUsdCents)} MRR — the goal now is ten, and the fastest route is understanding why the first ones paid.`;
+    const sentence = `You're at ${m.payingUsers} paying customer${m.payingUsers === 1 ? "" : "s"} and ${formatMoney(m.mrrUsdCents)} MRR - the goal now is ten, and the fastest route is understanding why the first ones paid.`;
     const action = { title: "Talk to every paying customer this week", detail: "Ask what they were doing before, what nearly stopped them paying, and who else has the problem. Write the answers into your pricing interview.", href: ctx.hrefs.pricing };
     return { ...base, numbers, sentence, action };
   }
@@ -157,8 +157,8 @@ export function diagnose(
   ];
   const churnHigh = (m.churn30d ?? 0) > 0.08;
   const sentence = churnHigh
-    ? `You're at ${formatMoney(m.mrrUsdCents)} MRR, growing ${formatPercent(m.momGrowth)}, churn ${formatPercent(m.churn30d, 1)} — fix churn first; growth on top of ${formatPercent(m.churn30d, 1)} churn is filling a leaking bucket.`
-    : `You're at ${formatMoney(m.mrrUsdCents)} MRR, growing ${formatPercent(m.momGrowth)}, churn ${formatPercent(m.churn30d, 1)} — retention is healthy, so the lever now is more of the channel that already converts.`;
+    ? `You're at ${formatMoney(m.mrrUsdCents)} MRR, growing ${formatPercent(m.momGrowth)}, churn ${formatPercent(m.churn30d, 1)} - fix churn first; growth on top of ${formatPercent(m.churn30d, 1)} churn is filling a leaking bucket.`
+    : `You're at ${formatMoney(m.mrrUsdCents)} MRR, growing ${formatPercent(m.momGrowth)}, churn ${formatPercent(m.churn30d, 1)} - retention is healthy, so the lever now is more of the channel that already converts.`;
   const action = churnHigh
     ? { title: "Fix churn before spending on growth", detail: "Email everyone who cancelled in the last 30 days with one question: what would have made you stay? Then ship the top answer.", href: ctx.hrefs.connect }
     : { title: "Double down on the channel that pays", detail: "Attribution shows which source brought paying users. Put this week's hours into that channel only.", href: ctx.hrefs.attribution };

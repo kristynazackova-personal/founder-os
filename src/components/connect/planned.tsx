@@ -1,6 +1,6 @@
 /**
  * Connectors that are planned but not built: they are listed so the gap is
- * visible and named, and they are NOT links — a card that cannot be completed
+ * visible and named, and they are NOT links - a card that cannot be completed
  * should not look like one that can.
  *
  * Push and email are here because the B2C analytics Loops tab is locked

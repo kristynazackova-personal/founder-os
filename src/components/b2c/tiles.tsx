@@ -1,11 +1,11 @@
 /**
- * B2C analytics presentation primitives — the metric tile and the small
+ * B2C analytics presentation primitives - the metric tile and the small
  * charts and tables the pages are built from.
  *
  * The tile anatomy is the contract (docs/B2C_ANALYTICS.md): label, source
  * badges, value, n line, target line, verdict chip, delta, sparkline, caveat.
  * A verdict is always an icon plus a label, never colour alone, and a rate
- * never appears without the count that produced it — the service decides
+ * never appears without the count that produced it - the service decides
  * that, these components only render what it gives them.
  *
  * Server components by default: nothing here needs state.
@@ -384,7 +384,7 @@ export function GatesCard({ gates }: { gates: GateSet }) {
       sub={
         gates.origin === "category"
           ? `Published benchmarks for ${INDUSTRY_LABEL[gates.profile.industry].toLowerCase()} sold as ${NATURE_LABEL[gates.profile.nature].toLowerCase()}. Set when the app was created.`
-          : `Refined from comparable products${gates.competitors.length ? ` — ${gates.competitors.join("; ")}` : ""}.`
+          : `Refined from comparable products${gates.competitors.length ? ` - ${gates.competitors.join("; ")}` : ""}.`
       }
     >
       <DataTable

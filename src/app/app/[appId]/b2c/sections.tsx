@@ -31,7 +31,7 @@ export function OverviewView({ data }: { data: OverviewPage }) {
             <Bullets
               items={[
                 { verdict: "none", text: "Cohorts are ISO weeks by signup date. A retention cell appears only once its window has fully elapsed." },
-                { verdict: "none", text: "A rate needs a denominator of 30. Below that you get the count pair — “3 of 11” — because a percentage of eleven people is noise." },
+                { verdict: "none", text: "A rate needs a denominator of 30. Below that you get the count pair - “3 of 11” - because a percentage of eleven people is noise." },
                 { verdict: "none", text: "“—” means no connected source can answer it. It never means zero. The Coverage tab lists every one and what would fix it." },
                 { verdict: "none", text: "Gates come from published benchmarks for your category, refined from comparable products. Every one names its source." },
                 { verdict: "none", text: <>This sits alongside <b>Diagnosis</b> and <b>Attribution</b>, which are unchanged.</> },
@@ -50,7 +50,7 @@ export function AcquisitionView({ data }: { data: AcquisitionPage }) {
     <>
       <TileGrid tiles={data.tiles} />
       <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <Section title="Signups per week" sub="stacked — web below, app above; the last bar carries its total">
+        <Section title="Signups per week" sub="stacked - web below, app above; the last bar carries its total">
           <WeeklyBars rows={data.signupsPerWeek} />
           <Legend items={PLATFORM_LEGEND} />
         </Section>
@@ -90,7 +90,7 @@ export function ActivationView({ data }: { data: ActivationPage }) {
             ]}
           />
           <p className="text-xs text-[var(--muted)]">
-            Only visitors who activated appear here — it is the shape of a success, not a conversion rate.
+            Only visitors who activated appear here - it is the shape of a success, not a conversion rate.
           </p>
         </Section>
       </div>
@@ -164,7 +164,7 @@ export function LoopsView({ data, appId }: { data: LoopsPage; appId: string }) {
   return (
     <>
       <LockedBanner title="Locked until a push or email provider is connected">
-        Push and lifecycle email are the day-two engine, and Founder OS cannot see a single send of either — they
+        Push and lifecycle email are the day-two engine, and Founder OS cannot see a single send of either - they
         happen in your tooling, not ours. The layout below is what the page will show; every figure reads
         &ldquo;—&rdquo; until a provider can be read, and nothing here is estimated in the meantime.{" "}
         <Link href={`/app/${appId}/settings`} className="underline">Add a push or email provider</Link>.

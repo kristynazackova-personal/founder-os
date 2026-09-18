@@ -45,7 +45,7 @@ export async function markCopied(app: App): Promise<void> {
   await track("pricing_page_copied", { userId: app.userId, appId: app.id });
 }
 
-/** The recommendation with the founder's edits applied — what checkout and the pricing block use. */
+/** The recommendation with the founder's edits applied - what checkout and the pricing block use. */
 export function effectiveRecommendation(interview: PricingInterview): PricingRecommendation {
   const rec = interview.recommendation as PricingRecommendation;
   const overrides = interview.overrides ?? {};

@@ -1,7 +1,7 @@
 /**
  * Money helpers. Every amount in the system is an integer number of minor
  * units (cents) in a named currency. Reporting normalises to USD with a
- * coarse fixed table — good enough for stage placement and benchmarks, and
+ * coarse fixed table - good enough for stage placement and benchmarks, and
  * never used to move money.
  */
 

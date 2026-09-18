@@ -9,7 +9,7 @@ import type { AppStoreCredentials, RevenueAdapter } from "./types";
  * subscriber-level events; replaying the last 90 days rebuilds every
  * subscriber's lifecycle. Reports appear the next day and are absent (404)
  * on days without activity. Written against the 2026 API; not exercised
- * against Apple in this repository — the parser is unit-tested on synthetic
+ * against Apple in this repository - the parser is unit-tested on synthetic
  * report text.
  */
 const API = "https://api.appstoreconnect.apple.com/v1/salesReports";
@@ -245,7 +245,7 @@ export async function probeAppStore(c: AppStoreCredentials): Promise<{ ok: true;
       return {
         ok: false,
         error:
-          "App Store Connect rejected the token (401). The usual cause: this is an In-App Purchase key (the kind that works for in-app purchase verification) — sales reports need a Team key from Users and Access → Integrations → App Store Connect API → Team Keys, with the Sales, Finance or Admin role. Also check the issuer id and key id belong to that same key.",
+          "App Store Connect rejected the token (401). The usual cause: this is an In-App Purchase key (the kind that works for in-app purchase verification) - sales reports need a Team key from Users and Access → Integrations → App Store Connect API → Team Keys, with the Sales, Finance or Admin role. Also check the issuer id and key id belong to that same key.",
       };
     if (/403/i.test(msg)) return { ok: false, error: "App Store Connect refused access (403). The API key needs the Sales and Reports role, and the vendor number must belong to this team." };
     return { ok: false, error: msg };

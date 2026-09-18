@@ -34,7 +34,7 @@ export function EventSettingsForm({ action, events, current, catalogError }: { a
           <input type="radio" name="mode" value="all" checked={mode === "all"} onChange={() => setMode("all")} className="mt-1" />
           <span>
             <span className="font-semibold">All events</span>
-            <span className="block text-sm text-[var(--muted)]">Everything the tool has collected{events.length ? ` — ${events.length} event type${events.length === 1 ? "" : "s"} today` : ""}, and anything new you add later.</span>
+            <span className="block text-sm text-[var(--muted)]">Everything the tool has collected{events.length ? ` - ${events.length} event type${events.length === 1 ? "" : "s"} today` : ""}, and anything new you add later.</span>
           </span>
         </label>
         <label className="flex items-start gap-3 rounded-xl border border-stone-200 p-3">

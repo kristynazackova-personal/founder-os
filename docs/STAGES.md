@@ -50,7 +50,7 @@ Evaluated top-down; the first rule that matches wins.
 | 0 | Built | none of the above |
 
 A Stripe-connected founder with paying customers is stage 2 or 3 even if we
-cannot see their checkout — customers beat everything.
+cannot see their checkout - customers beat everything.
 
 ## Confidence
 
@@ -75,7 +75,7 @@ conversion cannot be computed.
 | 3 | MRR · MoM growth · churn 30d | churn > 8% → fix churn first; else double down on the channel that pays |
 
 The sentence is templated from the numbers so the founder reads their own
-figures, e.g. "You're at $1,400 MRR, growing 9%, churn 11% — fix churn first".
+figures, e.g. "You're at $1,400 MRR, growing 9%, churn 11% - fix churn first".
 
 ## Peer bands
 

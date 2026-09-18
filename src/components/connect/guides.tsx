@@ -43,7 +43,7 @@ export const CONNECT_GUIDES: Record<SourceType, ConnectGuide> = {
         title: "Click Create restricted key",
         body: (
           <>
-            When Stripe asks how you will use the key, choose <em>Providing this key to a third-party application</em> (Founder OS is the third party). On the next screen, <em>Name</em>: <code>Founder OS</code>, <em>URL</em>: <code>{env.appUrl}</code>, then open <em>Customise permissions for this key</em>. Never use your secret key (<code>sk_…</code>) — the app refuses it.
+            When Stripe asks how you will use the key, choose <em>Providing this key to a third-party application</em> (Founder OS is the third party). On the next screen, <em>Name</em>: <code>Founder OS</code>, <em>URL</em>: <code>{env.appUrl}</code>, then open <em>Customise permissions for this key</em>. Never use your secret key (<code>sk_…</code>) - the app refuses it.
           </>
         ),
       },
@@ -52,7 +52,7 @@ export const CONNECT_GUIDES: Record<SourceType, ConnectGuide> = {
         title: "Set four permissions to Read, leave everything else at None",
         body: (
           <>
-            <em>Customers</em>, <em>Subscriptions</em>, <em>Charges</em> and <em>Products</em> (that one covers prices). Read only — the key can then never move money or change anything.
+            <em>Customers</em>, <em>Subscriptions</em>, <em>Charges</em> and <em>Products</em> (that one covers prices). Read only - the key can then never move money or change anything.
           </>
         ),
       },
@@ -74,7 +74,7 @@ export const CONNECT_GUIDES: Record<SourceType, ConnectGuide> = {
       {
         key: "settings",
         title: "Open Settings → API in your Lemon Squeezy dashboard",
-        body: <>{ext("https://app.lemonsqueezy.com/settings/api", "app.lemonsqueezy.com/settings/api")} — top-right avatar → Settings → API.</>,
+        body: <>{ext("https://app.lemonsqueezy.com/settings/api", "app.lemonsqueezy.com/settings/api")} - top-right avatar → Settings → API.</>,
       },
       {
         key: "create",
@@ -142,7 +142,7 @@ export const CONNECT_GUIDES: Record<SourceType, ConnectGuide> = {
       {
         key: "download",
         title: "Download the .p8 file and note the Key ID and Issuer ID",
-        body: <>The <em>Download API Key</em> link works once. The <em>Key ID</em> is on the key&apos;s row; the <em>Issuer ID</em> is at the top of the same page. Open the .p8 in a text editor — you paste its whole contents, BEGIN and END lines included.</>,
+        body: <>The <em>Download API Key</em> link works once. The <em>Key ID</em> is on the key&apos;s row; the <em>Issuer ID</em> is at the top of the same page. Open the .p8 in a text editor - you paste its whole contents, BEGIN and END lines included.</>,
       },
       {
         key: "vendor",
@@ -161,7 +161,7 @@ export const CONNECT_GUIDES: Record<SourceType, ConnectGuide> = {
     source: "postgres",
     name: "Postgres / Supabase",
     tagline: "Sign-ups from your own users table; optionally subscriptions too",
-    reads: "A count of rows in your users table from the last 30 days, and — if you map one — a subscriptions table. Every query runs read-only with a 15-second limit.",
+    reads: "A count of rows in your users table from the last 30 days, and - if you map one - a subscriptions table. Every query runs read-only with a 15-second limit.",
     minutes: 5,
     steps: [
       {
@@ -222,7 +222,7 @@ GRANT SELECT ON public.subscriptions TO founder_os_ro;`}</pre>
         title: "Create a service account",
         body: (
           <>
-            Same page → <em>Service Accounts</em> → <em>Add Service Account</em>. Role <em>Consumer</em> is enough (it can read, not change). Copy the <em>username</em> and the <em>secret</em> — the secret is shown once.
+            Same page → <em>Service Accounts</em> → <em>Add Service Account</em>. Role <em>Consumer</em> is enough (it can read, not change). Copy the <em>username</em> and the <em>secret</em> - the secret is shown once.
           </>
         ),
       },
@@ -273,14 +273,14 @@ GRANT SELECT ON public.subscriptions TO founder_os_ro;`}</pre>
                 Paste the scope above into the <em>Input your own scopes</em> box on the left (or pick <em>Google Ads API</em> → the same string from the list), then <em>Authorize APIs</em>.
               </li>
               <li>
-                Sign in as <strong>the Google account that can see the ads account</strong> — the one listed in Google Ads under <em>Admin → Access and security</em>. It does not have to be the account that owns the OAuth client or the Cloud project: the client only identifies the app, while the account you sign in as decides whose data the token can read. If the ads account is reached through a manager account, sign in with access to that manager and fill in the login customer id below.
+                Sign in as <strong>the Google account that can see the ads account</strong> - the one listed in Google Ads under <em>Admin → Access and security</em>. It does not have to be the account that owns the OAuth client or the Cloud project: the client only identifies the app, while the account you sign in as decides whose data the token can read. If the ads account is reached through a manager account, sign in with access to that manager and fill in the login customer id below.
               </li>
               <li>
-                <em>Exchange authorization code for tokens</em>, then copy the <strong>refresh token</strong> — a long string starting <code>1//</code>. The access token beside it expires in an hour; it is not the one to paste.
+                <em>Exchange authorization code for tokens</em>, then copy the <strong>refresh token</strong> - a long string starting <code>1//</code>. The access token beside it expires in an hour; it is not the one to paste.
               </li>
             </ol>
             <p className="mt-3">
-              <strong>&quot;Error 403: access_denied&quot;</strong>, saying the app has not completed verification and only approved testers can use it, means the OAuth client&apos;s consent screen is still in <em>Testing</em>. Publish it: Google Cloud console → <em>APIs &amp; Services</em> → <em>OAuth consent screen</em> (or <em>Google Auth Platform → Audience</em>) → <em>Publish app</em>. The &quot;Google hasn&apos;t verified this app&quot; screen that follows is expected — <em>Advanced</em> → <em>Go to …</em> — and needs no audit. The same <em>Testing</em> status is why a token that did work stops after about a week with <code>invalid_grant</code>: Google revokes those refresh tokens after 7 days.
+              <strong>&quot;Error 403: access_denied&quot;</strong>, saying the app has not completed verification and only approved testers can use it, means the OAuth client&apos;s consent screen is still in <em>Testing</em>. Publish it: Google Cloud console → <em>APIs &amp; Services</em> → <em>OAuth consent screen</em> (or <em>Google Auth Platform → Audience</em>) → <em>Publish app</em>. The &quot;Google hasn&apos;t verified this app&quot; screen that follows is expected - <em>Advanced</em> → <em>Go to …</em> - and needs no audit. The same <em>Testing</em> status is why a token that did work stops after about a week with <code>invalid_grant</code>: Google revokes those refresh tokens after 7 days.
             </p>
             <p className="mt-3">
               <strong>Two scopes that look right and are not:</strong> <code>analytics.readonly</code> is Google Analytics, and <code>datamanager</code> is for uploading conversions. A token minted for either is rejected here, so a refresh token you already use elsewhere almost certainly needs re-minting for the scope above. You can reuse the same OAuth client, just not the same token.
@@ -317,7 +317,7 @@ GRANT SELECT ON public.subscriptions TO founder_os_ro;`}</pre>
         title: "Pick or create a service account in Google Cloud",
         body: (
           <>
-            {ext("https://console.cloud.google.com/iam-admin/serviceaccounts", "Google Cloud Console → IAM & Admin → Service Accounts")}. Create one (any name, no roles needed) or pick an existing one. Its email ends in <code>iam.gserviceaccount.com</code> — that is the account you want, not the one with your own email address.
+            {ext("https://console.cloud.google.com/iam-admin/serviceaccounts", "Google Cloud Console → IAM & Admin → Service Accounts")}. Create one (any name, no roles needed) or pick an existing one. Its email ends in <code>iam.gserviceaccount.com</code> - that is the account you want, not the one with your own email address.
           </>
         ),
       },
@@ -326,7 +326,7 @@ GRANT SELECT ON public.subscriptions TO founder_os_ro;`}</pre>
         title: "Download a JSON key for it",
         body: (
           <>
-            Click the account&apos;s email, open the <em>Keys</em> tab, then <em>Add key → Create new key → JSON → Create</em>. The file downloads once; existing keys cannot be downloaded again, so create a new one if you don&apos;t have the file. If <em>Add key</em> is greyed out with an error mentioning <code>iam.disableServiceAccountKeyCreation</code>, your Google organisation blocks keys — ask an admin to allow them for this project, or skip GA4: the attribution snippet gives you the same numbers.
+            Click the account&apos;s email, open the <em>Keys</em> tab, then <em>Add key → Create new key → JSON → Create</em>. The file downloads once; existing keys cannot be downloaded again, so create a new one if you don&apos;t have the file. If <em>Add key</em> is greyed out with an error mentioning <code>iam.disableServiceAccountKeyCreation</code>, your Google organisation blocks keys - ask an admin to allow them for this project, or skip GA4: the attribution snippet gives you the same numbers.
           </>
         ),
       },
@@ -340,7 +340,7 @@ GRANT SELECT ON public.subscriptions TO founder_os_ro;`}</pre>
         title: "Give the service account Viewer access in Google Analytics",
         body: (
           <>
-            The service account is not on any list yet — you type its address in. Open the property → <em>Admin</em> → <em>Property access management</em> → the blue <em>+</em> button top right → <em>Add users</em>. Paste the service account&apos;s email into the email box and press Enter, untick <em>Notify new users by email</em>, choose the <em>Viewer</em> role, click <em>Add</em>. It then appears in the list; wait a minute before connecting. A role on the Cloud project does not count — GA4 keeps its own access list. If there is no <em>+</em> button, your own account is only a Viewer or Analyst on the property; someone with Editor or Administrator has to add it.
+            The service account is not on any list yet - you type its address in. Open the property → <em>Admin</em> → <em>Property access management</em> → the blue <em>+</em> button top right → <em>Add users</em>. Paste the service account&apos;s email into the email box and press Enter, untick <em>Notify new users by email</em>, choose the <em>Viewer</em> role, click <em>Add</em>. It then appears in the list; wait a minute before connecting. A role on the Cloud project does not count - GA4 keeps its own access list. If there is no <em>+</em> button, your own account is only a Viewer or Analyst on the property; someone with Editor or Administrator has to add it.
           </>
         ),
       },

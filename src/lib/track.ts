@@ -1,7 +1,7 @@
 import { getDb, schema } from "./db";
 import type { ProductEventName } from "./domain/events";
 
-/** Record a product event (PRD V1 §7). Never throws — analytics must not break a request. */
+/** Record a product event (PRD V1 §7). Never throws - analytics must not break a request. */
 export async function track(name: ProductEventName, ctx: { userId?: string | null; appId?: string | null; props?: Record<string, unknown> }): Promise<void> {
   try {
     const db = await getDb();

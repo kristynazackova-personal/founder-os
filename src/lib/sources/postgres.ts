@@ -60,7 +60,7 @@ export function normalizePostgresSubscriptions(rows: SubRow[], priceMap: PriceMa
 }
 
 export function parsePriceMap(text: string): PriceMap {
-  // "premium=399/week, premium_plus=$5.99/week, pro=2900/month" — a bare integer is
+  // "premium=399/week, premium_plus=$5.99/week, pro=2900/month" - a bare integer is
   // cents; a $ prefix or a decimal point means dollars.
   const out: PriceMap = {};
   for (const part of text.split(/[,\n;]/)) {

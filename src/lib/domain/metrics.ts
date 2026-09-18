@@ -25,7 +25,7 @@ export type NormalizedSubscription = {
   firstPaidAt?: Date | null;
 };
 
-/** One billing period in ms — coarse (30-day month, 365-day year); used for lapse inference on report-derived data. */
+/** One billing period in ms - coarse (30-day month, 365-day year); used for lapse inference on report-derived data. */
 export function periodMs(interval: NormalizedSubscription["interval"], intervalCount: number): number {
   const unit = { day: DAY_MS, week: 7 * DAY_MS, month: 30 * DAY_MS, year: 365 * DAY_MS }[interval];
   return unit * Math.max(1, intervalCount);
@@ -63,7 +63,7 @@ export type AnalyticsSignals = {
 
 export type Metrics = {
   payingUsers: number;
-  /** Customers currently on a free trial — never counted as paying. */
+  /** Customers currently on a free trial - never counted as paying. */
   trialingUsers: number;
   /** Free trials started in the last 30 days (sources that know trial dates). */
   trialStarts30d: number;

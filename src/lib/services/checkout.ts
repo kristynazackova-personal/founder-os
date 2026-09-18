@@ -35,7 +35,7 @@ export function embedButtonHtml(plan: Plan): string {
  */
 export async function createPlansFromPricing(app: App, mode: CheckoutMode): Promise<{ ok: true; plans: Plan[] } | { ok: false; error: string }> {
   const interview = await getInterview(app.id);
-  if (!interview?.completedAt) return { ok: false, error: "Finish the pricing interview first — checkout is built from it." };
+  if (!interview?.completedAt) return { ok: false, error: "Finish the pricing interview first - checkout is built from it." };
   const rec = effectiveRecommendation(interview);
   const provider = getProvider();
   const db = await getDb();
@@ -49,7 +49,7 @@ export async function createPlansFromPricing(app: App, mode: CheckoutMode): Prom
           ? [{ interval: null, amountCents: tier.priceCents, suffix: "" }]
           : [{ interval: "month", amountCents: tier.priceCents, suffix: " (monthly)" }, ...(tier.yearlyPriceCents ? [{ interval: "year" as const, amountCents: tier.yearlyPriceCents, suffix: " (yearly)" }] : [])];
       for (const v of variants) {
-        const name = `${app.name} — ${tier.name}${v.suffix}`;
+        const name = `${app.name} - ${tier.name}${v.suffix}`;
         const res = await provider.createProduct({ name, model, interval: v.interval, amountCents: v.amountCents, currency: rec.currency, mode, metadata: { fos_app_id: app.id, fos_tier: tier.key, fos_mode: mode } });
         created.push({ appId: app.id, slug: shortId(10), tierKey: tier.key, name: `${tier.name}${v.suffix}`, model, interval: v.interval, amountCents: v.amountCents, currency: rec.currency, mode, provider: provider.name, providerProductId: res.productId, providerPriceId: res.priceId });
       }

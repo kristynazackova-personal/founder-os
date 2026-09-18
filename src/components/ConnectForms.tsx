@@ -141,7 +141,7 @@ export function GoogleAdsForm({ appId, draft = {}, secretsOnFile = [] }: { appId
         <textarea name="refreshToken" className="textarea h-20 font-mono text-xs" required={!secretsOnFile.includes("refreshToken")} placeholder="1//0g…" />
         <SecretOnFile name="refreshToken" secretsOnFile={secretsOnFile} />
         <p className="help">
-          An OAuth refresh token carrying <code>https://www.googleapis.com/auth/adwords</code> — not an Analytics or Data Manager token. Stored encrypted and never shown again.
+          An OAuth refresh token carrying <code>https://www.googleapis.com/auth/adwords</code> - not an Analytics or Data Manager token. Stored encrypted and never shown again.
         </p>
       </div>
       <Status state={state} />
@@ -250,7 +250,7 @@ export function PostgresForm({ appId, draft = {}, secretsOnFile = [] }: { appId:
       <div>
         <label className="label">Read-only connection string</label>
         <input name="connectionString" className="input" type="password" required placeholder="postgresql://founder_os_ro:…@host:5432/db?sslmode=require" autoComplete="off" defaultValue={draft.connectionString} />
-        <p className="help">A role that can only SELECT. Every query runs read-only with a 15-second limit.{draft.connectionString && !secretsOnFile.includes("connectionString") ? " Your draft kept the host, user and database — add the password back." : ""}</p>
+        <p className="help">A role that can only SELECT. Every query runs read-only with a 15-second limit.{draft.connectionString && !secretsOnFile.includes("connectionString") ? " Your draft kept the host, user and database - add the password back." : ""}</p>
         <SecretOnFile name="connectionString" secretsOnFile={secretsOnFile} />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">

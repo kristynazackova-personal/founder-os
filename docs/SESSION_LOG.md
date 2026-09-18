@@ -6,14 +6,14 @@ to it as you go. It is a log, not instructions.
 
 ---
 
-## 2026-09-12 — Attribution, ad spend, and the Google Ads source
+## 2026-09-12 - Attribution, ad spend, and the Google Ads source
 
 Branch `claude/trusting-shannon-3wndg6`, 24 commits `ef5e958..abc54dd`,
 all deployed by fast-forwarding the default branch. Founder OS's first
 signed-up customer is **Selvenn** (`kristynazackova-personal/ConversationLens-monorepo`),
 a consumer app on Apple weekly subscriptions with a 7-day trial plus two
 Stripe web subscriptions, running Google Ads iOS App campaigns. Most of
-this session was driven by one request — *show my ad spend* — which took
+this session was driven by one request - *show my ad spend* - which took
 five attempts because GA4 turned out not to have the number at all.
 
 ### What shipped
@@ -53,7 +53,7 @@ five attempts because GA4 turned out not to have the number at all.
   third.** A reported figure always beats a typed one. Reversed an earlier
   recommendation in this same session: I argued against the Ads API on the
   grounds that it needed a per-founder credential and that Google had
-  closed the API to this account. Both were wrong — the developer token
+  closed the API to this account. Both were wrong - the developer token
   belongs to Founder OS, so one approval serves every customer, and the
   closure applied to *conversion uploads*, not reporting.
 - **Consent screen must be External, not Internal.** Internal only lets
@@ -71,7 +71,7 @@ five attempts because GA4 turned out not to have the number at all.
 
 - **GA4 ad cost is session-scoped.** Paired with a user-scoped dimension
   (`firstUserGoogleAdsCampaignName`) the Data API answers **200 with blank
-  cost**, not an error — so an error-only fallback never fires and a
+  cost**, not an error - so an error-only fallback never fires and a
   correctly linked account renders `$0`. Candidates are now tried and
   judged on whether cost came back (`pickAdRows`).
 - **Cost cannot be queried with no dimension at all.** GA4 rejects it:
@@ -85,7 +85,7 @@ five attempts because GA4 turned out not to have the number at all.
   thresholded on low-traffic properties, which is why installs, trials and
   paid all read low. The funnel is now also read property-wide with
   `eventName` alone and the larger figures win (`5292c96`).
-- **Apple reports a free trial as "Start introductory offer" at 0.00** —
+- **Apple reports a free trial as "Start introductory offer" at 0.00** -
   the trial wording is only in the offer-type column. Treating that as a
   paid start is what inflated Selvenn's paying customers to 21 against 3–4
   real ones.
@@ -121,7 +121,7 @@ failing path had not been changed.
   that).
 - **Verify in a browser, not only in tests.** Two real bugs were only
   visible that way: typed spend not rendering without a GA4 connection, and
-  the checklist revert. A third "bug" was a test artifact — a double-wrapped
+  the checklist revert. A third "bug" was a test artifact - a double-wrapped
   stub dropped the error body, and a `waitForLoadState` raced a server
   action.
 
@@ -149,7 +149,7 @@ arrive once a build carrying that code ships.
 
 ---
 
-## 2026-09-18 — B2C analytics (`/app/<id>/b2c`)
+## 2026-09-18 - B2C analytics (`/app/<id>/b2c`)
 
 A consumer-funnel dashboard modelled on Selvenn's `/admin/v2`, **added beside
 the existing analytics, not replacing any of it**. Diagnosis and Attribution
@@ -186,7 +186,7 @@ is a link): Overview, Acquisition, Activation & retention, Revenue, Coverage.
 
 ### Traps
 
-- `HOUR_MS` and a leftover `signups` binding tripped the lint gate — the
+- `HOUR_MS` and a leftover `signups` binding tripped the lint gate - the
   service does not need the hour constant, the domain module does.
 - Retention needs activity loaded from BEFORE the window: the loader fetches
   `max(weeks × 2, 8)` weeks of history so D30 and the sparklines have
@@ -196,19 +196,19 @@ is a link): Overview, Acquisition, Activation & retention, Revenue, Coverage.
 
 - Nothing computes ad spend on these pages; that stays on Attribution, which
   already has Google Ads, GA4 and manual entry feeding it.
-- `checkout_view` is only as good as the app calling it — roadmap item 3.
+- `checkout_view` is only as good as the app calling it - roadmap item 3.
   Until then "Checkout → paid" reads as a count pair or a blank, and Coverage
   names it.
 - Cohorts are keyed on the snippet's anonymous id, so a user who switches
   device counts twice. Fixing that needs an identity the snippet does not have.
 
-## 2026-09-18 (later) — gates per app, Loops locked, notes in the app
+## 2026-09-18 (later) - gates per app, Loops locked, notes in the app
 
 Five follow-ups to the B2C dashboard, all on the same branch.
 
 ### Gates are derived, not hard-coded
 
-Two new answers at app creation — `industry` and `nature` (how it charges) —
+Two new answers at app creation - `industry` and `nature` (how it charges) -
 drive the thresholds every B2C tile is judged against. `nature` matters more
 than `industry` for conversion and is asked separately for that reason.
 
@@ -216,17 +216,17 @@ Two layers in `src/lib/domain/gates.ts`:
 
 - **Category bands**: published benchmarks per category, each with its own
   source string, written synchronously at creation. Deterministic, offline,
-  no key — so an app is judged from its first render, and this layer alone is
+  no key - so an app is judged from its first render, and this layer alone is
   a complete product.
 - **A competitor pass** (`services/gates.ts`): optional, per app, background,
   fail-soft. `parseResearchedGates` keeps only what carries a metric in range
-  AND a source — **a gate with no provenance is worse than no gate**, and the
+  AND a source - **a gate with no provenance is worse than no gate**, and the
   parser's refusals are the part under test. Needs
   `GATE_RESEARCH_API_KEY`; without it nothing runs and nothing degrades.
 
 The band numbers were looked up rather than invented (all-category mobile
 medians, health & fitness, education, fintech, trial → paid, freemium, SMB and
-B2B churn — September 2026). Each sits beside its source string in the
+B2B churn - September 2026). Each sits beside its source string in the
 catalog, and that string is what the tile prints.
 
 `judgeAgainstGate` reuses the rate rule: under 30 it says "n too small to
@@ -239,7 +239,7 @@ re-derives the set, or the tiles would keep judging against the old category.
 The Loops page is back with its real layout, every figure reading "—", a
 banner naming what unlocks it, and no estimates anywhere. Push and lifecycle
 email are listed on the Connect page as **planned** connectors
-(`components/connect/planned.tsx`) — rendered as dashed cards, deliberately
+(`components/connect/planned.tsx`) - rendered as dashed cards, deliberately
 NOT links, because a card that cannot be completed should not look like one
 that can.
 
@@ -250,7 +250,7 @@ surfaces it appears on (so a note cannot exist without a home) and all of
 them listed on Coverage: the install event being the only platform signal;
 cohorts keyed on a device rather than a human; `checkout_view` being only as
 good as the app calling it; and Loops being locked. These were the three
-caveats from the previous entry's "Open" list — they are now in front of the
+caveats from the previous entry's "Open" list - they are now in front of the
 reader instead of in a file nobody opens.
 
 ### Open
@@ -260,7 +260,7 @@ reader instead of in a file nobody opens.
 - `industry`/`nature` are asked at creation and editable in settings, but
   existing apps have neither, so they fall back to `other` +
   `web_subscription` until someone sets them. `gatesOf` handles that.
-- Push and email connectors are placeholders only — no adapter, no schema.
+- Push and email connectors are placeholders only - no adapter, no schema.
 
 ## 2026-09-18 (later still) - Product Market Fit tab
 
@@ -458,3 +458,43 @@ cannot.
   single long-text fields here. Structured rows with the scores as columns
   would match the doc better.
 - The `pressure_test` path has never run against a real key.
+
+## 2026-09-18 (end) - collapsed stages, and the em dash sweep
+
+### Collapsed stages on the build framework
+
+A framework now declares `collapseStages`. The build one sets it: nine stages
+and 27 fields was about 11,500px of page on a phone. Measured after:
+**4,233px**, with the stage you are on open and the rest one tap away. The
+conversation framework stays expanded (five stages, 9,698px).
+
+Implemented as `<details>`, not a client component: it collapses without
+JavaScript, the page stays a single server render, and each summary carries
+its own answered count so the page still reads as a worksheet when closed.
+
+### Em dashes
+
+Swept, with a rule rather than a one-off: `tests/emDash.test.ts` walks `src/`
+and fails on any em dash that is not the DATA marker. `"—"` is what a tile
+prints when a metric cannot be computed, so the character survives inside
+quotes or backticks, and the copy quoting it survives too. Everything else is
+a hyphen now - 241 in `src/`, 29 in the docs.
+
+Two things the sweep could not own:
+
+- The `<!-- BEGIN:nextjs-agent-rules -->` block in `CLAUDE.md` is regenerated
+  by `next dev` on every run, em dashes and all. Swept once, restored
+  immediately. Left as Next writes it so the tree stays clean.
+- Prose that quotes the marker keeps the character on purpose. Four places in
+  `src/`, eleven in the docs.
+
+### Why the app still needs its own model key
+
+Worth writing down because it came up as a question: the deployed app is a
+separate program on Railway with no connection to any Claude Code session, so
+any model call it makes needs its own credential. This is not Gemini versus
+Claude - it is that a server cannot borrow one. `services/ai.ts` points at
+Google today only because gate research needed web-grounded search and the
+`GEMINI_API_KEY` fallback already existed in the founder's other stack.
+Anthropic's `web_search_20260209` server tool covers the same need, so
+switching is a contained change to that one file plus an `ANTHROPIC_API_KEY`.

@@ -2,7 +2,7 @@
  * Which of an analytics source's events Founder OS may read, and from when.
  * Stored on `revenue_sources.meta.events`; asked right after an analytics
  * tool (GA4, Mixpanel) is connected and editable any time from the
- * connection's settings. Pure — parsing, the allow-check and the date floor.
+ * connection's settings. Pure - parsing, the allow-check and the date floor.
  */
 export type EventMode = "all" | "selected";
 export type EventHistory = "all_time" | "forward";
@@ -13,7 +13,7 @@ export type EventSettings = {
   selected: string[];
   /** "all_time": every collected event; "forward": only events from `since` on. */
   history: EventHistory;
-  /** ISO timestamp the settings were saved — the floor for "forward". */
+  /** ISO timestamp the settings were saved - the floor for "forward". */
   since: string;
 };
 

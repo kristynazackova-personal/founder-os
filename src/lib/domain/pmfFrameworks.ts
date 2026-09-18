@@ -65,6 +65,12 @@ export type PmfFramework = {
    *   structure the questions and challenge what is already there.
    */
   aiRole: "fill" | "pressure_test";
+  /**
+   * Start the stages collapsed. A nine-stage framework is otherwise about
+   * eleven thousand pixels of page on a phone, which is not a worksheet, it
+   * is a scroll. The stage you are on stays open.
+   */
+  collapseStages: boolean;
 };
 
 // ------------------------------------------------- 1. the conversation framework
@@ -103,6 +109,7 @@ const CONVERSATION: PmfFramework = {
   fields: CONVERSATION_FIELDS,
   source: PMF_SOURCE,
   aiRole: "fill",
+  collapseStages: false,
 };
 
 // ------------------------------------------------------- 2. the build framework
@@ -265,6 +272,7 @@ const BUILD: PmfFramework = {
   fields: BUILD_FIELDS,
   source: "Her written Product Framework doc, June 2026. Quotes are verbatim.",
   aiRole: "pressure_test",
+  collapseStages: true,
 };
 
 // ------------------------------------------------------------------ registry

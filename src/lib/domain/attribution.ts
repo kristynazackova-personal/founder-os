@@ -93,7 +93,7 @@ export type VisitorRow = { anonId: string; channel: Channel; events: Set<Attribu
 export type ChannelReport = {
   channel: Channel;
   visitors: number;
-  /** Mobile app installs (first launch), reported by the app over HTTP — there is no snippet in a native app. */
+  /** Mobile app installs (first launch), reported by the app over HTTP - there is no snippet in a native app. */
   installs: number;
   signups: number;
   activations: number;
@@ -133,7 +133,7 @@ function ga4Value(v: string | null | undefined): string | null {
 /**
  * Bucket GA4 first_open rows into channels. Installs can't be joined to the
  * snippet's anonymous ids (Firebase has its own), so this is a separate
- * count next to the channel table — same channel vocabulary, though, so an
+ * count next to the channel table - same channel vocabulary, though, so an
  * app-campaign install (source google / medium cpc) lands in "Paid ads".
  */
 export function aggregateInstalls(rows: InstallRow[]): InstallsByChannel[] {

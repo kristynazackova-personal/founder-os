@@ -64,7 +64,7 @@ export function NewAppForm() {
         </div>
       </div>
       <p className="help -mt-1">
-        These two answers set the thresholds your metrics are judged against — published benchmarks for your
+        These two answers set the thresholds your metrics are judged against - published benchmarks for your
         category at first, then refined from comparable products. You can change them later, and the gates re-derive.
       </p>
       <div>

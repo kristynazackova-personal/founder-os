@@ -14,7 +14,7 @@ export async function createPlansAction(appId: string, _prev: FormState, formDat
   const mode = String(formData.get("mode")) === "live" ? "live" : "test";
   if (mode === "live") {
     const billing = await getBillingState(user);
-    if (billing.status === "unlock_required") return { error: "Your free allowance is used up — unlock Founder OS on the Billing page to publish live plans." };
+    if (billing.status === "unlock_required") return { error: "Your free allowance is used up - unlock Founder OS on the Billing page to publish live plans." };
   }
   const res = await createPlansFromPricing(app, mode);
   if (!res.ok) return { error: res.error };

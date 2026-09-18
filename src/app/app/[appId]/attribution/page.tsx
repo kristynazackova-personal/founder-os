@@ -80,12 +80,12 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
 
       <section className={installed ? "" : "card p-6"}>
         <h2 className="font-semibold">3. Running app campaigns? Report installs from the app</h2>
-        <p className="help">A native app can&apos;t load the snippet, so it posts events to the same collector. Send <code>install</code> once on first launch, then the same signup / activation / purchase calls with the same id, so the store funnel joins up. Use one random id generated on first launch and stored on the device — never a hardware identifier.</p>
+        <p className="help">A native app can&apos;t load the snippet, so it posts events to the same collector. Send <code>install</code> once on first launch, then the same signup / activation / purchase calls with the same id, so the store funnel joins up. Use one random id generated on first launch and stored on the device - never a hardware identifier.</p>
         <div className="mt-3 flex items-start gap-2">
           <pre className="code flex-1">{installSnippet}</pre>
           <CopyButton text={installSnippet} />
         </div>
-        <p className="help mt-2">Installs show as &quot;App Store / Play Store&quot;. Which campaign drove an install isn&apos;t knowable from inside the app (that needs SKAdNetwork or an attribution SDK) — compare the installs row against campaign spend for the period.</p>
+        <p className="help mt-2">Installs show as &quot;App Store / Play Store&quot;. Which campaign drove an install isn&apos;t knowable from inside the app (that needs SKAdNetwork or an attribution SDK) - compare the installs row against campaign spend for the period.</p>
       </section>
     </>
   );
@@ -98,7 +98,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
         actions={installed ? <InstallGuideDialog>{guide}</InstallGuideDialog> : undefined}
       />
       {installed ? (
-        <Alert kind="good">Snippet installed — first event received {fmtDate(app.snippetInstalledAt)}.</Alert>
+        <Alert kind="good">Snippet installed - first event received {fmtDate(app.snippetInstalledAt)}.</Alert>
       ) : (
         <>
           <Alert kind="warn">No events received yet. Install the snippet below; the diagnosis fills in visitors, signups and conversion as soon as data arrives.</Alert>
@@ -109,7 +109,7 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
       <section className="card p-6">
         <h2 className="font-semibold">App installs, last {installs.days} days</h2>
         <p className="help">
-          Firebase&apos;s automatic <code>first_open</code> from your connected GA4 property, by the user&apos;s first-touch source — this is the install count Google Ads App campaigns report against. Installs can&apos;t be joined to the snippet&apos;s ids, so they sit next to the channel table rather than in it; the app&apos;s own <code>install</code> calls (step 3) are what fill the Installs column below.
+          Firebase&apos;s automatic <code>first_open</code> from your connected GA4 property, by the user&apos;s first-touch source - this is the install count Google Ads App campaigns report against. Installs can&apos;t be joined to the snippet&apos;s ids, so they sit next to the channel table rather than in it; the app&apos;s own <code>install</code> calls (step 3) are what fill the Installs column below.
         </p>
         {!installs.connected ? (
           <p className="mt-3 text-sm text-[var(--muted)]">
@@ -256,9 +256,9 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
             ))}
             <p>
               {campaignsRaw.eventSettings?.history === "forward"
-                ? `Your event settings read only from ${fmtDay(new Date(campaignsRaw.eventSettings.since))} on — earlier spend is deliberately ignored. Change that under Connect → GA4 → Change.`
+                ? `Your event settings read only from ${fmtDay(new Date(campaignsRaw.eventSettings.since))} on - earlier spend is deliberately ignored. Change that under Connect → GA4 → Change.`
                 : campaignsRaw.ads.length === 0
-                  ? "No ad rows at all usually means this property is not the one linked to the Google Ads account — for an app, that is the Firebase project's GA4 property, not the website's. Check the property id under Connect → Google Analytics 4."
+                  ? "No ad rows at all usually means this property is not the one linked to the Google Ads account - for an app, that is the Firebase project's GA4 property, not the website's. Check the property id under Connect → Google Analytics 4."
                   : "Rows came back but carried no spend, clicks or funnel users in the window."}
             </p>
           </div>

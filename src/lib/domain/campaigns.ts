@@ -1,6 +1,6 @@
 /**
  * Paid campaigns: ad spend from GA4's Google Ads link joined to the app
- * events GA4 attributes to the same first-touch campaign. Pure — the GA4
+ * events GA4 attributes to the same first-touch campaign. Pure - the GA4
  * adapter parses reports into these rows, this file only does arithmetic.
  *
  * Cost is in the GA4 property's currency (Google reports it as a decimal);
@@ -25,7 +25,7 @@ export type CampaignSummary = {
   /** spend ÷ installs, null without installs */
   costPerInstallCents: number | null;
   costPerTrialCents: number | null;
-  /** spend ÷ paid — customer acquisition cost */
+  /** spend ÷ paid - customer acquisition cost */
   cacCents: number | null;
   /** cac ÷ monthly revenue per paying customer, null when either is unknown */
   paybackMonths: number | null;
@@ -44,7 +44,7 @@ export function adRowsHaveSpend(rows: CampaignAdRow[]): boolean {
  * answers a user-scoped request with blank cost and a 200, so a zero result
  * is indistinguishable from a wrong-scope result: prefer the first attempt
  * that actually carries cost. Cost cannot be read without a dimension at
- * all — GA4 rejects that as incompatible — so when no attempt reports cost
+ * all - GA4 rejects that as incompatible - so when no attempt reports cost
  * the first attempt's rows stand and the scope is "total".
  */
 export function pickAdRows(attempts: Array<{ scope: string; rows: CampaignAdRow[] }>): { ads: CampaignAdRow[]; scope: AdRowScope } {
@@ -56,7 +56,7 @@ export function pickAdRows(attempts: Array<{ scope: string; rows: CampaignAdRow[
 
 export const CAMPAIGN_FUNNEL_EVENTS = ["first_open", "sign_up", "trial_start", "purchase"] as const;
 
-/** GA4's bucket for spend or users it can't tie to a named campaign at this scope — kept as one row, never dropped. */
+/** GA4's bucket for spend or users it can't tie to a named campaign at this scope - kept as one row, never dropped. */
 export const UNATTRIBUTED_CAMPAIGN = "Unattributed (no campaign name)";
 
 const UNSET = new Set(["", "(not set)", "(direct)", "(none)", "(organic)"]);
@@ -66,8 +66,8 @@ export function isUnsetCampaign(name: string | null | undefined): boolean {
 
 /**
  * Unit cost, or null when it can't be known. Spend of exactly zero means
- * "no cost reported" — Founder OS cannot tell that apart from "genuinely
- * free" — and reporting $0 CAC would read as free customers, so every
+ * "no cost reported" - Founder OS cannot tell that apart from "genuinely
+ * free" - and reporting $0 CAC would read as free customers, so every
  * derived cost stays unknown until real spend arrives.
  */
 function ratio(cents: number, n: number): number | null {
@@ -76,7 +76,7 @@ function ratio(cents: number, n: number): number | null {
 
 /**
  * One row per campaign with spend, clicks or attributed events, plus one
- * "Unattributed" row for whatever GA4 reports under "(not set)" — App
+ * "Unattributed" row for whatever GA4 reports under "(not set)" - App
  * campaign cost often lands there at first-touch scope, and organic
  * installs always do. Named campaigns first, then by spend.
  */

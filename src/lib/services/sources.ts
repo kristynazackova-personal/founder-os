@@ -108,7 +108,7 @@ export async function connectGa4(app: App, propertyId: string, serviceAccountJso
   } catch {
     return { ok: false, error: "Paste the whole service-account JSON file." };
   }
-  if (!parsed.client_email || !parsed.private_key) return { ok: false, error: "That JSON has no client_email / private_key — download a service-account key, not an OAuth client." };
+  if (!parsed.client_email || !parsed.private_key) return { ok: false, error: "That JSON has no client_email / private_key - download a service-account key, not an OAuth client." };
   const creds: Ga4Credentials = { propertyId: pid, serviceAccountJson };
   try {
     await ga4Adapter.fetchSignals(creds);
@@ -129,13 +129,13 @@ export function explainGa4Error(err: unknown, serviceAccountEmail: string, prope
     return `The Google Analytics Data API is not enabled on the Cloud project${project ? ` ${project}` : ""} that owns this service account. Enable it at console.cloud.google.com/apis/library/analyticsdata.googleapis.com, wait a minute, then try again.`;
   }
   if (status === 403) {
-    return `Google says the service account has no access to property ${propertyId}: "${google || "permission denied"}". In Google Analytics open Admin → Property access management and add ${serviceAccountEmail} with the Viewer role (check the property id, too — it is the numeric id under Property details).`;
+    return `Google says the service account has no access to property ${propertyId}: "${google || "permission denied"}". In Google Analytics open Admin → Property access management and add ${serviceAccountEmail} with the Viewer role (check the property id, too - it is the numeric id under Property details).`;
   }
   if (status === 404) return `Google Analytics has no property with id ${propertyId}. Use the numeric property id from Admin → Property details, not a measurement id (G-…) or account id.`;
   if (status === 401 || /invalid_grant|invalid_client/i.test(google || (err instanceof Error ? err.message : ""))) {
-    return `Google rejected the key (${google || "invalid credentials"}). It may have been deleted or the JSON is incomplete — create a new key and paste the whole file.`;
+    return `Google rejected the key (${google || "invalid credentials"}). It may have been deleted or the JSON is incomplete - create a new key and paste the whole file.`;
   }
-  return `GA4 refused the request: ${err instanceof Error ? err.message : String(err)}${google ? ` — ${google}` : ""}.`;
+  return `GA4 refused the request: ${err instanceof Error ? err.message : String(err)}${google ? ` - ${google}` : ""}.`;
 }
 
 /** Accept a .p8 as pasted from a file, from an env var with escaped newlines, quote-wrapped, or as bare base64. */
@@ -336,7 +336,7 @@ export type CampaignsRead = {
   propertyId: string | null;
   from: Date | null;
   eventSettings: EventSettings | null;
-  /** What GA4 said about any ad-cost request it refused. Never fatal — the funnel still renders. */
+  /** What GA4 said about any ad-cost request it refused. Never fatal - the funnel still renders. */
   notes: AdReadNote[];
 };
 

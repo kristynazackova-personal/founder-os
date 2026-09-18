@@ -7,8 +7,8 @@ import type { GoogleAdsCredentials } from "./types";
 /**
  * Google Ads reporting, read with the founder's OAuth refresh token.
  *
- * Two credentials belong to Founder OS and live in env — the developer
- * token and the OAuth client — so one approval serves every customer and a
+ * Two credentials belong to Founder OS and live in env - the developer
+ * token and the OAuth client - so one approval serves every customer and a
  * founder supplies only their account id and a grant. Manager accounts need
  * `login-customer-id` alongside the child account being queried.
  */
@@ -63,7 +63,7 @@ export async function fetchGoogleAdsSpend(c: GoogleAdsCredentials, days = 30, no
   return adRowsFromGoogleAds(await search(c, campaignSpendQuery(from, now)));
 }
 
-/** Google's own words about a refusal — the reason always sits in the body, not the status line. */
+/** Google's own words about a refusal - the reason always sits in the body, not the status line. */
 export function googleAdsErrorText(err: unknown): string {
   if (!(err instanceof ProviderError)) return err instanceof Error ? err.message : String(err);
   const body = err.body as
@@ -80,7 +80,7 @@ export function googleAdsErrorText(err: unknown): string {
 /** Friendly, actionable version of the handful of failures founders actually hit. */
 export function explainGoogleAdsError(err: unknown, customerId: string): string {
   const text = googleAdsErrorText(err);
-  if (/invalid_grant/i.test(text)) return "Google rejected the refresh token. Generate a new one — a token stops working if it is revoked, unused for six months, or was issued for a different OAuth client.";
+  if (/invalid_grant/i.test(text)) return "Google rejected the refresh token. Generate a new one - a token stops working if it is revoked, unused for six months, or was issued for a different OAuth client.";
   if (/DEVELOPER_TOKEN_NOT_APPROVED|developer token/i.test(text)) return `Founder OS's Google Ads developer token is not approved for this account yet: ${text}`;
   if (/USER_PERMISSION_DENIED|CUSTOMER_NOT_FOUND/i.test(text)) return `The grant has no access to account ${customerId}: ${text}. If it sits under a manager account, add that manager's id as the login customer id.`;
   if (/not found|INVALID_ARGUMENT.*version|Invalid value at 'query'/i.test(text)) return `Google refused the request: ${text}. If it names the API version, set GOOGLE_ADS_API_VERSION to a current one.`;

@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       checkoutProvider: env.checkoutProvider,
       encryptionKeySet: Boolean(env.encryptionKey),
       sessionSecretSet: env.sessionSecret !== "dev-session-secret-change-me",
-      // Booleans only — whether the deployment can offer Google Ads at all,
+      // Booleans only - whether the deployment can offer Google Ads at all,
       // which is otherwise only discoverable by trying to connect an account.
       googleAdsConfigured: googleAdsConfigured(),
       googleAdsApiVersion: env.googleAdsApiVersion,

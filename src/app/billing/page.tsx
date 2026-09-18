@@ -37,7 +37,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       </header>
       <main className="mx-auto max-w-3xl px-4 py-8">
         <PageHeader title="Billing" subtitle="We charge when you get paid. Nothing before the first dollar." />
-        {q.success ? <Alert kind="good">Thanks — your plan is active as soon as Stripe confirms the payment.</Alert> : null}
+        {q.success ? <Alert kind="good">Thanks - your plan is active as soon as Stripe confirms the payment.</Alert> : null}
         {q.error ? <Alert kind="bad">{q.error}</Alert> : null}
 
         <section className="card mt-4 p-6">

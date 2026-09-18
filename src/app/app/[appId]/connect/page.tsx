@@ -21,14 +21,14 @@ export default async function ConnectPage({ params, searchParams }: { params: Pr
     <div className="space-y-6">
       <PageHeader
         title="Connect payment data"
-        subtitle="Read-only. Keys are encrypted at rest, used only to read, and never displayed again — you can replace or disconnect them, not view them. Pick a source to see the steps."
+        subtitle="Read-only. Keys are encrypted at rest, used only to read, and never displayed again - you can replace or disconnect them, not view them. Pick a source to see the steps."
         actions={
           <Link href={`/app/${app.id}`} className="btn btn-secondary">
             {connectedCount ? "Back to diagnosis" : "Skip for now"}
           </Link>
         }
       />
-      {q.welcome ? <Alert kind="good">App created. If you already charge somewhere, connect it now — otherwise skip ahead and price it.</Alert> : null}
+      {q.welcome ? <Alert kind="good">App created. If you already charge somewhere, connect it now - otherwise skip ahead and price it.</Alert> : null}
       {q.error ? <Alert kind="bad">{q.error}</Alert> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">

@@ -4,12 +4,12 @@ The definitions behind the Selvenn admin dashboard. Every tile on that
 dashboard links to an anchor here; if a number on screen and a number here
 disagree, this file is wrong and should be fixed, not the dashboard.
 
-Design: **Selvenn Metrics Dashboard** canvas —
+Design: **Selvenn Metrics Dashboard** canvas -
 `https://claude.ai/artifact/HW6wmJACwaYGfZKfoCYKQy` (Overview, Acquisition,
 Onboarding, Activation & Retention, Revenue, Loops, plus the metric-tile
 anatomy). **Every figure on that canvas is mock data**, chosen to exercise the
 formatting rules below (counts beside rates, rates suppressed under n = 30).
-No number in this document is a measurement either — the tables here name
+No number in this document is a measurement either - the tables here name
 steps, sources and gates, not values.
 
 ---
@@ -20,7 +20,7 @@ These apply to every tile, table and funnel. They exist because Selvenn's
 denominators are small enough that ordinary dashboard conventions mislead.
 
 - **Cohorts are ISO weeks by signup date.** A retention cell appears only once
-  its window has fully elapsed — never a partial week rendered as if complete.
+  its window has fully elapsed - never a partial week rendered as if complete.
 - **A rate needs a denominator of 30.** Below that the tile shows the count
   pair instead (`3 of 11`), and the rate is not rendered at all.
 - **The count stays visible next to every rate.** `26% · 9 of 34`, never `26%`
@@ -32,7 +32,7 @@ denominators are small enough that ordinary dashboard conventions mislead.
 - **Deltas are signed and compared to the prior complete week.** Colour encodes
   direction × whether up is good, so a rising failure rate is red.
 - **Sparklines cover eight complete weeks**, muted, with the current week as
-  the only accent mark. No axis — the n line carries the number.
+  the only accent mark. No axis - the n line carries the number.
 - **Internal accounts are excluded by default**, and the count of exclusions is
   shown next to the toggle.
 - **Amber caveat = the source is a posted client event**, which undercounts
@@ -55,7 +55,7 @@ A tile spanning two rails shows both badges.
 
 Two different kinds of target, never mixed:
 
-- **Own gates** come first — Selvenn's own thresholds, e.g. *Gate 2: D1 ≥ 20%,
+- **Own gates** come first - Selvenn's own thresholds, e.g. *Gate 2: D1 ≥ 20%,
   D7 ≥ 8%*. A gate also carries a minimum n (Gate 2 needs n ≥ 100); below it
   the tile says the gate cannot be judged yet rather than passing or failing it.
 - **Market bands** come second, always labelled with their denominator and
@@ -87,7 +87,7 @@ Wherever this document says "active", it means any of: a coaching session, an
 analysis, a chat message, a task submission, a journal entry, or an
 authenticated cold-start launch ping. One definition, used by D1/D7/D30, the
 cohort triangle, WAU, streaks, resurrection, churn, and every
-"returned ≤ 48 h" figure — so those numbers are comparable with each other.
+"returned ≤ 48 h" figure - so those numbers are comparable with each other.
 
 ---
 
@@ -102,7 +102,7 @@ Where signups come from, and what each channel's users do afterwards.
 | Install → signup (iOS) | Signups ÷ first opens | PG + GA4 | no reliable market bar |
 | Attribution coverage | Signups carrying a source ÷ all signups | PG | iOS campaign is not attributable in-app |
 
-**Per channel** the table carries web signups, iOS signups, activated and D7 —
+**Per channel** the table carries web signups, iOS signups, activated and D7 -
 channels are judged on what their users *did*, never on volume.
 Channels tracked: email waves, Google Ads iOS app campaign, organic App Store
 search, organic web search / direct, coach invite, partner invite, unknown.
@@ -121,7 +121,7 @@ an "all" column and a "from Ads" column.
 
 ### Experiments
 
-Each A/B row shows users, the step rate, D7 as a count pair, and paid — plus an
+Each A/B row shows users, the step rate, D7 as a count pair, and paid - plus an
 explicit "not significant at this n" chip where that is the case. Running
 experiments: `landing_livedemo_v1` (landing, all-time), `welcome_screen_v1`
 (iOS welcome screen, device-level from the launch ping, keep running below 100
@@ -148,7 +148,7 @@ now → product tour → plans (wizard paywall) → paywall viewed (any screen) 
 tier selected → subscribed.
 
 Distinct users per step, reconstructed from Postgres. Each question step also
-carries **answered / skipped / left** — a question a user skipped and one they
+carries **answered / skipped / left** - a question a user skipped and one they
 abandoned are different failures and are never summed. Steps marked
 *event-only* come from posted client events and undercount until every user is
 on that build; the iOS tour stamp precedes the tour itself.
@@ -159,7 +159,7 @@ Siblings off the paywall view, never a single path: Lena opened from the
 paywall, tier selected (split by tier), subscribed (as a share of paywall
 views *and* of signups).
 
-**Paywall dismissal is not recorded** — see fix #7.
+**Paywall dismissal is not recorded** - see fix #7.
 
 ---
 
@@ -170,7 +170,7 @@ Did day two happen, and did the week happen.
 | Metric | Definition | Source | Target |
 |---|---|---|---|
 | Activated ≤ 24 h | Any first-value event within 24 h, with the per-surface split | PG | no gate yet |
-| Time to first value | Median signup → first completed session or analysis, plus p75 | PG | — |
+| Time to first value | Median signup → first completed session or analysis, plus p75 | PG | - |
 | First Lena session | Started ÷ signups, with completed / failed / left | PG | failures are a guardrail, not a funnel step |
 | North star | Second analysis or session ≤ 7 days | PG | KPI, no gate yet |
 | D1 · D7 · D30 | Active in the day-1 / 7 / 30 window | PG | Gate 2: D1 ≥ 20%, D7 ≥ 8%, needs n ≥ 100 |
@@ -197,9 +197,9 @@ Users with ≥ 3 active days in the rolling week, bucketed 0 (week not done) /
 
 ### Resurrected and churned
 
-- **Resurrected** — active this week, with nothing in the prior four. Broken
+- **Resurrected** - active this week, with nothing in the prior four. Broken
   down by what brought them back (push, win-back email).
-- **Churned** — 30 days without any activity on the spine. Reported with the
+- **Churned** - 30 days without any activity on the spine. Reported with the
   last action before the gap and lifetime analyses at churn, because the shape
   of a churn tells you which surface failed.
 
@@ -212,9 +212,9 @@ Paywall → trial → paid → renewal, by tier, plan interval and rail.
 | Metric | Definition | Source | State |
 |---|---|---|---|
 | Active subscribers | Active subs by tier and rail, sponsored counted separately | PG + Apple + Stripe | live |
-| MRR (normalised) | Weekly × 52 ÷ 12; annual ÷ 12. ARPPU alongside | Apple + Stripe | needs price + interval on `subscriptions` — fix #2 |
+| MRR (normalised) | Weekly × 52 ÷ 12; annual ÷ 12. ARPPU alongside | Apple + Stripe | needs price + interval on `subscriptions` - fix #2 |
 | Trials started | Trials by rail, and as a share of paywall views | PG | live |
-| Trial → paid | First charge after a trial | Apple + Stripe | **not measurable in Postgres** — fix #2. Read App Store Connect meanwhile; short-trial band ≈ 25% |
+| Trial → paid | First charge after a trial | Apple + Stripe | **not measurable in Postgres** - fix #2. Read App Store Connect meanwhile; short-trial band ≈ 25% |
 | Early cancels | Trials cancelled inside the trial window | PG | live |
 
 ### Monetization funnel
@@ -242,7 +242,7 @@ not a reporting quirk.
 ### Cancellations and refunds
 
 Cancelled count, median tenure, how many fell inside the trial, refunds by
-rail, and Stripe billing retries. **Cancel reasons are not collected** —
+rail, and Stripe billing retries. **Cancel reasons are not collected** -
 win-back replies are the only signal.
 
 ### Payers versus free
@@ -261,9 +261,9 @@ The day-two engine: push, lifecycle email, Next Step, partner and coach.
 |---|---|---|---|
 | Push opened | Opens ÷ sends | PG | Exact only since 2026-09-12; earlier sends carry no open id. `likely-opened` is the estimate that fills the gap |
 | Push → returned ≤ 48 h | Active on the spine within 48 h of a send | PG | the number that actually matters |
-| Push opt-in (iOS) | Signups with an active device token | PG | prompt outcome not recorded — fix #8 |
-| Email → returned ≤ 48 h | Active within 48 h of a send | PG + SendGrid | opens and clicks not pulled — fix #9 |
-| Email reachable | Opted in and not bounced ÷ users | PG | — |
+| Push opt-in (iOS) | Signups with an active device token | PG | prompt outcome not recorded - fix #8 |
+| Email → returned ≤ 48 h | Active within 48 h of a send | PG + SendGrid | opens and clicks not pulled - fix #9 |
+| Email reachable | Opted in and not bounced ÷ users | PG | - |
 
 One log row is **one device per send**, so push counts are deliveries the
 transport accepted, not people.

@@ -22,7 +22,7 @@ export function providerStatus(): { active: ProviderName; configured: boolean; n
   const active = env.checkoutProvider;
   if (active === "dodo") return { active, configured: Boolean(env.dodoApiKey && env.dodoWebhookSecret), note: "Dodo Payments (merchant of record)" };
   if (active === "polar") return { active, configured: Boolean(env.polarAccessToken && env.polarWebhookSecret), note: "Polar (merchant of record)" };
-  return { active, configured: true, note: "Simulated payments — no money moves. Set CHECKOUT_PROVIDER=dodo or polar for real checkout." };
+  return { active, configured: true, note: "Simulated payments - no money moves. Set CHECKOUT_PROVIDER=dodo or polar for real checkout." };
 }
 
 export * from "./provider";

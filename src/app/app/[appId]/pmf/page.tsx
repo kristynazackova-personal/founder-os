@@ -19,13 +19,37 @@ import { latestAssessment } from "@/lib/services/diagnosis";
 import { snippetSignals } from "@/lib/services/attribution";
 import { hasLivePlans } from "@/lib/services/checkout";
 import { pmfStateFor, stepOf } from "@/lib/domain/pmf";
-import { PMF_FRAMEWORKS, asFrameworkId, frameworkOf, type PmfFramework, type PmfStage } from "@/lib/domain/pmfFrameworks";
-import { completion, incompleteStages, type PmfDoc } from "@/lib/domain/pmfDoc";
+import { PMF_FRAMEWORKS, asFrameworkId, fieldsOfStage, frameworkOf, type PmfFramework, type PmfStage } from "@/lib/domain/pmfFrameworks";
+import { completion, incompleteStages, isAnswered, isPlaceholder, type PmfDoc } from "@/lib/domain/pmfDoc";
 import { latestDoc, listDocs } from "@/lib/services/pmfDocs";
 import { aiConfigured } from "@/lib/services/ai";
 import type { Metrics } from "@/lib/domain/metrics";
 import { PageHeader } from "@/components/ui";
 import { GenerateButton, RewriteBox, StageAnswers, VersionList } from "@/components/pmf/PmfEditor";
+
+function StageHeader({ stage, current, answered, total }: { stage: PmfStage; current: boolean; answered: number; total: number }) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex min-w-0 items-start gap-3">
+        <span
+          className={`mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-lg text-sm font-bold ${current ? "bg-stone-900 text-white" : "border border-stone-200 text-[var(--muted)]"}`}
+        >
+          {stage.n}
+        </span>
+        <div className="min-w-0">
+          <h2 className="font-semibold">{stage.title}</h2>
+          <p className="text-sm text-[var(--muted)]">{stage.purpose}</p>
+        </div>
+      </div>
+      <span className="flex flex-none items-center gap-2">
+        <span className="text-xs text-[var(--muted)] tabular-nums">
+          {answered} / {total}
+        </span>
+        {current ? <span className="badge badge-good">you are here</span> : null}
+      </span>
+    </div>
+  );
+}
 
 function StageCard({
   appId,
@@ -42,23 +66,14 @@ function StageCard({
   reason?: string;
   doc: PmfDoc | null;
 }) {
-  return (
-    <section className={`card p-5 sm:p-6 ${current ? "border-stone-900" : ""}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <span
-            className={`mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-lg text-sm font-bold ${current ? "bg-stone-900 text-white" : "border border-stone-200 text-[var(--muted)]"}`}
-          >
-            {stage.n}
-          </span>
-          <div className="min-w-0">
-            <h2 className="font-semibold">{stage.title}</h2>
-            <p className="text-sm text-[var(--muted)]">{stage.purpose}</p>
-          </div>
-        </div>
-        {current ? <span className="badge badge-good flex-none">you are here</span> : null}
-      </div>
+  const fields = fieldsOfStage(framework, stage.key);
+  const answered = fields.filter((f) => {
+    const v = doc?.values[f.key];
+    return isAnswered(v) && !isPlaceholder(v);
+  }).length;
 
+  const body = (
+    <>
       {current && reason ? <p className="mt-4 rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm">{reason}</p> : null}
 
       <div className="mt-4 flex flex-col gap-3 text-sm leading-relaxed text-stone-700">
@@ -89,6 +104,27 @@ function StageCard({
           ))}
         </ul>
       </div>
+    </>
+  );
+
+  // A <details> rather than a client component: it collapses without
+  // JavaScript, keeps the whole page in one server render, and every stage
+  // stays findable by the browser's own in-page search when opened.
+  if (framework.collapseStages) {
+    return (
+      <details open={current} className={`card p-5 sm:p-6 ${current ? "border-stone-900" : ""}`}>
+        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <StageHeader stage={stage} current={current} answered={answered} total={fields.length} />
+        </summary>
+        {body}
+      </details>
+    );
+  }
+
+  return (
+    <section className={`card p-5 sm:p-6 ${current ? "border-stone-900" : ""}`}>
+      <StageHeader stage={stage} current={current} answered={answered} total={fields.length} />
+      {body}
     </section>
   );
 }
@@ -221,6 +257,12 @@ export default async function PmfPage({
           <RewriteBox appId={app.id} framework={framework.id} canRewrite={aiConfigured()} pressureTest={framework.aiRole === "pressure_test"} />
         </section>
       )}
+
+      {framework.collapseStages ? (
+        <p className="text-xs text-[var(--muted)]">
+          Nine stages, collapsed so the page stays readable. The one you are on is open; tap any other to open it.
+        </p>
+      ) : null}
 
       {framework.stages.map((s) => (
         <StageCard

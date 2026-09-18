@@ -71,7 +71,7 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold tracking-tight">{guide.name}</h1>
             <p className="text-sm text-[var(--muted)]">{guide.reads}</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">About {guide.minutes} minute{guide.minutes === 1 ? "" : "s"}. Tick the steps as you go — we remember where you got to.</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">About {guide.minutes} minute{guide.minutes === 1 ? "" : "s"}. Tick the steps as you go - we remember where you got to.</p>
           </div>
         </div>
       </div>
@@ -80,18 +80,18 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
         <Alert kind="good">
           Connected. Your diagnosis has been refreshed with {guide.name} data.
           {q.signups !== undefined ? ` ${q.signups} sign-ups in the last 30 days${q.subs !== undefined ? `, ${q.subs} subscription rows` : ""}.` : ""}
-          {q.empty ? " Apple returned no report for the last 7 days yet — that's normal for a new app; numbers appear as reports land." : ""}
+          {q.empty ? " Apple returned no report for the last 7 days yet - that's normal for a new app; numbers appear as reports land." : ""}
         </Alert>
       ) : null}
       {q.disconnected ? <Alert kind="info">{guide.name} disconnected.</Alert> : null}
       {source === "googleads" && !googleAdsConfigured() ? (
         <Alert kind="warn">
-          Google Ads is not switched on for this deployment yet, so connecting will fail however good your token is. Three variables have to be set on the server first —{" "}
-          <code>GOOGLE_ADS_DEVELOPER_TOKEN</code>, <code>GOOGLE_OAUTH_CLIENT_ID</code> and <code>GOOGLE_OAUTH_CLIENT_SECRET</code> — and the client id and secret must be the same pair you used to mint the refresh token, or Google rejects it as <code>invalid_grant</code>. The developer token comes from a Google Ads manager account under <em>Admin → API Center</em>.
+          Google Ads is not switched on for this deployment yet, so connecting will fail however good your token is. Three variables have to be set on the server first -{" "}
+          <code>GOOGLE_ADS_DEVELOPER_TOKEN</code>, <code>GOOGLE_OAUTH_CLIENT_ID</code> and <code>GOOGLE_OAUTH_CLIENT_SECRET</code> - and the client id and secret must be the same pair you used to mint the refresh token, or Google rejects it as <code>invalid_grant</code>. The developer token comes from a Google Ads manager account under <em>Admin → API Center</em>.
         </Alert>
       ) : null}
       {q.events ? <Alert kind="good">Event settings saved. Your diagnosis has been refreshed.</Alert> : null}
-      {q.draft ? <Alert kind="info">Draft saved. Keys and secrets are stored encrypted and never shown again — leave those fields blank when you finish, or paste a new one to replace what&apos;s on file.</Alert> : null}
+      {q.draft ? <Alert kind="info">Draft saved. Keys and secrets are stored encrypted and never shown again - leave those fields blank when you finish, or paste a new one to replace what&apos;s on file.</Alert> : null}
       {!q.draft && hasDraft && !connected ? <Alert kind="info">You have a saved draft; the fields below are filled from it{secretsOnFile.length ? ", and the secret is on file" : ""}.</Alert> : null}
       {q.stripe === "connected" ? <Alert kind="good">Stripe connected. Your diagnosis has been refreshed.</Alert> : null}
       {q.error ? <Alert kind="bad">{q.error}</Alert> : null}
@@ -133,7 +133,7 @@ export default async function ConnectSourcePage({ params, searchParams }: { para
         </section>
       ) : null}
 
-      <ConnectChecklist appId={app.id} source={source} steps={guide.steps} done={done} connected={connected} finalStep={connected ? "Done — the credential is stored encrypted and never shown again" : guide.finalStep}>
+      <ConnectChecklist appId={app.id} source={source} steps={guide.steps} done={done} connected={connected} finalStep={connected ? "Done - the credential is stored encrypted and never shown again" : guide.finalStep}>
         {connected ? (
           <p className="text-sm text-[var(--muted)]">
             To swap the credential, use <em>Replace</em> above; to stop reading, <em>Disconnect</em>.

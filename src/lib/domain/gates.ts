@@ -1,21 +1,21 @@
 /**
- * Gates — the thresholds a B2C metric is judged against, derived per app from
+ * Gates - the thresholds a B2C metric is judged against, derived per app from
  * its industry and how it sells, so a founder sees "below gate" rather than
  * an unlabelled number.
  *
  * Pure (no DB, no env, no network), unit-checked in tests/gates.test.ts.
  *
  * Two layers, in this order:
- *  1. `CATEGORY_BANDS` — published benchmarks for the category, each carrying
+ *  1. `CATEGORY_BANDS` - published benchmarks for the category, each carrying
  *     its own source. This layer is deterministic, needs no API key, and is
  *     what every app gets the moment it is created.
- *  2. Researched gates — a per-app pass over competitor apps in the same
+ *  2. Researched gates - a per-app pass over competitor apps in the same
  *     category (services/gateResearch.ts) that can TIGHTEN or LOOSEN a band
  *     and must supply its own citation. Validated by `parseResearchedGates`;
  *     anything without a number and a source is thrown away.
  *
  * A gate is never invented. If neither layer can supply one, the metric has
- * no gate and the tile says so — the same rule as "—" never meaning zero.
+ * no gate and the tile says so - the same rule as "—" never meaning zero.
  */
 
 // ---------------------------------------------------------------- taxonomy
@@ -58,7 +58,7 @@ export type Nature = (typeof NATURES)[number];
 export const NATURE_LABEL: Record<Nature, string> = {
   app_subscription: "Mobile app subscription (with a trial)",
   web_subscription: "Web subscription",
-  freemium: "Freemium — free tier, paid upgrade",
+  freemium: "Freemium - free tier, paid upgrade",
   one_off: "One-off purchase",
   marketplace_fee: "Marketplace / take-rate",
 };
@@ -144,7 +144,7 @@ const RETENTION: Partial<Record<Industry, { d1: Band; d7: Band; d30: Band }>> & 
   },
   finance: {
     d1: { target: 0.26, low: 0.2, high: 0.34, source: "All-category median; fintech reads at or above it" },
-    d7: { target: 0.15, low: 0.1, high: 0.22, source: "Fintech, 2026 — one of the stronger categories" },
+    d7: { target: 0.15, low: 0.1, high: 0.22, source: "Fintech, 2026 - one of the stronger categories" },
     d30: { target: 0.15, low: 0.1, high: 0.25, source: "Fintech, 2026 (15–25% D30)" },
   },
   entertainment: {
@@ -162,7 +162,7 @@ const CONVERSION: Record<Nature, { signup_to_paid: Band; trial_to_paid?: Band; c
     churn_30d: { target: 0.08, low: 0.04, high: 0.14, source: "Consumer subscription monthly churn" },
   },
   web_subscription: {
-    signup_to_paid: { target: 0.08, low: 0.025, high: 0.25, source: "Free trial → paid median ≈8%, 2026 — a bimodal distribution, not a bell curve" },
+    signup_to_paid: { target: 0.08, low: 0.025, high: 0.25, source: "Free trial → paid median ≈8%, 2026 - a bimodal distribution, not a bell curve" },
     trial_to_paid: { target: 0.15, low: 0.08, high: 0.3, source: "Self-serve web trial → paid, 2026" },
     churn_30d: { target: 0.05, low: 0.03, high: 0.07, source: "SMB / self-serve SaaS monthly churn 3–7%, 2026" },
   },
@@ -208,7 +208,7 @@ export function categoryGates(profile: BusinessProfile, now = new Date()): GateS
   }
 
   const notes = [
-    "Set from published benchmarks for this category the moment the app was created — not from your own data, which does not exist yet.",
+    "Set from published benchmarks for this category the moment the app was created - not from your own data, which does not exist yet.",
   ];
   if (profile.industry === "mental_health") notes.push("There is no published band for mental-health apps specifically; the health & fitness one is the closest honest proxy.");
   if (conv.trial_to_paid) notes.push("Trial → paid varies more than any other metric here: where the paywall sits moves it several times over, so treat the band as the answer and the target as its middle.");
@@ -239,7 +239,7 @@ const asFraction = (v: unknown): number | null => {
 /**
  * Keep only what a research pass can actually justify: a known metric, a
  * number in range, and a source naming where it came from. Everything else is
- * dropped — a gate with no provenance is worse than no gate.
+ * dropped - a gate with no provenance is worse than no gate.
  */
 export function parseResearchedGates(input: unknown): Gate[] {
   if (!Array.isArray(input)) return [];
@@ -292,7 +292,7 @@ export type GateJudgement = { verdict: "good" | "warn" | "none"; label: string; 
 const asPct = (f: number, digits = f < 0.1 ? 1 : 0): string => `${(f * 100).toFixed(digits)}%`;
 
 /**
- * Judge a value against its gate. A null value is never a failure — it is an
+ * Judge a value against its gate. A null value is never a failure - it is an
  * absence, and reads "no data". `minN` guards the same way a rate does: a gate
  * cannot be passed or failed on a handful of people.
  */

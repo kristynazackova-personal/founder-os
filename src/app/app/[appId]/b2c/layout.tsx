@@ -1,5 +1,5 @@
 /**
- * B2C analytics — the consumer funnel for the founder's own app, added
+ * B2C analytics - the consumer funnel for the founder's own app, added
  * alongside the existing Diagnosis and Attribution pages rather than
  * replacing either. Those answer "what stage am I at" and "which channel
  * paid"; this answers "what happens to the people who arrive".

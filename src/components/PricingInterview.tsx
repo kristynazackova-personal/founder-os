@@ -96,7 +96,7 @@ export function PricingInterview(p: Props) {
 
   function run() {
     if (!answers.activationEvent.trim()) {
-      setSaved("Tell us the activation event — it's what the snippet will track.");
+      setSaved("Tell us the activation event - it's what the snippet will track.");
       return;
     }
     setSaved(null);
@@ -143,7 +143,7 @@ export function PricingInterview(p: Props) {
             <option value="spreadsheet">A spreadsheet or notes</option>
             <option value="human_service">A person or service they pay</option>
             <option value="another_tool">Another tool they pay for</option>
-            <option value="nothing">Nothing — it&apos;s a new behaviour</option>
+            <option value="nothing">Nothing - it&apos;s a new behaviour</option>
           </select>
           <div className="mt-3">
             <label className="label">What does that cost them per month, roughly (USD)?</label>
@@ -152,7 +152,7 @@ export function PricingInterview(p: Props) {
         </Q>
         <Q n={3} title="What grows when they get more value?" help="This becomes the unit you charge by.">
           <select className="select" value={answers.valueMetric} onChange={(e) => set("valueMetric", e.target.value as ValueMetric)}>
-            <option value="flat">Nothing in particular — flat price</option>
+            <option value="flat">Nothing in particular - flat price</option>
             <option value="seat">Seats / users</option>
             <option value="usage">Usage (runs, messages, minutes…)</option>
             <option value="project">Projects / workspaces</option>
@@ -172,7 +172,7 @@ export function PricingInterview(p: Props) {
             <input className="input" type="number" min={0} placeholder="$ / month" value={answers.comparablePriceMonthly ?? ""} onChange={(e) => set("comparablePriceMonthly", num(e.target.value))} />
           </div>
         </Q>
-        <Q n={6} title="Willingness to pay" help="Monthly price at which it would feel suspiciously cheap — and too expensive to consider.">
+        <Q n={6} title="Willingness to pay" help="Monthly price at which it would feel suspiciously cheap - and too expensive to consider.">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="label">Too cheap ($/mo)</label>

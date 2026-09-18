@@ -47,7 +47,7 @@ export function billingState(f: BillingFacts): BillingState {
         track,
         remainingCents: remaining,
         planCents,
-        message: `Free until you've made $500 through checkout. $${(remaining / 100).toFixed(0)} to go — we only charge when you get paid.`,
+        message: `Free until you've made $500 through checkout. $${(remaining / 100).toFixed(0)} to go - we only charge when you get paid.`,
       };
     }
     return { status: "unlock_required", track: "wrapped", planCents, message: "You've passed $500 in revenue through checkout. Founder OS is now $39/mo." };

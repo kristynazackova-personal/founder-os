@@ -33,14 +33,14 @@ export default async function LandingPage() {
         <p className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">For apps built on Lovable, Bolt, Replit and Base44</p>
         <h1 className="mt-3 max-w-3xl text-5xl font-bold tracking-tight">Diagnose, price, charge.</h1>
         <p className="mt-5 max-w-2xl text-lg text-[var(--muted)]">
-          You built the app in a weekend. Now find out what stage you&apos;re at, what to charge, and turn on checkout without touching a backend. Free until you get paid — then 6% + 50¢ on what goes through.
+          You built the app in a weekend. Now find out what stage you&apos;re at, what to charge, and turn on checkout without touching a backend. Free until you get paid - then 6% + 50¢ on what goes through.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href={user ? "/app" : "/signup"} className="btn btn-primary">
             Connect your app
           </Link>
           <Link href="/pricing-engine" className="btn btn-secondary">
-            Try the pricing engine — no account
+            Try the pricing engine - no account
           </Link>
         </div>
       </section>

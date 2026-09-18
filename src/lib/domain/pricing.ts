@@ -148,7 +148,7 @@ export function recommendPricing(a: PricingAnswers): PricingRecommendation {
     anchor = Math.round(anchor * 0.8);
     reasoning.push("It creates a new behaviour rather than replacing a cost, so there's no budget line to point at; start ~20% lower and raise it once retention proves the habit.");
   } else {
-    gaps.push("What the replaced thing costs per month — the strongest anchor you can have.");
+    gaps.push("What the replaced thing costs per month - the strongest anchor you can have.");
   }
 
   if (a.comparablePriceMonthly && a.comparablePriceMonthly > 0) {
@@ -156,7 +156,7 @@ export function recommendPricing(a: PricingAnswers): PricingRecommendation {
     anchor = Math.round(anchor * 0.5 + comp * 0.5);
     reasoning.push(`The comparable you named (${a.comparables || "it"}) charges ~${usd(comp)}/mo. Buyers will hold you against it, so the anchor is pulled halfway toward that.`);
   } else {
-    gaps.push("A comparable tool's price — buyers will compare whether you name one or not.");
+    gaps.push("A comparable tool's price - buyers will compare whether you name one or not.");
   }
 
   if (a.wtpTooCheap && a.wtpTooExpensive && a.wtpTooExpensive > a.wtpTooCheap) {
@@ -185,7 +185,7 @@ export function recommendPricing(a: PricingAnswers): PricingRecommendation {
   }
 
   const anchorMonthly = snapToLadder(anchor);
-  reasoning.push(`Snapped to ${usd(anchorMonthly)} — prices ending in 9 and sitting on familiar rungs convert better than exact numbers.`);
+  reasoning.push(`Snapped to ${usd(anchorMonthly)} - prices ending in 9 and sitting on familiar rungs convert better than exact numbers.`);
 
   // 3. Tiers
   const tiers: Tier[] = [];

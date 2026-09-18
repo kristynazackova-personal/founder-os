@@ -1,5 +1,5 @@
 /**
- * B2C analytics — orchestration. Loads an app's consumer funnel from the
+ * B2C analytics - orchestration. Loads an app's consumer funnel from the
  * snippet's own events plus whatever revenue rails are connected, and
  * assembles one payload per page of /app/<id>/b2c.
  *
@@ -7,7 +7,7 @@
  * attribution pages read and writes nothing. Those pages keep working
  * untouched if this one errors.
  *
- * Every page is fail-soft — a source that throws lands in `sourceErrors` and
+ * Every page is fail-soft - a source that throws lands in `sourceErrors` and
  * its tiles read "—" rather than failing the request. The maths lives in
  * domain/b2c.ts so it can be exercised without Postgres.
  */
@@ -137,7 +137,7 @@ const windowOf = (l: Loaded): B2cWindow => ({
   snippetInstalled: Boolean(l.app.snippetInstalledAt),
 });
 
-/** Visitors whose FIRST touch falls in the window — the acquisition denominator. */
+/** Visitors whose FIRST touch falls in the window - the acquisition denominator. */
 const arrivedIn = (facts: VisitorFacts[], weeks: Week[]): VisitorFacts[] => {
   const from = weeks[0]?.startMs ?? 0;
   const to = weeks[weeks.length - 1]?.endMs ?? 0;
@@ -157,7 +157,7 @@ function judged(l: Loaded, metric: GateMetric, num: number, den: number): Pick<T
 }
 
 const NO_SNIPPET_TILE = (key: string, label: string): Tile =>
-  notMeasurable(key, label, "the snippet has never reported an event", "Install the snippet on the Attribution tab — one line in <head>, plus a signup and activation call.", ["Snippet"]);
+  notMeasurable(key, label, "the snippet has never reported an event", "Install the snippet on the Attribution tab - one line in <head>, plus a signup and activation call.", ["Snippet"]);
 
 // ---------------------------------------------------------------- overview
 
@@ -315,7 +315,7 @@ const cellRetention = (c: Cohort, day: number): string => {
 function overviewChanges(l: Loaded, rev: RevenueFacts): OverviewPage["changes"] {
   const out: OverviewPage["changes"] = [];
   if (rev.earlyCancels > 0) {
-    out.push({ verdict: "crit", text: `${rev.earlyCancels} subscription${rev.earlyCancels === 1 ? "" : "s"} closed within ${EARLY_CANCEL_DAYS} days of starting — the fastest signal you have that the first week disappoints.` });
+    out.push({ verdict: "crit", text: `${rev.earlyCancels} subscription${rev.earlyCancels === 1 ? "" : "s"} closed within ${EARLY_CANCEL_DAYS} days of starting - the fastest signal you have that the first week disappoints.` });
   }
   const signups = sumCohorts(l.cohorts, (c) => c.signups);
   const prior = sumCohorts(l.priorCohorts, (c) => c.signups);
@@ -327,7 +327,7 @@ function overviewChanges(l: Loaded, rev: RevenueFacts): OverviewPage["changes"] 
   }
   const d7 = retentionOf(l.cohorts, 7);
   if (d7.eligible > 0 && d7.eligible < MIN_RATE_DENOMINATOR) {
-    out.push({ verdict: "none", text: `Only ${d7.eligible} signups are old enough to have a D7 answer — the rate is withheld until ${MIN_RATE_DENOMINATOR}.` });
+    out.push({ verdict: "none", text: `Only ${d7.eligible} signups are old enough to have a D7 answer - the rate is withheld until ${MIN_RATE_DENOMINATOR}.` });
   }
   return out;
 }
@@ -434,7 +434,7 @@ export async function loadAcquisitionPage(app: App, opts: B2cOpts): Promise<Acqu
           n: nLine(appSignups, installs, "installs the app itself reported"),
           verdict: "none", verdictLabel: installs === 0 ? "no installs reported" : "no reliable market bar",
           sources: ["Snippet"],
-          caveat: installs === 0 ? "The app is not calling the install event — see the app snippet on the Attribution tab." : undefined,
+          caveat: installs === 0 ? "The app is not calling the install event - see the app snippet on the Attribution tab." : undefined,
         },
         {
           key: "coverage", label: "Attribution coverage", value: ratioValue(attributed, signups),
@@ -589,7 +589,7 @@ export async function loadRevenuePage(app: App, opts: B2cOpts): Promise<RevenueP
         ? { verdict: "none" as const, verdictLabel: "not measurable" }
         : judged(l, "trial_to_paid", rev.trialConversions, rev.trialStarts)),
       sources: rev.sources.length ? rev.sources : ["Stripe"],
-      caveat: "Only rails that report trial and first-paid dates can answer this — Apple's reports do, some do not.",
+      caveat: "Only rails that report trial and first-paid dates can answer this - Apple's reports do, some do not.",
     },
   ];
 
@@ -666,7 +666,7 @@ export async function loadCoveragePage(app: App, opts: B2cOpts): Promise<Coverag
       metric: "Ad spend per campaign",
       state: "partial",
       why: "GA4 reports cost only when its Google Ads link delivers it; iOS App campaigns usually do not",
-      fix: "Connect Google Ads directly, or type the spend in on the Attribution tab — both feed the campaign table there.",
+      fix: "Connect Google Ads directly, or type the spend in on the Attribution tab - both feed the campaign table there.",
     },
     {
       metric: "Push and lifecycle email (Loops)",
@@ -718,7 +718,7 @@ export type LoopsPage = B2cBase & {
 
 /**
  * The day-two engine: push and lifecycle email. Founder OS cannot see either
- * until a provider is connected, so the page is LOCKED rather than removed —
+ * until a provider is connected, so the page is LOCKED rather than removed -
  * it shows the shape of the answer, every figure reading "—", and says which
  * connection fills it. Nothing here is ever estimated.
  */

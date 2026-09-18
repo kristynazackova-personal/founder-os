@@ -1,5 +1,5 @@
 /**
- * Gates — generation and storage.
+ * Gates - generation and storage.
  *
  * Every app gets gates at creation from published category benchmarks
  * (domain/gates.ts `categoryGates`): deterministic, offline, no key needed, so
@@ -9,7 +9,7 @@
  *
  * The research pass needs BOTH an AI provider that can read the web and a
  * model that will cite what it found. Without `GATE_RESEARCH_API_KEY` it does
- * not run and the category gates stand — which is a complete product, not a
+ * not run and the category gates stand - which is a complete product, not a
  * degraded one.
  */
 import { eq } from "drizzle-orm";
@@ -64,7 +64,7 @@ export function researchPrompt(app: Pick<App, "name" | "url">, profile: Business
     "",
     "Find the closest comparable apps or products and report what is publicly known about their performance.",
     "Return ONLY a JSON object of this shape, no prose:",
-    '{"competitors":["name — what makes it comparable"],"gates":[{"metric":"d7","target":0.08,"low":0.07,"high":0.085,"source":"who published this and when","rationale":"why this product should be held to it"}]}',
+    '{"competitors":["name - what makes it comparable"],"gates":[{"metric":"d7","target":0.08,"low":0.07,"high":0.085,"source":"who published this and when","rationale":"why this product should be held to it"}]}',
     "",
     `Allowed metric values: d1, d7, d30, activation, north_star, signup_to_paid, trial_to_paid, churn_30d.`,
     "Rules you must follow:",

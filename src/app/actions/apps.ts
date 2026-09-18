@@ -59,7 +59,7 @@ export async function updateAppAction(appId: string, _prev: FormState, formData:
     nature,
   });
   // The gates are derived from these two answers, so changing either has to
-  // re-derive them — otherwise the tiles keep judging against the old category.
+  // re-derive them - otherwise the tiles keep judging against the old category.
   if (industry !== app.industry || nature !== app.nature) {
     try {
       await regenerateGates({ ...app, industry, nature });
