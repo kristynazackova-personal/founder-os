@@ -103,10 +103,12 @@ export const TABLE_PROMPTS: Record<TableStageKey, TablePromptSpec> = {
       "What it costs them today, in time, money or frustration (text) - when the goal is revenue, or when pricing is open. A pain that cannot be stated in one of those three units is not scoreable.",
       "Evidence (text) - when any row is a guess. It keeps a scored table from looking researched when half of it is assumption.",
     ].join("\n"),
-    rowShape: "One row per pain, anchored to the step of the journey where it happens.",
+    rowShape:
+      "One row per pain, anchored to the step of the journey where it happens. The journey is how the person reaches the outcome TODAY, without this product in it - what they use now, in tiny steps.",
     rowLabel: { label: "Pain point", prompt: "The pain in one line, as the user would say it." },
     cautions: [
       "The journey comes first and in the user's own voice. Her warning: watch for a bigger pain hiding somewhere else in the journey than the one you assumed.",
+      "Never anchor a pain to a step inside this product's own interface (\"when they open the app\", \"when they hit the free tier limit\"). That is usability feedback on something that may not need to exist, and a pain outside the product is invisible to a journey drawn inside it.",
       "Write severity anchors for THIS product rather than reusing a generic ladder.",
       "High frequency plus high intensity is the pair worth looking for, not the single highest severity score.",
       "Willingness to pay is evidenced, not asked: what do they use today, and what does it cost them.",

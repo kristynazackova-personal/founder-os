@@ -20,7 +20,7 @@ import type { App } from "../db/schema";
 import { INDUSTRY_LABEL, NATURE_LABEL } from "../domain/gates";
 import { nextVersion, parseModelValues, parseStoredValues, scaffoldDoc, type PmfDoc, type PmfDocSource, type PmfFieldKey } from "../domain/pmfDoc";
 import { DEFAULT_FRAMEWORK, asFrameworkId, frameworkOf, type PmfFramework, type PmfFrameworkId } from "../domain/pmfFrameworks";
-import { parseTable, readTable, serializeTable, withRowLabelColumn, type PmfTable } from "../domain/pmfTable";
+import { parseTable, readTable, renderTableForPrompt, serializeTable, withRowLabelColumn, type PmfTable } from "../domain/pmfTable";
 import { columnPrompt, promptFor, rowPrompt, tableStageForField } from "../domain/pmfPrompts";
 import { profileOf } from "./gates";
 import { aiConfigured, askForJson } from "./ai";
@@ -263,18 +263,23 @@ export async function generateTable(app: App, framework: PmfFrameworkId, field: 
 
   // Only the answers ABOVE this table, in framework order - that is what the
   // columns are derived from, and feeding later stages back would be circular.
+  // Earlier TABLES count: the chain is segment -> pains -> solutions, so the
+  // pains table reads the segments the founder actually wrote, and the
+  // solutions table reads the pains.
   const stageIndex = f.stages.findIndex((x) => x.key === spec.stage);
   const above = f.fields.filter((x) => {
     const at = f.stages.findIndex((st) => st.key === x.stage);
-    return at >= 0 && at <= stageIndex && x.key !== field && !x.table;
+    return at >= 0 && at <= stageIndex && x.key !== field;
   });
   const answers = above
     .map((x) => {
       const v = doc?.values[x.key];
-      return v && !v.startsWith("[to fill]") ? `${x.label}: ${v}` : null;
+      if (!v) return null;
+      if (x.table) return renderTableForPrompt(readTable(v), x.label) || null;
+      return v.startsWith("[to fill]") ? null : `${x.label}: ${v}`;
     })
     .filter(Boolean)
-    .join("\n");
+    .join("\n\n");
 
   const colRes = await askForJson(columnPrompt(spec, { business, answers }));
   const derived = parseTable(colRes.json).columns;

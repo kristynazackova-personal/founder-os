@@ -565,3 +565,47 @@ to 50 seconds. Fine on Railway, which runs a long-lived server; it would not
 survive a serverless function timeout. "Re-derive columns" stays a deliberate
 button - re-deriving on its own would rewrite the question after the answers
 were given.
+
+---
+
+## 2026-09-18 (chain) - the tables were not actually chained
+
+Running all three tables in sequence against the real model, rather than the
+first one, showed two things the segment table could never have revealed -
+stage 1 is all there is above it, so it looked correct while the stages below
+it were not.
+
+**Earlier tables were not in the prompt at all.** `generateTable` filtered its
+context with `!x.table`, so a later stage saw only the prose fields. The pains
+table never read the segment the founder chose, and the solutions table never
+read the pains. `renderTableForPrompt` now passes the filled rows down. The
+difference in one run: pains went from generic FocusTimer complaints to six
+rows all about *"university students cramming for finals"*, the segment typed
+into the table above, and the solutions table's "which pain it solves" column
+turned from a free-text `[to fill]` question into a choice keyed to the pain
+rows it can now see.
+
+**The pains were anchored inside the product.** "When attempting to start a
+new focus session after opening FocusTimer", "When encountering a paywalled
+feature". That is usability feedback on a product that may not need to exist,
+and it is the exact failure her own warning names - a pain outside your
+product is invisible to a journey drawn inside it. The rule is in the research
+and the prompt now, and the same run produced "before opening any books or
+notes, when they know they should be studying" and "after a period of
+studying, when they decide to step away for a short break".
+
+Also swept: the last standing lint warning (`TOTAL_SCOPE` imported and unused
+in `sources/ga4.ts`). `npm run lint` is silent now, which is worth keeping -
+one tolerated warning is how a second one goes unnoticed.
+
+### What a single-table check cannot tell you
+
+The first table is derived from stage 1, which is prose. Every bug here lived
+in the step from one table to the next, so the check that mattered was the one
+that filled a row and generated the table below it. Worth remembering before
+declaring a chained feature verified.
+
+Generation is also visibly flaky at the row step: one run returned columns and
+zero rows, another failed outright in three seconds and recovered on a retry.
+Both degrade honestly (the status line reports the row count, an error shows
+in red), so this is a latency and reliability note rather than a defect.

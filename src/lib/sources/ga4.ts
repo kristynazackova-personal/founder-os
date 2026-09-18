@@ -1,7 +1,7 @@
 import { createSign } from "node:crypto";
 import { jsonFetch, ProviderError } from "../checkout/provider";
 import type { InstallRow } from "../domain/attribution";
-import { CAMPAIGN_FUNNEL_EVENTS, pickAdRows, TOTAL_SCOPE, type AdRowScope, type CampaignAdRow, type CampaignEventRow } from "../domain/campaigns";
+import { CAMPAIGN_FUNNEL_EVENTS, pickAdRows, type AdRowScope, type CampaignAdRow, type CampaignEventRow } from "../domain/campaigns";
 import { ga4Date, isEventAllowed, readFrom } from "../domain/eventSettings";
 import type { CatalogEvent } from "../services/eventCatalog";
 import type { AnalyticsAdapter, Ga4Credentials, ReadOpts } from "./types";

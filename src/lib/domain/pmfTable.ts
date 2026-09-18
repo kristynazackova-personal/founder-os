@@ -167,6 +167,30 @@ export function withRowLabelColumn(columns: PmfColumn[], label: string, why: str
   return [{ key, label, kind: "text" as const, why }, ...rest].slice(0, MAX_COLUMNS);
 }
 
+/**
+ * An already-filled table, rendered for the prompt of a LATER stage.
+ *
+ * The chain the framework describes is segment -> pains -> solutions, so the
+ * pains table has to see which segments the founder actually wrote and how
+ * they scored, and the solutions table has to see the pains. Passing only the
+ * prose fields, as this used to, left each table deriving its columns from
+ * stage 1 alone.
+ *
+ * Empty rows are dropped: a row the founder has not touched says nothing.
+ */
+export function renderTableForPrompt(t: PmfTable, label: string): string {
+  const filled = t.rows.filter((r) => Object.values(r.cells).some((v) => v.trim().length > 0));
+  if (filled.length === 0) return "";
+  const lines = filled.map((r, i) => {
+    const cells = t.columns
+      .map((c) => (r.cells[c.key] ? `${c.label}: ${r.cells[c.key]}` : null))
+      .filter(Boolean)
+      .join(" | ");
+    return `${i + 1}. ${cells}`;
+  });
+  return [`${label} (what they have filled in so far):`, ...lines].join("\n");
+}
+
 export const serializeTable = (t: PmfTable): string => JSON.stringify(t);
 
 /** A table is answered once a row has something in it - columns alone are a form, not an answer. */

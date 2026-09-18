@@ -146,7 +146,12 @@ never the ones after, because a later stage is downstream of this one and
 feeding it back would be circular. Segments are derived from stage 1 (what it
 does, the user's outcome, what the FOUNDER wants, the six-month picture),
 pains from stage 1 plus the chosen segment, solutions from those plus the
-chosen pains. The strongest signal is *what do you want out of it*: an
+chosen pains. **Earlier tables count as answers**: `renderTableForPrompt`
+passes their filled rows down, so the pains table reads the segments the
+founder actually wrote and the solutions table reads the pains. Without it
+each table derived its columns from the prose fields alone - which looked
+right in the segment table, where stage 1 is all there is, and quietly broke
+the chain below it. The strongest signal is *what do you want out of it*: an
 impact-first answer drops pay-strength, which is her own example, and it does
 exactly that in practice - a founder who wrote "usefulness and thank-yous, I
 do not care about profit" got size, urgency, already-solved, reachability,
@@ -163,6 +168,13 @@ column at all.
   anything else is dropped by `cellValue`, on the way in from the model and on
   the way in from the form alike, because the select cannot render it and the
   page would show a dash while the document said something else.
+- *The journey stays outside the product.* Stage 3's pains hang off how the
+  person reaches the outcome TODAY, with whatever they use now. Left to
+  itself the model anchors them to the product's own interface ("when they
+  open the app", "when they hit the free tier limit"), which is usability
+  feedback on something that may not need to exist - and it is her own
+  warning, since a pain outside the product is invisible to a journey drawn
+  inside it.
 - *The founder's rows are theirs.* "Re-derive columns" is a deliberate button,
   never automatic: re-deriving silently would rewrite the question after the
   answers were given. The save form posts the stored column set back, so a row

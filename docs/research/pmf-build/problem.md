@@ -9,6 +9,14 @@ score them. Pick one to three. Her warning: watch for a bigger pain hiding
 somewhere else in the journey than the one you assumed - which is the reason
 the journey comes before the scoring rather than after.
 
+**"Current" means without your product in it.** The journey is how the person
+reaches the outcome today, using whatever they use now - and the pains are in
+that journey. A generated table that anchors its pains to steps inside the
+product's own interface ("when they open the app", "when they hit the free
+tier limit") has quietly swapped the question for usability feedback on
+something that may not need to exist. It is also the exact failure her warning
+names: a pain outside your product is invisible to a journey drawn inside it.
+
 | Column in the doc | Scale |
 |---|---|
 | Pain point (where in the journey) | text |

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_COLUMNS, MAX_ROWS, blankRow, cellValue, parseTable, readTable, rowsFromForm, serializeTable, tableAnswered,
-  withRowLabelColumn, type PmfColumn,
+  renderTableForPrompt, withRowLabelColumn, type PmfColumn, type PmfTable,
 } from "@/lib/domain/pmfTable";
 import { COLUMN_RULES, ROW_RULES, TABLE_PROMPTS, columnPrompt, rowPrompt, tableStageForField } from "@/lib/domain/pmfPrompts";
 import { PMF_FRAMEWORKS } from "@/lib/domain/pmfFrameworks";
@@ -213,5 +213,39 @@ describe("every table prompt names its row-label column", () => {
       expect(spec.rowLabel.label.length).toBeGreaterThan(0);
       expect(columnPrompt(spec, { business: "X", answers: "" })).toContain(spec.rowLabel.label);
     }
+  });
+});
+
+describe("an earlier table reaches a later stage's prompt", () => {
+  const t: PmfTable = {
+    columns: [
+      { key: "who", label: "User or use case", kind: "text" },
+      { key: "size", label: "Size", kind: "choice", options: ["S", "M", "L"] },
+    ],
+    rows: [
+      { id: "r1", cells: { who: "University students cramming for finals", size: "L" } },
+      { id: "r2", cells: {} },
+    ],
+  };
+
+  it("renders the filled rows with their column labels", () => {
+    const out = renderTableForPrompt(t, "Target user");
+    expect(out).toContain("Target user");
+    expect(out).toContain("User or use case: University students cramming for finals");
+    expect(out).toContain("Size: L");
+  });
+
+  // A row the founder never touched says nothing, so it is not context.
+  it("drops empty rows, and renders nothing when the table is untouched", () => {
+    expect(renderTableForPrompt(t, "Target user").split("\n")).toHaveLength(2);
+    expect(renderTableForPrompt({ columns: t.columns, rows: [{ id: "r1", cells: {} }] }, "X")).toBe("");
+  });
+});
+
+describe("the problem table keeps the journey outside the product", () => {
+  it("says so in both the row shape and the cautions", () => {
+    const spec = TABLE_PROMPTS.problem;
+    expect(spec.rowShape).toContain("without this product in it");
+    expect(spec.cautions.join(" ")).toContain("inside this product's own interface");
   });
 });
