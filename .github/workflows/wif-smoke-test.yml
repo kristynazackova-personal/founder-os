@@ -73,9 +73,23 @@ jobs:
           echo "JWT=$JWT" >> "$GITHUB_ENV"
           # The claims, not the signature. Useful when the rule does not match:
           # compare these against the rule's conditions.
+          #
+          # base64url payloads are unpadded, and `base64 -d` exits non-zero on
+          # them even after writing the decoded bytes. Under `pipefail` that
+          # sank the whole job on its last line, after the token had already
+          # been fetched. A diagnostic must never be able to fail the step, so
+          # the padding is restored and the whole thing ends in `|| true`.
           echo "Claims the rule is matched against:"
-          echo "$JWT" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null \
-            | jq '{iss, sub, aud, repository, repository_owner, repository_owner_id, ref, event_name}'
+          claims() {
+            local payload
+            payload=$(echo "$JWT" | cut -d. -f2 | tr '_-' '/+')
+            case $(( ${#payload} % 4 )) in
+              2) payload="$payload==" ;;
+              3) payload="$payload=" ;;
+            esac
+            echo "$payload" | base64 -d | jq '{iss, sub, aud, repository, repository_owner, repository_owner_id, ref, event_name}'
+          }
+          claims || true
 
       - name: Exchange it for an Anthropic token
         run: |
