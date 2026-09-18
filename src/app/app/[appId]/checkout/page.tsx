@@ -59,38 +59,39 @@ export default async function CheckoutPage({ params }: { params: Promise<{ appId
           <CreatePlansForm appId={app.id} mode={mode} hasPlans={plans.length > 0} />
         </div>
         {plans.length ? (
-          <table className="data mt-4">
-            <thead>
-              <tr>
-                <th>Plan</th>
-                <th>Price</th>
-                <th>Hosted link</th>
-                <th>Embed</th>
-              </tr>
-            </thead>
-            <tbody>
-              {plans.map((p) => (
-                <tr key={p.id}>
-                  <td className="font-semibold">{p.name}</td>
-                  <td>
-                    {formatMoney(p.amountCents, p.currency)}
-                    {p.interval ? <span className="text-[var(--muted)]">/{p.interval}</span> : <span className="text-[var(--muted)]"> once</span>}
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <a href={checkoutUrl(p)} target="_blank" rel="noreferrer" className="text-xs underline">
-                        {checkoutUrl(p).replace(/^https?:\/\//, "")}
-                      </a>
-                      <CopyButton text={checkoutUrl(p)} label="Copy" className="py-1 text-xs" />
-                    </div>
-                  </td>
-                  <td>
-                    <CopyButton text={embedButtonHtml(p)} label="Copy button HTML" className="py-1 text-xs" />
-                  </td>
+          <div className="scroll-x">          <table className="data mt-4">
+              <thead>
+                <tr>
+                  <th>Plan</th>
+                  <th>Price</th>
+                  <th>Hosted link</th>
+                  <th>Embed</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {plans.map((p) => (
+                  <tr key={p.id}>
+                    <td className="font-semibold">{p.name}</td>
+                    <td>
+                      {formatMoney(p.amountCents, p.currency)}
+                      {p.interval ? <span className="text-[var(--muted)]">/{p.interval}</span> : <span className="text-[var(--muted)]"> once</span>}
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <a href={checkoutUrl(p)} target="_blank" rel="noreferrer" className="text-xs underline">
+                          {checkoutUrl(p).replace(/^https?:\/\//, "")}
+                        </a>
+                        <CopyButton text={checkoutUrl(p)} label="Copy" className="py-1 text-xs" />
+                      </div>
+                    </td>
+                    <td>
+                      <CopyButton text={embedButtonHtml(p)} label="Copy button HTML" className="py-1 text-xs" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="mt-4 text-sm text-[var(--muted)]">No {mode} plans yet.</p>
         )}
@@ -109,28 +110,29 @@ export default async function CheckoutPage({ params }: { params: Promise<{ appId
         <section className="card p-6">
           <h2 className="font-semibold">Purchases ({mode})</h2>
           {modePurchases.length ? (
-            <table className="data mt-3">
-              <thead>
-                <tr>
-                  <th>When</th>
-                  <th>Customer</th>
-                  <th>Kind</th>
-                  <th>Gross</th>
-                  <th>Net to you</th>
-                </tr>
-              </thead>
-              <tbody>
-                {modePurchases.map((p) => (
-                  <tr key={p.id} className={p.refundedAt ? "line-through opacity-60" : ""}>
-                    <td>{fmtDate(p.occurredAt)}</td>
-                    <td>{p.customerEmail ?? p.providerCustomerId ?? "—"}</td>
-                    <td>{p.kind}</td>
-                    <td>{formatMoney(p.amountCents, p.currency)}</td>
-                    <td className="font-semibold">{formatMoney(p.netCents, p.currency)}</td>
+            <div className="scroll-x">            <table className="data mt-3">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Customer</th>
+                    <th>Kind</th>
+                    <th>Gross</th>
+                    <th>Net to you</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {modePurchases.map((p) => (
+                    <tr key={p.id} className={p.refundedAt ? "line-through opacity-60" : ""}>
+                      <td>{fmtDate(p.occurredAt)}</td>
+                      <td>{p.customerEmail ?? p.providerCustomerId ?? "—"}</td>
+                      <td>{p.kind}</td>
+                      <td>{formatMoney(p.amountCents, p.currency)}</td>
+                      <td className="font-semibold">{formatMoney(p.netCents, p.currency)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p className="mt-3 text-sm text-[var(--muted)]">No {mode} purchases yet.</p>
           )}
@@ -138,30 +140,31 @@ export default async function CheckoutPage({ params }: { params: Promise<{ appId
         <section className="card p-6">
           <h2 className="font-semibold">Subscriptions</h2>
           {subs.length ? (
-            <table className="data mt-3">
-              <thead>
-                <tr>
-                  <th>Customer</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                  <th>Mode</th>
-                </tr>
-              </thead>
-              <tbody>
-                {subs.map((s) => (
-                  <tr key={s.id}>
-                    <td>{s.customerEmail ?? s.providerCustomerId ?? "—"}</td>
-                    <td>
-                      {formatMoney(s.amountCents, s.currency)}/{s.interval}
-                    </td>
-                    <td>{s.status === "active" ? <span className="badge badge-good">active</span> : <span className="badge">{s.status}</span>}</td>
-                    <td>
-                      <ModeBadge mode={s.mode} />
-                    </td>
+            <div className="scroll-x">            <table className="data mt-3">
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Mode</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {subs.map((s) => (
+                    <tr key={s.id}>
+                      <td>{s.customerEmail ?? s.providerCustomerId ?? "—"}</td>
+                      <td>
+                        {formatMoney(s.amountCents, s.currency)}/{s.interval}
+                      </td>
+                      <td>{s.status === "active" ? <span className="badge badge-good">active</span> : <span className="badge">{s.status}</span>}</td>
+                      <td>
+                        <ModeBadge mode={s.mode} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p className="mt-3 text-sm text-[var(--muted)]">No subscriptions yet.</p>
           )}

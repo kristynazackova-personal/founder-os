@@ -4,7 +4,7 @@ import { getAppForUser } from "@/lib/services/apps";
 import { loadOverviewPage } from "@/lib/services/b2cAnalytics";
 import { PageHeader } from "@/components/ui";
 import { SourceErrors } from "@/components/b2c/tiles";
-import { B2C_SECTIONS } from "./B2cNav";
+import { B2C_SECTIONS } from "./meta";
 import { OverviewView, WindowLine } from "./sections";
 import { weeksFrom } from "./weeks";
 

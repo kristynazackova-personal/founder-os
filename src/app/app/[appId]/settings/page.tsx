@@ -14,7 +14,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ appId
       <PageHeader title="App settings" />
       <AppSettingsForm app={app} />
       <p className="help mt-4">
-        Site key: <code>{app.siteKey}</code>
+        Site key: <code className="break-anywhere">{app.siteKey}</code>
       </p>
     </div>
   );

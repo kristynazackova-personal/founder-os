@@ -42,7 +42,14 @@ body {
   line-height: 1.25rem;
   border: 1px solid transparent;
   cursor: pointer;
+  /* A comfortable touch target. btn-sm opts down for inline table actions. */
+  min-height: 2.75rem;
   transition: opacity 120ms ease, background 120ms ease;
+}
+.btn-sm {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
 }
 .btn:disabled {
   opacity: 0.5;
@@ -77,8 +84,18 @@ body {
   border-radius: 10px;
   padding: 0.6rem 0.8rem;
   background: #fff;
-  font-size: 0.95rem;
+  /* 16px is the floor: anything smaller makes iOS Safari zoom the page on
+     focus, and it does not zoom back out afterwards. */
+  font-size: 1rem;
+  min-height: 2.75rem;
   outline: none;
+}
+@media (min-width: 768px) {
+  .input,
+  .select,
+  .textarea {
+    font-size: 0.95rem;
+  }
 }
 .input:focus,
 .select:focus,
@@ -172,4 +189,54 @@ table.data td {
   padding: 0.6rem;
   border-bottom: 1px solid #f5f5f4;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- mobile
+
+   Wrap anything that cannot shrink - a table, a wide grid - so it scrolls
+   inside its card rather than widening the page. A horizontal scrollbar on
+   the document is the one layout bug that makes a whole app feel broken on a
+   phone, because every vertical scroll drifts sideways.
+*/
+.scroll-x {
+  overflow-x: auto;
+  /* Room for the scrollbar on the platforms that reserve space for one. */
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-x > table {
+  min-width: 100%;
+}
+
+/* A tab strip that scrolls sideways beats one that wraps to three rows. */
+.tab-strip {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tab-strip::-webkit-scrollbar {
+  display: none;
+}
+.tab-strip > * {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* Long unbroken strings - a site key, a connection string, a tracked link -
+   would otherwise force the page wider than the screen. */
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .kpi {
+    font-size: 1.875rem;
+  }
+  table.data th,
+  table.data td {
+    padding: 0.5rem 0.45rem;
+  }
 }

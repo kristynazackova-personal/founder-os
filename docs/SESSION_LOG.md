@@ -350,3 +350,64 @@ The framework tab was read-only. Now it holds a document per business.
   tab within a second or two sees the scaffold and has to reload.
 - No per-field provenance: once a version is written you can see that a model
   filled it, not which fields it touched.
+
+## 2026-09-18 (mobile) - mobile web, and a production bug the build could not see
+
+Asked to make the app mobile friendly. Audited all 19 pages in headless
+Chromium at 390x844, which is also how the real bug below surfaced.
+
+### The bug: data exported from a "use client" module
+
+`B2C_SECTIONS` lived in `B2cNav.tsx`, a client component, and the two server
+pages imported it from there. Across that boundary a client module's data
+exports are NOT the values - only component references survive - so
+`B2C_SECTIONS.find` threw and **every B2C page 500'd in production** from the
+moment it deployed. `tsc`, `eslint`, `vitest` and `next build` all passed,
+because nothing type-checks that boundary.
+
+Moved to `b2c/meta.ts`, a plain module both sides import. The rule: shared
+DATA goes in a plain module; a "use client" file exports components and
+types. Types are erased so they are safe (`Draft`, `TierOverrides` are fine).
+
+**Loading a page in a browser is the only check that would have caught this.**
+Worth doing after any feature that adds routes.
+
+### Mobile fixes
+
+- `viewport` export on the root layout, `maximumScale` deliberately unset so
+  pinch-zoom still works.
+- Inputs to 16px on small screens. Below that iOS Safari zooms the page on
+  focus and does not zoom back.
+- `.btn` min-height 2.75rem, `.btn-sm` 2.25rem for inline table actions.
+- `.scroll-x` wrapper on every table (7 bare `table.data` plus the two in
+  `b2c/tiles.tsx`), and numeric cells nowrap so a wide table scrolls inside
+  its card instead of squeezing every cell to "0 /\n0 /\n0". A horizontal
+  scrollbar on the document is the one bug that makes a whole app feel broken
+  on a phone.
+- `.tab-strip`: the app tabs (7) and B2C sections (6) scroll sideways rather
+  than wrapping to three rows.
+- Headers wrap; the account email is hidden under `sm`, truncated above it.
+- An em dash at 30px reads as a redaction bar, so a "not measurable" value now
+  renders muted and smaller, on the B2C tiles and the diagnosis KPIs.
+- `.break-anywhere` on the site key.
+
+### The check
+
+`mobile-audit.mjs` (not committed - it needs playwright, which is not a
+dependency) signs up, creates a business, then per page asserts: no document
+overflow, no control under 36px, no input under 16px, and that the page is not
+showing the dev error overlay. That last assertion is what turned the B2C
+failures from "small button" into "page is broken".
+
+The detector has to ignore nodes inside a horizontal scroller - a tab strip's
+items are MEANT to extend past the viewport - or every scroller reads as a
+bug.
+
+### Open
+
+- 46 files still contain em dashes in copy. Not swept: most predate this work
+  and the `—` in `notMeasurable` is a load-bearing data marker, not prose.
+  Her standing rule says hyphens, so this is worth a deliberate pass.
+- Audited at 390px only. Nothing checks 320px or landscape.
+- pglite on disk failed locally ("CREATE SCHEMA drizzle"); `PGLITE_MEMORY=1`
+  works. Worth knowing before debugging a local 500 on signup.

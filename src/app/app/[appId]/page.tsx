@@ -63,7 +63,7 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ appI
           {diagnosis.numbers.map((k) => (
             <div key={k.label} className="rounded-xl border border-stone-200 p-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{k.label}</div>
-              <div className="kpi mt-1">{k.value}</div>
+              <div className={`kpi mt-1 ${k.value === "—" ? "text-2xl text-[var(--muted)]" : ""}`}>{k.value}</div>
               {k.hint ? <div className="help">{k.hint}</div> : null}
             </div>
           ))}
@@ -103,29 +103,30 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ appI
         <section className="card p-6">
           <h2 className="font-semibold">{bands.source === "peers" ? `Apps like yours (${bands.n} on Founder OS)` : "Benchmarks for this stage"}</h2>
           <p className="help">{bands.source === "peers" ? "Median of apps at this stage with high or medium confidence." : "Public indie-SaaS benchmarks until we have 50+ apps in this stage."}</p>
-          <table className="data mt-3">
-            <thead>
-              <tr>
-                <th>Metric</th>
-                <th>Low</th>
-                <th>Median</th>
-                <th>High</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bands.bands.map((b) => (
-                <tr key={b.metric}>
-                  <td>
-                    {b.metric}
-                    <div className="text-xs text-[var(--muted)]">{b.note}</div>
-                  </td>
-                  <td>{b.low || "—"}</td>
-                  <td className="font-semibold">{b.median}</td>
-                  <td>{b.high || "—"}</td>
+          <div className="scroll-x">          <table className="data mt-3">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>Low</th>
+                  <th>Median</th>
+                  <th>High</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {bands.bands.map((b) => (
+                  <tr key={b.metric}>
+                    <td>
+                      {b.metric}
+                      <div className="text-xs text-[var(--muted)]">{b.note}</div>
+                    </td>
+                    <td>{b.low || "—"}</td>
+                    <td className="font-semibold">{b.median}</td>
+                    <td>{b.high || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
 

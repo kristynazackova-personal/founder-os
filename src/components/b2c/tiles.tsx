@@ -98,7 +98,7 @@ export function MetricTile({ tile }: { tile: Tile }) {
         <span>{tile.label}</span>
         <SourceBadges sources={tile.sources} />
       </div>
-      <div className="text-[30px] leading-none font-bold tracking-tight tabular-nums">
+      <div className={`leading-none font-bold tracking-tight tabular-nums ${tile.value === "—" ? "text-xl text-[var(--muted)]" : "text-[30px]"}`}>
         {tile.value}
         {tile.small ? <span className="ml-1 text-sm font-semibold text-[var(--muted)]">{tile.small}</span> : null}
       </div>
@@ -147,12 +147,17 @@ export function Legend({ items }: { items: { color: string; label: string }[] })
 export function DataTable({ head, rows, numericFrom = 1 }: { head: ReactNode[]; rows: ReactNode[][]; numericFrom?: number }) {
   if (rows.length === 0) return <p className="py-3 text-sm text-[var(--muted)]">Nothing in this window.</p>;
   return (
-    <div className="overflow-x-auto">
+    <div className="scroll-x">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
             {head.map((h, i) => (
-              <th key={i} className={`border-b border-stone-200 px-2 py-1.5 text-[11px] font-semibold tracking-wide text-[var(--muted)] uppercase ${i >= numericFrom ? "text-right" : "text-left"}`}>{h}</th>
+              <th
+                key={i}
+                className={`border-b border-stone-200 px-2 py-1.5 text-[11px] font-semibold tracking-wide whitespace-nowrap text-[var(--muted)] uppercase ${i >= numericFrom ? "text-right" : "text-left"}`}
+              >
+                {h}
+              </th>
             ))}
           </tr>
         </thead>
@@ -160,7 +165,12 @@ export function DataTable({ head, rows, numericFrom = 1 }: { head: ReactNode[]; 
           {rows.map((r, ri) => (
             <tr key={ri}>
               {r.map((c, ci) => (
-                <td key={ci} className={`border-b border-stone-100 px-2 py-2 tabular-nums ${ci >= numericFrom ? "text-right" : "text-left"} ${ci === 0 ? "font-medium" : ""}`}>{c}</td>
+                <td
+                  key={ci}
+                  className={`border-b border-stone-100 px-2 py-2 tabular-nums ${ci >= numericFrom ? "text-right whitespace-nowrap" : "text-left"} ${ci === 0 ? "font-medium" : ""}`}
+                >
+                  {c}
+                </td>
               ))}
             </tr>
           ))}
@@ -219,16 +229,19 @@ export function FunnelRows({ steps }: { steps: FunnelStep[] }) {
   const shares = funnelShares(steps);
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="grid grid-cols-[minmax(120px,1.4fr)_minmax(0,2fr)_60px_60px_56px] items-center gap-2 text-[11px] font-semibold tracking-wide text-[var(--muted)] uppercase">
+      <div className="hidden grid-cols-[minmax(120px,1.4fr)_minmax(0,2fr)_60px_60px_56px] items-center gap-2 text-[11px] font-semibold tracking-wide text-[var(--muted)] uppercase sm:grid">
         <span>Step</span><span>Share of the top</span><span className="text-right">Web</span><span className="text-right">App</span><span className="text-right">% prev</span>
       </div>
       {shares.map(({ step, webShare, appShare, prevPct }) => (
-        <div key={step.key} className="grid grid-cols-[minmax(120px,1.4fr)_minmax(0,2fr)_60px_60px_56px] items-center gap-2 text-sm">
-          <span className="min-w-0">
+        <div
+          key={step.key}
+          className="grid grid-cols-[minmax(0,1fr)_56px_56px_52px] items-center gap-2 border-b border-stone-100 pb-2 text-sm last:border-0 sm:grid-cols-[minmax(120px,1.4fr)_minmax(0,2fr)_60px_60px_56px] sm:border-0 sm:pb-0"
+        >
+          <span className="col-span-full min-w-0 sm:col-span-1">
             {step.label}
             {step.caveat ? <span className="block text-[11px] text-[#b45309]">{step.caveat}</span> : null}
           </span>
-          <span className="flex flex-col gap-0.5">
+          <span className="col-span-full flex flex-col gap-0.5 sm:col-span-1">
             <span className="relative h-3 overflow-hidden rounded-r bg-stone-100">
               {webShare !== null ? <i className="absolute inset-y-0 left-0 rounded-r" style={{ width: `${Math.max(1, webShare * 100)}%`, background: SERIES.web }} /> : null}
             </span>
@@ -236,8 +249,14 @@ export function FunnelRows({ steps }: { steps: FunnelStep[] }) {
               {appShare !== null ? <i className="absolute inset-y-0 left-0 rounded-r" style={{ width: `${Math.max(1, appShare * 100)}%`, background: SERIES.app }} /> : null}
             </span>
           </span>
-          <span className="text-right tabular-nums">{step.web === null ? "n/a" : step.web}</span>
-          <span className="text-right tabular-nums">{step.app === null ? "n/a" : step.app}</span>
+          <span className="text-right tabular-nums">
+            <span className="mr-1 text-[10px] text-[var(--muted)] uppercase sm:hidden">web</span>
+            {step.web === null ? "n/a" : step.web}
+          </span>
+          <span className="text-right tabular-nums">
+            <span className="mr-1 text-[10px] text-[var(--muted)] uppercase sm:hidden">app</span>
+            {step.app === null ? "n/a" : step.app}
+          </span>
           <span className="text-right text-xs tabular-nums text-[var(--muted)]">{prevPct}</span>
         </div>
       ))}
@@ -250,7 +269,7 @@ export function CohortGrid({ rows }: { rows: TriangleRow[] }) {
   const width = Math.max(...rows.map((r) => r.cells.length), 1);
   const shade = (v: number | null) => (v === null ? "transparent" : SEQ[Math.min(SEQ.length - 1, Math.floor((v / 0.35) * (SEQ.length - 1)))]);
   return (
-    <div className="overflow-x-auto">
+    <div className="scroll-x">
       <table className="border-collapse text-sm">
         <thead>
           <tr>

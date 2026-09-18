@@ -6,9 +6,9 @@ export default async function LandingPage() {
   const user = await getCurrentUser();
   return (
     <main>
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-6">
+      <header className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-6">
         <Brand />
-        <nav className="flex items-center gap-3 text-sm">
+        <nav className="flex flex-wrap items-center gap-3 text-sm">
           <Link href="/pricing-engine" className="hover:underline">
             Free pricing engine
           </Link>

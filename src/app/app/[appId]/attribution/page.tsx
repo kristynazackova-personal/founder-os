@@ -128,24 +128,25 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
             <p className="mt-3 text-sm">
               <span className="text-2xl font-bold tracking-tight">{installs.total}</span> <span className="text-[var(--muted)]">installs</span>
             </p>
-            <table className="data mt-3">
-              <thead>
-                <tr>
-                  <th>Channel</th>
-                  <th>Installs</th>
-                  <th>Campaigns</th>
-                </tr>
-              </thead>
-              <tbody>
-                {installs.rows.map((r) => (
-                  <tr key={r.channel}>
-                    <td className="font-semibold">{CHANNEL_LABEL[r.channel]}</td>
-                    <td>{r.installs}</td>
-                    <td className="text-[var(--muted)]">{r.campaigns.length ? r.campaigns.join(", ") : "—"}</td>
+            <div className="scroll-x">            <table className="data mt-3">
+                <thead>
+                  <tr>
+                    <th>Channel</th>
+                    <th>Installs</th>
+                    <th>Campaigns</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {installs.rows.map((r) => (
+                    <tr key={r.channel}>
+                      <td className="font-semibold">{CHANNEL_LABEL[r.channel]}</td>
+                      <td>{r.installs}</td>
+                      <td className="text-[var(--muted)]">{r.campaigns.length ? r.campaigns.join(", ") : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         ) : (
           <p className="mt-3 text-sm text-[var(--muted)]">No first_open events in the last {installs.days} days.</p>
@@ -185,42 +186,43 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
             <p className="mt-3 text-sm">
               <span className="text-2xl font-bold tracking-tight">{formatMoney(campaigns.total.spendCents)}</span> <span className="text-[var(--muted)]">spent · {campaigns.total.installs} installs · {campaigns.total.paid} paid · CAC {money(campaigns.total.cacCents)}</span>
             </p>
-            <table className="data mt-3">
-              <thead>
-                <tr>
-                  <th>Campaign</th>
-                  <th>Spend</th>
-                  <th>Clicks</th>
-                  <th>Installs</th>
-                  <th>Trials</th>
-                  <th>Paid</th>
-                  <th>Cost / install</th>
-                  <th>Cost / trial</th>
-                  <th>CAC</th>
-                  <th>Payback</th>
-                </tr>
-              </thead>
-              <tbody>
-                {campaigns.rows.map((r) => (
-                  <tr key={r.campaign} className={r.campaign === UNATTRIBUTED_CAMPAIGN ? "text-[var(--muted)]" : undefined}>
-                    <td className="font-semibold">{r.campaign}</td>
-                    <td>
-                      {formatMoney(r.spendCents)}
-                      {r.spendSource === "manual" ? <span className="ml-1 text-xs text-[var(--muted)]">entered</span> : null}
-                      {r.spendSource === "googleads" ? <span className="ml-1 text-xs text-[var(--muted)]">Google Ads</span> : null}
-                    </td>
-                    <td>{r.clicks}</td>
-                    <td>{r.installs}</td>
-                    <td>{r.trials}</td>
-                    <td className="font-semibold">{r.paid}</td>
-                    <td>{money(r.costPerInstallCents)}</td>
-                    <td>{money(r.costPerTrialCents)}</td>
-                    <td>{money(r.cacCents)}</td>
-                    <td>{r.paybackMonths === null ? "—" : `${r.paybackMonths} mo`}</td>
+            <div className="scroll-x">            <table className="data mt-3">
+                <thead>
+                  <tr>
+                    <th>Campaign</th>
+                    <th>Spend</th>
+                    <th>Clicks</th>
+                    <th>Installs</th>
+                    <th>Trials</th>
+                    <th>Paid</th>
+                    <th>Cost / install</th>
+                    <th>Cost / trial</th>
+                    <th>CAC</th>
+                    <th>Payback</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {campaigns.rows.map((r) => (
+                    <tr key={r.campaign} className={r.campaign === UNATTRIBUTED_CAMPAIGN ? "text-[var(--muted)]" : undefined}>
+                      <td className="font-semibold">{r.campaign}</td>
+                      <td>
+                        {formatMoney(r.spendCents)}
+                        {r.spendSource === "manual" ? <span className="ml-1 text-xs text-[var(--muted)]">entered</span> : null}
+                        {r.spendSource === "googleads" ? <span className="ml-1 text-xs text-[var(--muted)]">Google Ads</span> : null}
+                      </td>
+                      <td>{r.clicks}</td>
+                      <td>{r.installs}</td>
+                      <td>{r.trials}</td>
+                      <td className="font-semibold">{r.paid}</td>
+                      <td>{money(r.costPerInstallCents)}</td>
+                      <td>{money(r.costPerTrialCents)}</td>
+                      <td>{money(r.cacCents)}</td>
+                      <td>{r.paybackMonths === null ? "—" : `${r.paybackMonths} mo`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {adSource === "googleads" ? (
               <p className="help mt-2">
                 Spend from Google Ads account <span className="font-mono">{googleAds.customerId}</span>, which is the authoritative figure. The funnel beside it stays GA4&apos;s, attributed to each campaign&apos;s first touch.
@@ -268,36 +270,37 @@ window.fos('purchase', { amount: 19 });  // optional; checkout through Founder O
         <h2 className="font-semibold">Channels, last 90 days</h2>
         <p className="help">{report.visitors} visitors since {fmtDate(report.since)}. Revenue counts live purchases only.</p>
         {report.rows.length ? (
-          <table className="data mt-3">
-            <thead>
-              <tr>
-                <th>Channel</th>
-                <th>Visitors</th>
-                <th>Installs</th>
-                <th>Signups</th>
-                <th>Activated</th>
-                <th>Checkout views</th>
-                <th>Paid</th>
-                <th>Returned 30d</th>
-                <th>Revenue</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.rows.map((r) => (
-                <tr key={r.channel}>
-                  <td className="font-semibold">{CHANNEL_LABEL[r.channel]}</td>
-                  <td>{r.visitors}</td>
-                  <td>{r.installs}</td>
-                  <td>{r.signups}</td>
-                  <td>{r.activations}</td>
-                  <td>{r.checkoutViews}</td>
-                  <td className="font-semibold">{r.purchases}</td>
-                  <td>{r.returned}</td>
-                  <td>{formatMoney(r.revenueCents)}</td>
+          <div className="scroll-x">          <table className="data mt-3">
+              <thead>
+                <tr>
+                  <th>Channel</th>
+                  <th>Visitors</th>
+                  <th>Installs</th>
+                  <th>Signups</th>
+                  <th>Activated</th>
+                  <th>Checkout views</th>
+                  <th>Paid</th>
+                  <th>Returned 30d</th>
+                  <th>Revenue</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {report.rows.map((r) => (
+                  <tr key={r.channel}>
+                    <td className="font-semibold">{CHANNEL_LABEL[r.channel]}</td>
+                    <td>{r.visitors}</td>
+                    <td>{r.installs}</td>
+                    <td>{r.signups}</td>
+                    <td>{r.activations}</td>
+                    <td>{r.checkoutViews}</td>
+                    <td className="font-semibold">{r.purchases}</td>
+                    <td>{r.returned}</td>
+                    <td>{formatMoney(r.revenueCents)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="mt-3 text-sm text-[var(--muted)]">Nothing yet. Tip: add ?utm_source=reddit to the links you post so channels are unambiguous.</p>
         )}

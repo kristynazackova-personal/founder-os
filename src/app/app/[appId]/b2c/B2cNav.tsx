@@ -6,17 +6,8 @@
  */
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { B2C_SECTIONS, WEEK_CHOICES } from "./meta";
 
-export const B2C_SECTIONS = [
-  { seg: "", key: "overview", label: "Overview", sub: "the weekly read — every tile carries its n, its band and its source" },
-  { seg: "/acquisition", key: "acquisition", label: "Acquisition", sub: "where signups come from, and what each channel's users did next" },
-  { seg: "/activation", key: "activation", label: "Activation & retention", sub: "did day two happen, and did the week — cohorts by signup week" },
-  { seg: "/revenue", key: "revenue", label: "Revenue", sub: "checkout → trial → paid, across every connected rail" },
-  { seg: "/loops", key: "loops", label: "Loops", sub: "push and lifecycle email — locked until a provider is connected" },
-  { seg: "/coverage", key: "coverage", label: "Coverage", sub: "what this dashboard cannot answer yet, and which connection fixes it" },
-] as const;
-
-export const WEEK_CHOICES = [1, 2, 4, 8, 12, 26];
 
 export function B2cNav({ appId }: { appId: string }) {
   const path = usePathname();
@@ -36,7 +27,7 @@ export function B2cNav({ appId }: { appId: string }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <nav className="flex flex-wrap gap-1.5">
+      <nav className="tab-strip gap-1.5" aria-label="B2C analytics sections">
         {B2C_SECTIONS.map((s) => {
           const href = `${base}${s.seg}${qs ? `?${qs}` : ""}`;
           const active = s.seg === "" ? path === base : path === `${base}${s.seg}`;
@@ -44,7 +35,8 @@ export function B2cNav({ appId }: { appId: string }) {
             <Link
               key={s.key}
               href={href}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold ${active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-[var(--muted)] hover:text-stone-900"}`}
+              aria-current={active ? "page" : undefined}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-[var(--muted)] hover:text-stone-900"}`}
             >
               {s.label}
             </Link>
