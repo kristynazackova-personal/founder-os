@@ -89,7 +89,7 @@ export async function researchGates(app: Pick<App, "name" | "url">, profile: Bus
   try {
     // Grounded: a gate is only kept when it can be attributed to a published
     // figure, so the model has to be able to read the web to find one.
-    const res = await askForJson(researchPrompt(app, profile), { search: true, timeoutMs });
+    const res = await askForJson(researchPrompt(app, profile), { purpose: "gate_research", search: true, timeoutMs });
     if (res.error) return { gates: [], competitors: [], error: res.error };
     const parsed = (res.json ?? {}) as { gates?: unknown; competitors?: unknown };
     if (!res.json) return { gates: [], competitors: [], error: "research returned no JSON" };

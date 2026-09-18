@@ -206,7 +206,7 @@ export async function generateDoc(app: App, framework: PmfFrameworkId = DEFAULT_
   if (!aiConfigured()) return base;
 
   const fill = async (): Promise<PmfDoc> => {
-    const res = await askForJson(fillPrompt(f, app, ctx, existing, null));
+    const res = await askForJson(fillPrompt(f, app, ctx, existing, null), { purpose: "doc_fill" });
     const values = parseModelValues(f, res.json);
     if (Object.keys(values).length === 0) return base;
     return appendVersion(app.id, f.id, values, { source: "generated" });
@@ -228,7 +228,7 @@ export async function rewriteDoc(app: App, framework: PmfFrameworkId, comment: s
   if (!aiConfigured()) return { doc: null, error: "Rewriting needs a model key on this deployment. Edit the fields directly instead." };
   const previous = await latestDoc(app.id, f.id);
   const ctx = await contextFor(app);
-  const res = await askForJson(fillPrompt(f, app, ctx, previous, trimmed));
+  const res = await askForJson(fillPrompt(f, app, ctx, previous, trimmed), { purpose: "doc_fill" });
   const values = parseModelValues(f, res.json);
   if (Object.keys(values).length === 0) return { doc: null, error: res.error ?? "The rewrite came back empty. Nothing was saved." };
   return { doc: await appendVersion(app.id, f.id, values, { source: "rewritten", comment: trimmed }), error: null };
@@ -284,7 +284,7 @@ export async function generateTable(app: App, framework: PmfFrameworkId, field: 
     .filter(Boolean)
     .join("\n\n");
 
-  const colRes = await askForJson(columnPrompt(spec, { business, answers }));
+  const colRes = await askForJson(columnPrompt(spec, { business, answers }), { purpose: "table_columns" });
   const derived = parseTable(colRes.json).columns;
   if (derived.length === 0) return { table: null, error: colRes.error ?? "The model returned no usable columns." };
   const columns = withRowLabelColumn(derived, spec.rowLabel.label, spec.rowLabel.prompt);
@@ -292,7 +292,7 @@ export async function generateTable(app: App, framework: PmfFrameworkId, field: 
   const rendered = columns
     .map((c) => `- ${c.key} (${c.label}, ${c.kind}${c.options ? `: ${c.options.join(" / ")}` : c.kind === "scale" ? `: ${c.min} to ${c.max}` : ""})${c.anchors ? ` - ${c.anchors}` : ""}`)
     .join("\n");
-  const rowRes = await askForJson(rowPrompt(spec, { business, answers, columns: rendered }));
+  const rowRes = await askForJson(rowPrompt(spec, { business, answers, columns: rendered }), { purpose: "table_rows" });
   const rows = parseTable({ columns, rows: (rowRes.json as { rows?: unknown } | null)?.rows }).rows;
 
   const table: PmfTable = { columns, rows };
@@ -359,7 +359,7 @@ export async function prefillGoalStage(
 
   const ctx = await contextFor(app);
   const business = [app.name, ctx.scaffoldInput.industryLabel, ctx.scaffoldInput.natureLabel, app.url ?? ""].filter(Boolean).join(" \u00b7 ");
-  const res = await askForJson(prefillPrompt(f, { business, website, document }), { timeoutMs: 60_000 });
+  const res = await askForJson(prefillPrompt(f, { business, website, document }), { purpose: "prefill", timeoutMs: 60_000 });
   const values = parseModelValues(f, res.json);
 
   // Whatever came back, only stage 1 is written. A model that answers a later

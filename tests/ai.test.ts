@@ -70,6 +70,29 @@ describe("what askForJson sends", () => {
   });
 });
 
+describe("choosing a model per purpose", () => {
+  // Every purpose is Opus today on purpose - the point of the map is that
+  // changing one later is an edit in one place, not a hunt through callers.
+  // This asserts the routing works, not which model any purpose has, so it
+  // survives that change rather than blocking it.
+  it("sends the model the purpose is mapped to", async () => {
+    const { MODEL_FOR } = await ai();
+    for (const purpose of Object.keys(MODEL_FOR) as (keyof typeof MODEL_FOR)[]) {
+      reply = message([{ type: "text", text: "{}" }]);
+      await (await load())("hello", { purpose });
+      expect(received.model).toBe(MODEL_FOR[purpose]);
+    }
+  });
+
+  it("covers every call site's purpose", async () => {
+    const { MODEL_FOR } = await ai();
+    expect(Object.keys(MODEL_FOR).sort()).toEqual(
+      ["doc_fill", "gate_research", "prefill", "table_columns", "table_rows"],
+    );
+    for (const model of Object.values(MODEL_FOR)) expect(model).toMatch(/^claude-/);
+  });
+});
+
 describe("what askForJson makes of the answer", () => {
   it("reads only the text blocks, not the search results or the thinking", async () => {
     reply = message([

@@ -780,3 +780,18 @@ call short-circuits as unconfigured.
 
 Not verified against the live API: this sandbox has no Anthropic credentials
 and cannot reach the service.
+
+**Prepared, not switched: a model per purpose.** `services/ai.ts` now maps an
+`AiPurpose` (`gate_research`, `table_columns`, `table_rows`, `doc_fill`,
+`prefill`) to a model, and every call site passes its purpose. All five are
+`claude-opus-5` today - no behaviour changed. The machinery exists so the
+future split is one line in one table instead of a hunt through callers.
+
+The likely split is rows and doc-fill to Sonnet: they draft against a shape
+something else already decided. It was not made now on purpose. Nothing here
+had run against a real business at the time of writing, and picking a cheaper
+model for output nobody has read is guessing at where quality is safe to spend
+less. The rule written into the file: never downgrade a purpose without the
+Opus output of that same call to compare against. The test asserts the routing,
+not which model a purpose has, so it survives the change rather than blocking
+it.

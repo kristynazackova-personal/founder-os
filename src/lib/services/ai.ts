@@ -15,17 +15,52 @@ import Anthropic from "@anthropic-ai/sdk";
 const KEY = process.env.ANTHROPIC_API_KEY ?? "";
 
 /**
- * Opus, deliberately. Every call here is a judgement the founder will read as
- * a finding - which columns a table earns, what a landing page says the
- * business is, which published figure a gate can be attributed to - and the
- * volume is a handful of calls per business, so the cheaper model saves
- * nothing worth having.
+ * What each call is for.
  *
- * `GATE_RESEARCH_MODEL` is NOT read: a deployment still carrying
- * `gemini-2.5-flash` in it would otherwise send that string to Anthropic and
+ * The point of naming these is that they are not the same kind of work, so
+ * they will not always want the same model. Deriving a table's columns decides
+ * what the founder is asked to compare on; drafting rows against columns that
+ * are already fixed is a smaller job. Keeping the distinction in the type means
+ * a future split is an edit to one table rather than a hunt through callers.
+ */
+export type AiPurpose = "gate_research" | "table_columns" | "table_rows" | "doc_fill" | "prefill";
+
+/**
+ * Purpose -> model. **Every purpose is Opus today, deliberately.**
+ *
+ * The split that will probably come is rows and doc-fill to Sonnet: they draft
+ * against a shape something else already decided. It has not been made yet
+ * because nothing here has run against real businesses, and choosing a cheaper
+ * model for output nobody has read is guessing at where quality is safe to
+ * spend less. Run it on Opus, compare, then change a line here.
+ *
+ * The rule for changing one: you need the Opus output for that same call to
+ * compare against. Never downgrade a purpose whose results you have not seen.
+ */
+export const MODEL_FOR: Record<AiPurpose, string> = {
+  // Judges which published figure can be attributed, over live search results.
+  gate_research: "claude-opus-5",
+  // The load-bearing one: it is what drops the pay-strength column for a
+  // founder who says they do not care about profit.
+  table_columns: "claude-opus-5",
+  // Drafts candidates against columns that are already fixed.
+  table_rows: "claude-opus-5",
+  // Writes and pressure-tests the framework's prose fields.
+  doc_fill: "claude-opus-5",
+  // Has to REFUSE to infer the founder's motive from marketing copy, which is
+  // judgement rather than extraction.
+  prefill: "claude-opus-5",
+};
+
+const DEFAULT_PURPOSE: AiPurpose = "doc_fill";
+
+/**
+ * A global override, for trying one model across the board without editing the
+ * table. `GATE_RESEARCH_MODEL` is deliberately NOT read: a deployment still
+ * carrying `gemini-2.5-flash` in it would send that string to Anthropic and
  * get a 404 on every call.
  */
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-5";
+const modelFor = (purpose: AiPurpose): string => process.env.ANTHROPIC_MODEL ?? MODEL_FOR[purpose];
 
 export const aiConfigured = (): boolean => KEY.length > 0;
 
@@ -54,13 +89,16 @@ export function extractJson(text: string): unknown | null {
  * server-side, so the answer arrives in the same response and there is no tool
  * loop to drive here.
  */
-export async function askForJson(prompt: string, opts: { search?: boolean; timeoutMs?: number } = {}): Promise<AiResult> {
+export async function askForJson(
+  prompt: string,
+  opts: { purpose?: AiPurpose; search?: boolean; timeoutMs?: number } = {},
+): Promise<AiResult> {
   if (!aiConfigured()) return { json: null, text: "", error: "no model key configured" };
 
   try {
     const response = await getClient().messages.create(
       {
-        model: MODEL,
+        model: modelFor(opts.purpose ?? DEFAULT_PURPOSE),
         max_tokens: 16_000,
         messages: [{ role: "user", content: prompt }],
         ...(opts.search ? { tools: [{ type: "web_search_20260209" as const, name: "web_search" as const }] } : {}),

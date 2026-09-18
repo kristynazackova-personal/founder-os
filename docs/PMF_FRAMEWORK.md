@@ -122,6 +122,15 @@ told explicitly not to invent a customer, a competitor's number, a revenue
 figure or an interview finding. `parseModelValues` then drops any field the
 framework did not ask for, any non-string, any blank, and bounds the rest.
 
+**One model today, a table for tomorrow.** `services/ai.ts` maps a *purpose*
+(`gate_research`, `table_columns`, `table_rows`, `doc_fill`, `prefill`) to a
+model, and every purpose is `claude-opus-5` right now. The split that will
+probably come is rows and doc-fill to Sonnet, since they draft against a shape
+something else already decided - but it has not been made, because nothing here
+has run against real businesses yet and choosing a cheaper model for output
+nobody has read is guessing at where quality is safe to spend less. The rule
+for changing a row: have the Opus output for that same call to compare against.
+
 **Rewriting needs a model.** Without `ANTHROPIC_API_KEY` the rewrite box
 says so and points at the edit form, which also writes a version. Generation
 still works without a key - it just stops at the scaffold.
