@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { dbStatus, getDb } from "@/lib/db";
 import { env } from "@/lib/env";
 import { googleAdsConfigured } from "@/lib/sources/googleads";
+import { aiConfigured } from "@/lib/services/ai";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,11 @@ export async function GET(request: Request) {
       // Booleans only - whether the deployment can offer Google Ads at all,
       // which is otherwise only discoverable by trying to connect an account.
       googleAdsConfigured: googleAdsConfigured(),
+      // Whether a model key is set at all. Without it the PMF prefill, the
+      // table generation and the gate research pass all decline politely,
+      // which is only discoverable by clicking the button and reading the
+      // refusal. A boolean here says so up front; the key itself never is.
+      modelConfigured: aiConfigured(),
       googleAdsApiVersion: env.googleAdsApiVersion,
       node: process.version,
       commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? process.env.GIT_COMMIT_SHA?.slice(0, 7) ?? null,
