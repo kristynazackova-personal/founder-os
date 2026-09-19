@@ -933,3 +933,45 @@ asked, so the flag is both the right voice and the right data.
 
 Worth noticing for next time: each round of this has been a register problem,
 not a knowledge problem. The model knew the business in all three runs.
+
+---
+
+## 2026-09-19 (altitude) - one product, whole picture, vision not usage
+
+Second run of the reframed stage 1. The voice rule held - no "the evidence",
+no "assuming" - and three things were still wrong. All three were altitude or
+shape, none was knowledge.
+
+**The two-product rule was an over-correction, and it fired on a false
+positive.** It split Selvenn into couples coaching and life coaching. Those
+are not two businesses; they are one product used by a couple together or by
+one person alone, which is two USE CASES, and this framework has an entire
+stage for splitting users up. Manufacturing the split at the mission turns
+"what is this business" into "which worksheet should I open". The rule now
+reads **assume ONE product**, with the `[to fill]` flag reserved for genuinely
+separate businesses - no shared core, bought separately, nothing lost by
+building one without the other - and even then the model decides whether it is
+worth raising. Two products is the rare case, not the careful one.
+
+**It described one branch in full, then the other.** New rule: widest true
+statement first, then deeper only if needed. The reader should never have to
+assemble the business themselves.
+
+**`user_outcome` was a usage report.** "Over weeks they can tell whether the
+thing they keep fighting about is actually improving" is the mechanics of a
+few weeks of use; the question wants the VISION. Stage 1 is now explicitly
+mission then vision, with one guard against the empty version of a vision: if
+you could paste it onto a competitor's site, it is too vague.
+
+**Shape change.** `FEATURE_LIST_EXAMPLE` / `META_VOICE_EXAMPLE` became
+`MISSION_EXAMPLE` / `VISION_EXAMPLE` (`WORKED_EXAMPLES`), keyed by the QUESTION
+rather than by the failure, each holding a list of rejected answers. Failures
+keep accumulating on the same two questions, and naming the constants after
+one failure each meant renaming them every round. Both rejected answers per
+question are kept word for word, and both are true about the business - that
+is the point of keeping them.
+
+The pattern across all three rounds: rules do not fix register, because a rule
+about register reads as already satisfied by the answer that breaks it. The
+rejected text is what shows the distance. Expect the next fix to be an example
+rather than a rule.
