@@ -1042,3 +1042,47 @@ on input, and text columns get `min-w-[22rem]` against `min-w-[8rem]` for the
 scoring ones - `.scroll-x` already handles the overflow on a narrow screen.
 A `[to fill]` question lands in a text cell too, which is the other reason a
 single line was never enough.
+
+---
+
+## 2026-09-19 (axes) - a MECE list is only MECE with respect to an axis
+
+Raised by the founder, and it is a level above what the tool was doing: the
+segment generator picked an axis SILENTLY and returned the rows it implied.
+Split by the moment someone is in, by what they have already tried, by what
+they can afford, and you get three defensible tables and three different
+companies. That choice was being made for them.
+
+**`src/lib/domain/pmfSegmentations.ts`** + `proposeSegmentations` /
+`chooseSegmentation` + a **Compare ways to split** button on the segment
+table. It returns 2 to 4 whole alternatives, each with its axis, its rows,
+why it might be right, and - required - what it HIDES. "Use this one"
+replaces the rows.
+
+Three rules came out of the conversation and are all enforced in the prompt:
+
+- **A row is a situation, never a label.** The founder's first sketch was
+  relationship trouble / depression / ADHD / ambition, then corrected it
+  themselves: those are labels that correlate with situations. A diagnosis as
+  a segment is two problems at once - a clinical claim the product is not
+  entitled to make, and a poor predictor of purchase. "Cannot get out of bed
+  while their partner quietly carries everything" is the segment.
+- **The label still has a job, in its own field.** It is how these people
+  search and how an ad reaches them, which is not the same job as describing
+  their situation. `selfDescription` per row is that bridge, and choosing a
+  segmentation injects a `How they describe themselves` column for it. You can
+  buy the keyword without making the claim.
+- **Axes must not be mixed.** Someone with a diagnosis can be in any of the
+  situational rows, so a table holding both is not mutually exclusive even
+  though every row reads fine alone. Offering axes as whole alternatives is
+  what prevents it, and choosing REPLACES the rows for the same reason.
+
+Unpicked alternatives are deliberately not persisted: cheap to ask for again,
+and storing them turns one decision into a drawer of half-made ones. The
+option travels back through the form and is re-read with the same tolerant
+parser that read it out of the model, so a mangled payload is rejected rather
+than stored.
+
+Scoped to `segment_list` on purpose (`SEGMENTATION_FIELD`). A pain is anchored
+to a step of a journey that is already written, so its axis is given; widen
+only if a second table turns out to have the same ambiguity.

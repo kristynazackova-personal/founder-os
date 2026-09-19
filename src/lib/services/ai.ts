@@ -23,7 +23,7 @@ const KEY = process.env.ANTHROPIC_API_KEY ?? "";
  * are already fixed is a smaller job. Keeping the distinction in the type means
  * a future split is an edit to one table rather than a hunt through callers.
  */
-export type AiPurpose = "gate_research" | "table_columns" | "table_rows" | "doc_fill" | "prefill";
+export type AiPurpose = "gate_research" | "table_columns" | "table_rows" | "segmentations" | "doc_fill" | "prefill";
 
 /**
  * Purpose -> model. **Every purpose is Opus today, deliberately.**
@@ -45,6 +45,9 @@ export const MODEL_FOR: Record<AiPurpose, string> = {
   table_columns: "claude-opus-5",
   // Drafts candidates against columns that are already fixed.
   table_rows: "claude-opus-5",
+  // Proposes several whole ways to split a market and argues each one's cost.
+  // Judgement, not drafting - the hardest call in the framework.
+  segmentations: "claude-opus-5",
   // Writes and pressure-tests the framework's prose fields.
   doc_fill: "claude-opus-5",
   // Has to REFUSE to infer the founder's motive from marketing copy, which is

@@ -13,9 +13,18 @@
  * Saving appends a version, like every other edit in this framework.
  */
 import { useActionState, useState } from "react";
-import { generateRowsAction, generateTableAction, saveTableAction, type PmfFormState } from "@/app/actions/pmf";
+import {
+  chooseSegmentationAction,
+  generateRowsAction,
+  generateTableAction,
+  proposeSegmentationsAction,
+  saveTableAction,
+  type PmfFormState,
+  type SegmentationsState,
+} from "@/app/actions/pmf";
 import { blankRow, serializeTable, type PmfColumn, type PmfRow, type PmfTable } from "@/lib/domain/pmfTable";
 import type { PmfFrameworkId } from "@/lib/domain/pmfFrameworks";
+import { SEGMENTATION_FIELD, type SegmentationOption } from "@/lib/domain/pmfSegmentations";
 
 function Status({ state }: { state: PmfFormState }) {
   if (!state) return null;
@@ -75,6 +84,77 @@ function autoHeight(el: HTMLTextAreaElement | null) {
   el.style.height = `${el.scrollHeight}px`;
 }
 
+/**
+ * Whole alternative ways to split the market, side by side.
+ *
+ * A MECE list is only MECE with respect to an axis, and the generator used to
+ * pick one silently. Showing the alternatives with what each one HIDES is the
+ * point: the founder is choosing a company, not a set of rows, and the axis is
+ * where that choice actually lives.
+ *
+ * Choosing replaces the rows rather than adding to them, because rows drawn
+ * from two axes overlap even when each one reads fine on its own.
+ */
+function SegmentationCompare({ appId, framework, field }: { appId: string; framework: PmfFrameworkId; field: string }) {
+  const [state, propose, proposing] = useActionState<SegmentationsState>(
+    proposeSegmentationsAction.bind(null, appId, framework, field),
+    undefined,
+  );
+  const [pickState, pick, picking] = useActionState<PmfFormState, FormData>(
+    chooseSegmentationAction.bind(null, appId, framework, field),
+    undefined,
+  );
+
+  return (
+    <div className="mt-3 flex flex-col gap-3">
+      <form action={propose}>
+        <button type="submit" className="btn btn-secondary btn-sm" disabled={proposing}>
+          {proposing ? "Comparing ways to split…" : "Compare ways to split"}
+        </button>
+      </form>
+      {state?.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
+      <Status state={pickState} />
+
+      {state?.options?.length ? (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-[var(--muted)]">
+            Each of these is a complete alternative, not a menu to mix. Rows from two different axes overlap even when
+            every row looks right on its own.
+          </p>
+          {state.options.map((o: SegmentationOption) => (
+            <div key={o.axis} className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+              <div className="text-sm font-semibold">{o.axis}</div>
+              {o.why ? <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">{o.why}</p> : null}
+              {o.hides ? (
+                <p className="mt-1.5 text-xs leading-relaxed">
+                  <b>What it hides:</b> {o.hides}
+                </p>
+              ) : null}
+              <ul className="mt-2.5 flex flex-col gap-1.5">
+                {o.rows.map((r) => (
+                  <li key={r.situation} className="text-xs leading-relaxed">
+                    {r.situation}
+                    {r.selfDescription ? (
+                      <span className="block text-[var(--muted)]">They say: {r.selfDescription}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              <form action={pick} className="mt-3">
+                {/* Wrapped as the model's own shape so the server re-reads it with the same parser. */}
+                <input type="hidden" name="__segmentation" value={JSON.stringify({ segmentations: [o] })} />
+                <button type="submit" className="btn btn-primary btn-sm" disabled={picking}>
+                  Use this one
+                </button>
+              </form>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function FrameworkTable({
   appId,
   framework,
@@ -118,6 +198,7 @@ export function FrameworkTable({
           </button>
           <Status state={genState} />
         </form>
+        {field === SEGMENTATION_FIELD ? <SegmentationCompare appId={appId} framework={framework} field={field} /> : null}
       </div>
     );
   }
@@ -208,6 +289,8 @@ export function FrameworkTable({
           ))}
         </ul>
       </details>
+
+      {field === SEGMENTATION_FIELD ? <SegmentationCompare appId={appId} framework={framework} field={field} /> : null}
     </div>
   );
 }

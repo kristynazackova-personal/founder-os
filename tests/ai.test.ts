@@ -87,7 +87,7 @@ describe("choosing a model per purpose", () => {
   it("covers every call site's purpose", async () => {
     const { MODEL_FOR } = await ai();
     expect(Object.keys(MODEL_FOR).sort()).toEqual(
-      ["doc_fill", "gate_research", "prefill", "table_columns", "table_rows"],
+      ["doc_fill", "gate_research", "prefill", "segmentations", "table_columns", "table_rows"],
     );
     for (const model of Object.values(MODEL_FOR)) expect(model).toMatch(/^claude-/);
   });

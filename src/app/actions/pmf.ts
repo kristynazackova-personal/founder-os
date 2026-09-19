@@ -6,10 +6,14 @@ import { getAppForUser, updateApp } from "@/lib/services/apps";
 import { normalizeUrl, sameUrl } from "@/lib/domain/url";
 import type { PmfFieldKey } from "@/lib/domain/pmfDoc";
 import { asFrameworkId, frameworkOf } from "@/lib/domain/pmfFrameworks";
-import { generateDoc, generateRows, generateTable, prefillGoalStage, rewriteDoc, saveEdit, saveTable } from "@/lib/services/pmfDocs";
+import { chooseSegmentation, generateDoc, generateRows, generateTable, prefillGoalStage, proposeSegmentations, rewriteDoc, saveEdit, saveTable } from "@/lib/services/pmfDocs";
+import { parseSegmentations, type SegmentationOption } from "@/lib/domain/pmfSegmentations";
 import { rowsFromForm, readTable } from "@/lib/domain/pmfTable";
 
 export type PmfFormState = { error?: string; ok?: string } | undefined;
+
+/** Carries the alternatives back to the client, which is where they live. */
+export type SegmentationsState = { error?: string; options?: SegmentationOption[] } | undefined;
 
 /**
  * Every action revalidates the page. Without it the new version is written
@@ -158,4 +162,46 @@ export async function prefillPmfAction(appId: string, framework: string, _prev: 
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Prefill failed." };
   }
+}
+
+/**
+ * Propose several whole ways to split the market. Writes nothing - the
+ * alternatives come back to the page and only the chosen one is stored.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function proposeSegmentationsAction(appId: string, framework: string, field: string, _prev: SegmentationsState): Promise<SegmentationsState> {
+  const user = await requireUser();
+  const app = await getAppForUser(appId, user.id);
+  if (!app) return { error: "App not found." };
+  const { options, error } = await proposeSegmentations(app, asFrameworkId(framework), field);
+  if (error || options.length === 0) return { error: error ?? "Could not propose segmentations." };
+  return { options };
+}
+
+/**
+ * Adopt one of them as the table.
+ *
+ * The option travels back through the form rather than being held server
+ * side. It is the founder's own content either way, and it is re-parsed here
+ * with the same tolerant parser that read it out of the model, so a mangled
+ * payload is rejected rather than stored.
+ */
+export async function chooseSegmentationAction(appId: string, framework: string, field: string, _prev: PmfFormState, formData: FormData): Promise<PmfFormState> {
+  const user = await requireUser();
+  const app = await getAppForUser(appId, user.id);
+  if (!app) return { error: "App not found." };
+
+  let parsed: SegmentationOption[] = [];
+  try {
+    parsed = parseSegmentations(JSON.parse(String(formData.get("__segmentation") ?? "")));
+  } catch {
+    return { error: "That segmentation could not be read. Ask for them again." };
+  }
+  const option = parsed[0];
+  if (!option) return { error: "That segmentation could not be read. Ask for them again." };
+
+  const { table, error } = await chooseSegmentation(app, asFrameworkId(framework), field, option);
+  if (error || !table) return { error: error ?? "Could not use that segmentation." };
+  done(app.id);
+  return { ok: `Using "${option.axis}" - ${table.rows.length} rows.` };
 }

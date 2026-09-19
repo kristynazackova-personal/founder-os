@@ -21,6 +21,7 @@ import { INDUSTRY_LABEL, NATURE_LABEL } from "../domain/gates";
 import { nextVersion, parseModelValues, parseStoredValues, scaffoldDoc, type PmfDoc, type PmfDocSource, type PmfFieldKey } from "../domain/pmfDoc";
 import { DEFAULT_FRAMEWORK, asFrameworkId, frameworkOf, type PmfFramework, type PmfFrameworkId } from "../domain/pmfFrameworks";
 import { parseTable, readTable, renderTableForPrompt, serializeTable, withRowLabelColumn, type PmfTable } from "../domain/pmfTable";
+import { SELF_DESCRIPTION_COLUMN, parseSegmentations, segmentationsPrompt, type SegmentationOption } from "../domain/pmfSegmentations";
 import { columnPrompt, promptFor, rowPrompt, tableStageForField, type TablePromptSpec } from "../domain/pmfPrompts";
 import { PREFILL_STAGE, prefillFields, prefillPrompt } from "../domain/pmfPrefill";
 import { answerGuidance } from "../domain/pmfAnswers";
@@ -349,6 +350,75 @@ export async function generateRows(app: App, framework: PmfFrameworkId, field: s
   if (drafted.rows.length === 0) return { table: null, error: drafted.error };
 
   const table: PmfTable = { columns, rows: drafted.rows };
+  await appendVersion(app.id, f.id, { [field]: serializeTable(table) }, { source: "generated" });
+  return { table, error: null };
+}
+
+/**
+ * Several whole ways to split this market, for the founder to choose between.
+ *
+ * Writes nothing. The unpicked alternatives are deliberately not stored: they
+ * are cheap to ask for again, and keeping them would turn one decision into a
+ * drawer of half-considered ones.
+ */
+export async function proposeSegmentations(
+  app: App,
+  framework: PmfFrameworkId,
+  field: string,
+): Promise<{ options: SegmentationOption[]; error: string | null }> {
+  const stage = tableStageForField(field);
+  if (!stage) return { options: [], error: "That field is not a table." };
+  if (!aiConfigured()) return { options: [], error: "Comparing segmentations needs a model key on this deployment." };
+
+  const f = frameworkOf(framework);
+  const spec = promptFor(stage);
+  const { business, answers } = await tableContext(app, f, spec, field);
+  const res = await askForJson(segmentationsPrompt(spec, { business, answers }), { purpose: "segmentations" });
+  const options = parseSegmentations(res.json);
+  return { options, error: options.length > 0 ? null : res.error ?? "The model returned no usable segmentations." };
+}
+
+/**
+ * Adopt one segmentation as the table.
+ *
+ * The chosen axis decides the rows, so this REPLACES them rather than
+ * appending - mixing rows from two axes is the overlap the compare step
+ * exists to prevent. Any scoring columns already derived are kept and left
+ * empty, because scoring is the founder's judgement and always was.
+ */
+export async function chooseSegmentation(
+  app: App,
+  framework: PmfFrameworkId,
+  field: string,
+  option: SegmentationOption,
+): Promise<{ table: PmfTable | null; error: string | null }> {
+  const stage = tableStageForField(field);
+  if (!stage) return { table: null, error: "That field is not a table." };
+  if (option.rows.length === 0) return { table: null, error: "That segmentation has no rows." };
+
+  const f = frameworkOf(framework);
+  const spec = promptFor(stage);
+  const doc = await latestDoc(app.id, f.id);
+  const existing = readTable(doc?.values[field]);
+
+  // The label column may not exist yet - a segmentation can be chosen before
+  // any columns have been derived, and then it is the whole table.
+  const withLabel = withRowLabelColumn(existing.columns, spec.rowLabel.label, spec.rowLabel.prompt);
+  const columns = withLabel.some((c) => c.key === SELF_DESCRIPTION_COLUMN.key)
+    ? withLabel
+    : [
+        withLabel[0]!,
+        { key: SELF_DESCRIPTION_COLUMN.key, label: SELF_DESCRIPTION_COLUMN.label, kind: "text" as const, anchors: SELF_DESCRIPTION_COLUMN.prompt },
+        ...withLabel.slice(1),
+      ];
+
+  const labelKey = columns[0]!.key;
+  const table = parseTable({
+    columns,
+    rows: option.rows.map((r) => ({
+      cells: { [labelKey]: r.situation, [SELF_DESCRIPTION_COLUMN.key]: r.selfDescription },
+    })),
+  });
   await appendVersion(app.id, f.id, { [field]: serializeTable(table) }, { source: "generated" });
   return { table, error: null };
 }
