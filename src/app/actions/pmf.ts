@@ -6,7 +6,7 @@ import { getAppForUser, updateApp } from "@/lib/services/apps";
 import { normalizeUrl, sameUrl } from "@/lib/domain/url";
 import type { PmfFieldKey } from "@/lib/domain/pmfDoc";
 import { asFrameworkId, frameworkOf } from "@/lib/domain/pmfFrameworks";
-import { generateDoc, generateTable, prefillGoalStage, rewriteDoc, saveEdit, saveTable } from "@/lib/services/pmfDocs";
+import { generateDoc, generateRows, generateTable, prefillGoalStage, rewriteDoc, saveEdit, saveTable } from "@/lib/services/pmfDocs";
 import { rowsFromForm, readTable } from "@/lib/domain/pmfTable";
 
 export type PmfFormState = { error?: string; ok?: string } | undefined;
@@ -76,9 +76,23 @@ export async function generateTableAction(appId: string, framework: string, fiel
   const app = await getAppForUser(appId, user.id);
   if (!app) return { error: "App not found." };
   const { table, error } = await generateTable(app, asFrameworkId(framework), field);
-  if (error || !table) return { error: error ?? "Could not build the table." };
+  if (!table) return { error: error ?? "Could not build the table." };
   done(app.id);
+  // The columns are kept even when the row call fails, so this reports both.
+  if (error) return { error: `${table.columns.length} columns, but no rows: ${error}` };
   return { ok: `${table.columns.length} columns and ${table.rows.length} suggested rows.` };
+}
+
+/** Draft rows against the columns already stored, without re-deriving them. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function generateRowsAction(appId: string, framework: string, field: string, _prev: PmfFormState): Promise<PmfFormState> {
+  const user = await requireUser();
+  const app = await getAppForUser(appId, user.id);
+  if (!app) return { error: "App not found." };
+  const { table, error } = await generateRows(app, asFrameworkId(framework), field);
+  if (error || !table) return { error: error ?? "Could not suggest rows." };
+  done(app.id);
+  return { ok: `${table.rows.length} suggested rows.` };
 }
 
 /**

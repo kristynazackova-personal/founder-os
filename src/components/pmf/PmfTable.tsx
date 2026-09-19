@@ -13,7 +13,7 @@
  * Saving appends a version, like every other edit in this framework.
  */
 import { useActionState, useState } from "react";
-import { generateTableAction, saveTableAction, type PmfFormState } from "@/app/actions/pmf";
+import { generateRowsAction, generateTableAction, saveTableAction, type PmfFormState } from "@/app/actions/pmf";
 import { blankRow, serializeTable, type PmfColumn, type PmfRow, type PmfTable } from "@/lib/domain/pmfTable";
 import type { PmfFrameworkId } from "@/lib/domain/pmfFrameworks";
 
@@ -76,6 +76,12 @@ export function FrameworkTable({
     generateTableAction.bind(null, appId, framework, field),
     undefined,
   );
+  // Rows on their own: re-deriving replaces the columns the founder just
+  // approved, which is the wrong price for a second opinion on the rows.
+  const [rowState, rowAction, drafting] = useActionState<PmfFormState>(
+    generateRowsAction.bind(null, appId, framework, field),
+    undefined,
+  );
 
   if (table.columns.length === 0) {
     return (
@@ -102,12 +108,20 @@ export function FrameworkTable({
           <div className="text-xs font-semibold tracking-wide text-[var(--muted)] uppercase">Your table</div>
           <p className="mt-0.5 text-xs text-[var(--muted)]">{prompt}</p>
         </div>
-        <form action={genAction}>
-          <button type="submit" className="btn btn-secondary btn-sm" disabled={generating}>
-            {generating ? "Re-deriving…" : "Re-derive columns"}
-          </button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2">
+          <form action={rowAction}>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={drafting || generating}>
+              {drafting ? "Suggesting rows…" : "Suggest rows with AI"}
+            </button>
+          </form>
+          <form action={genAction}>
+            <button type="submit" className="btn btn-secondary btn-sm" disabled={generating || drafting}>
+              {generating ? "Re-deriving…" : "Re-derive columns"}
+            </button>
+          </form>
+        </div>
       </div>
+      <Status state={rowState} />
       <Status state={genState} />
 
       <form action={saveAction} className="flex flex-col gap-3">

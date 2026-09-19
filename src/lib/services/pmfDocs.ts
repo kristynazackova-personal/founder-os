@@ -21,7 +21,7 @@ import { INDUSTRY_LABEL, NATURE_LABEL } from "../domain/gates";
 import { nextVersion, parseModelValues, parseStoredValues, scaffoldDoc, type PmfDoc, type PmfDocSource, type PmfFieldKey } from "../domain/pmfDoc";
 import { DEFAULT_FRAMEWORK, asFrameworkId, frameworkOf, type PmfFramework, type PmfFrameworkId } from "../domain/pmfFrameworks";
 import { parseTable, readTable, renderTableForPrompt, serializeTable, withRowLabelColumn, type PmfTable } from "../domain/pmfTable";
-import { columnPrompt, promptFor, rowPrompt, tableStageForField } from "../domain/pmfPrompts";
+import { columnPrompt, promptFor, rowPrompt, tableStageForField, type TablePromptSpec } from "../domain/pmfPrompts";
 import { PREFILL_STAGE, prefillFields, prefillPrompt } from "../domain/pmfPrefill";
 import { answerGuidance } from "../domain/pmfAnswers";
 import { sourceSummary } from "../domain/businessCase";
@@ -251,13 +251,17 @@ export async function rewriteDoc(app: App, framework: PmfFrameworkId, comment: s
  * docs/research/pmf-build/. Rows are prompts with their cells filled in as
  * questions: the framework's first rule is not suspended by a table.
  */
-export async function generateTable(app: App, framework: PmfFrameworkId, field: string): Promise<{ table: PmfTable | null; error: string | null }> {
-  const stage = tableStageForField(field);
-  if (!stage) return { table: null, error: "That field is not a table." };
-  if (!aiConfigured()) return { table: null, error: "Generating a table needs a model key on this deployment. Add rows by hand instead." };
-
-  const f = frameworkOf(framework);
-  const spec = promptFor(stage);
+/**
+ * What a table's prompts read: the business, and the answers ABOVE this table
+ * in framework order.
+ *
+ * Only upward. Feeding later stages back would be circular, and the chain is
+ * segment -> pains -> solutions, so earlier TABLES count: the pains table
+ * reads the segments the founder actually wrote. `[to fill]` values are
+ * dropped, so a half-answered stage produces a weaker table rather than a
+ * confidently wrong one.
+ */
+async function tableContext(app: App, f: PmfFramework, spec: TablePromptSpec, field: string) {
   const doc = await latestDoc(app.id, f.id);
   const ctx = await contextFor(app);
   const business = [
@@ -267,11 +271,6 @@ export async function generateTable(app: App, framework: PmfFrameworkId, field: 
     app.url ?? "",
   ].filter(Boolean).join(" · ");
 
-  // Only the answers ABOVE this table, in framework order - that is what the
-  // columns are derived from, and feeding later stages back would be circular.
-  // Earlier TABLES count: the chain is segment -> pains -> solutions, so the
-  // pains table reads the segments the founder actually wrote, and the
-  // solutions table reads the pains.
   const stageIndex = f.stages.findIndex((x) => x.key === spec.stage);
   const above = f.fields.filter((x) => {
     const at = f.stages.findIndex((st) => st.key === x.stage);
@@ -287,18 +286,69 @@ export async function generateTable(app: App, framework: PmfFrameworkId, field: 
     .filter(Boolean)
     .join("\n\n");
 
+  return { doc, business, answers };
+}
+
+/** Draft rows against columns that already exist. Shared by both entry points. */
+async function draftRows(
+  spec: TablePromptSpec,
+  columns: PmfTable["columns"],
+  context: { business: string; answers: string },
+): Promise<{ rows: PmfTable["rows"]; error: string | null }> {
+  const rendered = columns
+    .map((c) => `- ${c.key} (${c.label}, ${c.kind}${c.options ? `: ${c.options.join(" / ")}` : c.kind === "scale" ? `: ${c.min} to ${c.max}` : ""})${c.anchors ? ` - ${c.anchors}` : ""}`)
+    .join("\n");
+  const res = await askForJson(rowPrompt(spec, { ...context, columns: rendered }), { purpose: "table_rows" });
+  const rows = parseTable({ columns, rows: (res.json as { rows?: unknown } | null)?.rows }).rows;
+  // An empty table used to save as a success, which read as "the model had
+  // nothing to suggest" when it actually meant the call failed.
+  return { rows, error: rows.length > 0 ? null : res.error ?? "The model returned no usable rows." };
+}
+
+export async function generateTable(app: App, framework: PmfFrameworkId, field: string): Promise<{ table: PmfTable | null; error: string | null }> {
+  const stage = tableStageForField(field);
+  if (!stage) return { table: null, error: "That field is not a table." };
+  if (!aiConfigured()) return { table: null, error: "Generating a table needs a model key on this deployment. Add rows by hand instead." };
+
+  const f = frameworkOf(framework);
+  const spec = promptFor(stage);
+  const { business, answers } = await tableContext(app, f, spec, field);
+
   const colRes = await askForJson(columnPrompt(spec, { business, answers }), { purpose: "table_columns" });
   const derived = parseTable(colRes.json).columns;
   if (derived.length === 0) return { table: null, error: colRes.error ?? "The model returned no usable columns." };
   const columns = withRowLabelColumn(derived, spec.rowLabel.label, spec.rowLabel.prompt);
 
-  const rendered = columns
-    .map((c) => `- ${c.key} (${c.label}, ${c.kind}${c.options ? `: ${c.options.join(" / ")}` : c.kind === "scale" ? `: ${c.min} to ${c.max}` : ""})${c.anchors ? ` - ${c.anchors}` : ""}`)
-    .join("\n");
-  const rowRes = await askForJson(rowPrompt(spec, { business, answers, columns: rendered }), { purpose: "table_rows" });
-  const rows = parseTable({ columns, rows: (rowRes.json as { rows?: unknown } | null)?.rows }).rows;
+  const drafted = await draftRows(spec, columns, { business, answers });
+  const table: PmfTable = { columns, rows: drafted.rows };
+  // The columns are saved either way: they are the expensive half, and losing
+  // them to a failure in the second call would mean deriving them again.
+  await appendVersion(app.id, f.id, { [field]: serializeTable(table) }, { source: "generated" });
+  return { table, error: drafted.error };
+}
 
-  const table: PmfTable = { columns, rows };
+/**
+ * Rows only, against the columns already stored.
+ *
+ * Re-deriving is destructive - it replaces the columns the founder just
+ * approved - so a row call that came back empty needs its own retry. This is
+ * also the button for "these columns are right, now suggest some rows".
+ */
+export async function generateRows(app: App, framework: PmfFrameworkId, field: string): Promise<{ table: PmfTable | null; error: string | null }> {
+  const stage = tableStageForField(field);
+  if (!stage) return { table: null, error: "That field is not a table." };
+  if (!aiConfigured()) return { table: null, error: "Suggesting rows needs a model key on this deployment. Add rows by hand instead." };
+
+  const f = frameworkOf(framework);
+  const spec = promptFor(stage);
+  const { doc, business, answers } = await tableContext(app, f, spec, field);
+  const columns = readTable(doc?.values[field]).columns;
+  if (columns.length === 0) return { table: null, error: "There are no columns yet. Generate with AI first." };
+
+  const drafted = await draftRows(spec, columns, { business, answers });
+  if (drafted.rows.length === 0) return { table: null, error: drafted.error };
+
+  const table: PmfTable = { columns, rows: drafted.rows };
   await appendVersion(app.id, f.id, { [field]: serializeTable(table) }, { source: "generated" });
   return { table, error: null };
 }

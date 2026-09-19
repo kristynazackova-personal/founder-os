@@ -1004,3 +1004,33 @@ Worth remembering as the shape here: a generator added later does not
 automatically pick up guidance added earlier, and nothing fails when it
 doesn't. The check is `grep answerGuidance src/lib` against the list of call
 sites in `ai.ts`'s `AiPurpose`.
+
+---
+
+## 2026-09-19 (rows) - a failed row call looked like an empty table
+
+The columns came back good and the table was empty, with no error. Cause:
+`generateTable` makes two calls, and the second one's failure was swallowed -
+zero rows were saved as a success. From the founder's side that reads as "the
+model had nothing to suggest" when it actually means the call failed.
+
+Two fixes, both small:
+
+- **`draftRows` reports an empty result as an error.** `generateTable` still
+  SAVES the columns when rows fail - they are the expensive half, and throwing
+  them away because the second call failed would mean deriving them again -
+  and the action now says "N columns, but no rows: <why>".
+- **`generateRows` is a second entry point**, rows only, against the columns
+  already stored. Until now the only retry was "Re-derive columns", which
+  replaces the columns the founder just approved and discards any rows they
+  edited. That is the wrong price for a second opinion on the rows.
+  Button: **Suggest rows with AI**, beside Re-derive columns.
+
+`tableContext` was extracted while doing it - both entry points need the same
+"answers above this table" context, and that logic (upward only, earlier
+tables rendered, `[to fill]` dropped) is the part that would drift if it were
+copied.
+
+Also renamed the empty-state button from "Choose the parameters" to
+**Generate with AI**: the old label described the first of its two calls and
+named neither the AI nor the rows.
