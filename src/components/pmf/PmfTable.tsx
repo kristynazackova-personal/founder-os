@@ -7,7 +7,8 @@
  * The columns are NOT editable here and are not submitted by the form - they
  * come from the stored table (`__columns`), so a row can never be saved
  * against a column set the founder was not looking at. Re-deriving them is a
- * deliberate act: the "choose the parameters" button.
+ * deliberate act: the "Generate with AI" button, and "Re-derive columns"
+ * once a table exists - both run the same action.
  *
  * Saving appends a version, like every other edit in this framework.
  */
@@ -86,7 +87,7 @@ export function FrameworkTable({
         </p>
         <form action={genAction} className="mt-3 flex flex-wrap items-center gap-3">
           <button type="submit" className="btn btn-primary btn-sm" disabled={generating}>
-            {generating ? "Choosing the parameters…" : "Choose the parameters"}
+            {generating ? "Generating…" : "Generate with AI"}
           </button>
           <Status state={genState} />
         </form>
