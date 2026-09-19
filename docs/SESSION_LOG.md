@@ -828,3 +828,31 @@ reads as satisfied by the bad answer.
 Not verified against the live model: there is no Anthropic key in this
 sandbox. The prompts are unit-tested for content and the guidance renders, but
 whether the answers actually improve is the next real run's evidence.
+
+---
+
+## 2026-09-19 (deploys) - why pushes never built
+
+Railway had been building only when the dashboard offered an **Update**
+button, never on a push. The cause was visible in Settings → Source: the
+service carried an **Upstream Repo** - Railway's *template* relationship -
+pointing at `kristynazackova-personal/founder-os`, the same repo as its
+Source. So Railway watched the repo as a template and offered manual
+template updates instead of deploying pushes.
+
+**Do not press Eject.** Its dialog reads "remove the connection to the
+upstream URL", but the next line says it creates a NEW repository in the
+account and repoints the service at it. That forks the repo and leaves
+pushes to the original deploying nothing.
+
+The fix was to Disconnect the source and reconnect the same repo, which
+re-creates the GitHub webhook without the template link. Variables,
+domains and volumes live on the service, so they survive it.
+
+The diagnostic that would have found this in one look: GitHub → repo →
+Settings → Webhooks → the `railway.app` hook's Recent Deliveries. No hook,
+or red deliveries, and Railway is simply not hearing the pushes.
+
+`/api/health` reports `commit` from `RAILWAY_GIT_COMMIT_SHA`, which is the
+cheapest way to tell which build is actually serving - the build log names
+an image digest, not a commit. `cf4a558` went live at 00:32 UTC.
