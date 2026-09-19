@@ -232,8 +232,8 @@ const BUILD_STAGES: PmfStage[] = [
 ];
 
 const BUILD_FIELDS: PmfFieldDef[] = [
-  { key: "one_sentence", stage: "goal", label: "What does this product do", prompt: "One kind of user, one change, one mechanism. Not the category, and not a list of everything it can do. Two sentences if you need two - the test is whether you chose, not whether you were brief." },
-  { key: "user_outcome", stage: "goal", label: "What outcome do you want for the user", prompt: "What is different in their day because this exists. Their change, not your feature restated." },
+  { key: "one_sentence", stage: "goal", label: "What does this product do", prompt: "The mission: who it is for, the problem it exists to solve, and what the product is. Name the problem, not the feature list - two or three sentences, in your own words rather than the words on your homepage." },
+  { key: "user_outcome", stage: "goal", label: "What outcome do you want for the user", prompt: "How the problem gets solved for them: what they can do, or stop doing, once this works. The general outcome, not a story about one person on one day, and not your feature restated." },
   { key: "your_outcome", stage: "goal", label: "What do YOU want out of it", prompt: "Revenue, usefulness, thank-yous, a job, a portfolio piece. Be honest, it changes every later decision." },
   { key: "six_months", stage: "goal", label: "Success in six months looks like", prompt: "One concrete picture you could turn out to be wrong about, not a range." },
   { key: "segment_list", stage: "segment", label: "Every possible user or use case (MECE)", prompt: "One row per group, mutually exclusive and collectively exhaustive - split by the situation they are in, not by demographics. The columns are chosen from your stage 1 answers.", table: true },

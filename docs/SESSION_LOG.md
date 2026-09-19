@@ -895,3 +895,41 @@ changed.
 
 Not swept yet: the other 26 prompts may carry more interview conventions.
 MECE on the segment list is one, though it survives translation on merit.
+
+---
+
+## 2026-09-19 (voice) - the answer was right and still unusable
+
+First real run of the reframed stage 1. The two-product rule worked: it caught
+that couples coaching and life coaching are different people in a different
+moment paying for a different reason, which the first run had flattened. Two
+things were wrong anyway.
+
+**It narrated its own reasoning.** The answer opened "The evidence shows two
+products, not one", and the outcome field opened "Assuming couples is the
+answer above", closing with "if the answer is life coaching, this needs
+rewriting". Every one of those is a sentence about the worksheet rather than
+an entry in it - and these values are pasted straight into the founder's
+document and shown back as their own writing. No CONTENT rule catches this;
+the answer can be completely right about the business and still unusable
+because of who it is written to. So `ANSWER_RULES` gained a voice rule, first
+in the list, and `META_VOICE_EXAMPLE` keeps the rejected text verbatim beside
+the feature-list one. The two fail in opposite directions: the first described
+everything and decided nothing, the second decided and then narrated the
+deciding.
+
+**And the target was wrong.** "One kind of user, one change, one mechanism"
+was still the interview's aim in disguise - a crisp mechanism sketch. What
+stage 1 actually wants is the MISSION: who it is for, the problem it exists to
+solve, what the product is. Likewise `user_outcome` had produced a vignette
+(one partner, one argument, one day) where the question wants the general
+outcome: how the problem gets solved. Both prompts were retargeted.
+
+**The two-product question moved into `[to fill]`.** It was being asked in
+prose at the end of the answer, which is the same voice problem. The framework
+already has a marker for a decision only the founder can make, and
+`PLACEHOLDER_PREFIX` is read by `pmfDocs` to count what is answered versus
+asked, so the flag is both the right voice and the right data.
+
+Worth noticing for next time: each round of this has been a register problem,
+not a knowledge problem. The model knew the business in all three runs.

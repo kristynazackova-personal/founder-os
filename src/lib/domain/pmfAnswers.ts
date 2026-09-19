@@ -39,7 +39,13 @@
  * Pure strings. No DB, no env, no network.
  */
 
-/** The answer that is wrong in the way that matters, kept as the worked example. */
+/**
+ * Two real rejected answers to the same question, kept verbatim.
+ *
+ * They fail in opposite directions, which is why both are here. The first
+ * described everything and decided nothing. The second decided, and then
+ * narrated the deciding.
+ */
 export const FEATURE_LIST_EXAMPLE = {
   question: "What does this product do",
   bad:
@@ -49,37 +55,86 @@ export const FEATURE_LIST_EXAMPLE = {
   whyBad:
     "Every capability is in there and the point is not: it lists what the product can do instead of saying " +
     "what it is for. The inputs, the tracks and the outputs are detail the founder already knows.",
-  good: "Selvenn shows a couple what is actually happening between them, from conversations they already have.",
+  good:
+    "Selvenn exists so that people can see what is actually happening in their closest relationships instead " +
+    "of guessing. Couples record or upload the conversations they are already having, and get a shared picture " +
+    "of the patterns they keep repeating and whether those patterns are improving.\n\n" +
+    "[to fill] Life coaching is a second product here - a different person, on their own, for a different " +
+    "reason. This framework is filled in for one product at a time, and this answer is written for couples " +
+    "coaching. Is that the one you are building now?",
   whyGood:
-    "It names one user, one change and one mechanism. It is not better because it is shorter - it would be just " +
-    "as good in two sentences. It is better because a decision got made. Note what it did with the second track: " +
-    "life coaching serves a different person in a different situation, so that is a SECOND product, not a clause " +
-    "to bolt on. The move was to name both and ask which one this framework is being filled in for, rather than " +
-    "reach for an umbrella wide enough to cover them.",
+    "It names who it is for, the problem it exists to solve and what the product is, which is the mission - " +
+    "not a mechanism sketch and not an inventory. The second product is not merged into an umbrella wide " +
+    "enough to cover both, and it is not dropped either; it is flagged with the marker this framework " +
+    "already uses for a decision that is the founder's to make.",
+} as const;
+
+/**
+ * The second failure, and the subtler one.
+ *
+ * This answer got the hard part right - it noticed two products where the
+ * first run had flattened them. Then it wrote that noticing down. "The
+ * evidence shows", "assuming", "if the answer is life coaching, this needs
+ * rewriting": every one of those is a sentence about the process, addressed
+ * to whoever is reading the output, sitting in a field whose value is pasted
+ * into the founder's worksheet and shown back to them as their own document.
+ *
+ * It is worth its own example because no rule about CONTENT catches it. The
+ * answer can be entirely right about the business and still be unusable,
+ * because of who it is written to.
+ */
+export const META_VOICE_EXAMPLE = {
+  question: "What outcome do you want for the user",
+  bad:
+    "Assuming couples is the answer above: a partner stops arguing about who said what and can see the pattern " +
+    "the two of them keep repeating, so the next hard conversation starts from something they both recognise " +
+    "rather than from blame. If the answer is life coaching, this needs rewriting, because getting unstuck " +
+    "alone is a different change for a different day.",
+  whyBad:
+    "The observation is fine and the framing is not. \"Assuming\", \"the answer above\" and \"this needs " +
+    "rewriting\" are talk about the worksheet rather than entries in it, and the founder reads this field as " +
+    "their own writing. Commit to the answer; if something genuinely has to be decided first, that is what the " +
+    "[to fill] marker is for.",
+  good:
+    "Couples stop relitigating who said what, because the pattern they keep repeating is visible to both of " +
+    "them in the same place. That turns the recurring argument into something they can work on together, and " +
+    "makes it possible to tell whether it is actually getting better over weeks rather than each of them " +
+    "keeping a private tally.",
+  whyGood:
+    "It answers how the problem gets solved in general, so it holds for every couple rather than telling a " +
+    "story about one of them on one day, and every trace of the machinery is gone.",
 } as const;
 
 export const ANSWER_RULES: string[] = [
+  "Write the ANSWER, never your reasoning about it. What you return is pasted straight into the founder's own worksheet, so it has to read as something they wrote. Nothing about the evidence, the website, the business case or what you worked out from them; no 'assuming', no 'if the answer is X then this needs rewriting', no hedging about your own confidence, nothing addressed to a reader. Those words are about the machinery, and the machinery is not part of their document.",
   "Answer the question that was asked. The website and the business case are EVIDENCE about this business, not the answer - never summarise them back.",
   "One idea per answer. If you need 'and' twice, or you are listing input formats, product tracks, tiers, output types or audiences, you have written a feature list rather than an answer.",
   "Where the evidence supports several, name the PRIMARY one and drop the rest. A complete list is not a better answer; it is a refusal to choose, and choosing is what each of these questions is for.",
-  "The exception, and it is the only one: where the evidence shows two genuinely SEPARATE products - different users, in a different situation, paying for a different reason - do not merge them into an umbrella and do not quietly drop one. Name both and say the framework needs to be filled in for one of them, then ask which. Merging them corrupts every table below, because a segment list drawn across two products is not MECE.",
+  "The exception, and it is the only one: where there are two genuinely SEPARATE products - different users, in a different situation, paying for a different reason - do not merge them into an umbrella and do not quietly drop one. Answer for the one that leads, then add a final line starting [to fill] that names the other and says this framework is filled in for one product at a time. The flag is how that question gets asked; never ask it inside the answer itself. Merging them corrupts every table below, because a segment list drawn across two products is not MECE.",
   "Say what it is FOR, not everything it can do. Capabilities are what the product is able to do; this framework asks what it is meant to change, for whom, and what the founder is deciding.",
   "Prefer the founder's own plain words over the marketing copy on the page. Marketing copy sells; these answers have to be usable by someone making a decision.",
   "Length is not the test; listing is. Two sentences naming one user, one change and one mechanism are a better answer than one sentence packing in three of each. Brevity is what an interview grades under time pressure - here nothing is timed, and the only thing being graded is whether a decision got made.",
   "Where the evidence does not say, write the question instead, starting with [to fill]. A flagged blank is useful; a plausible sentence the founder did not write is worse than nothing, because they will read it as a finding.",
 ];
 
-/** The rules plus the worked example, for a prompt. */
+/** The rules plus both worked examples, for a prompt. */
 export function answerGuidance(): string {
+  const worked = (e: { question: string; bad: string; whyBad: string; good: string; whyGood: string }) => [
+    `  Question: ${e.question}`,
+    `  Rejected: "${e.bad}"`,
+    `  Why: ${e.whyBad}`,
+    `  Better: "${e.good}"`,
+    `  Why: ${e.whyGood}`,
+  ];
+
   return [
     "How to answer, whatever the field:",
     ...ANSWER_RULES.map((r) => `- ${r}`),
     "",
-    "The failure to avoid, from a real run:",
-    `  Question: ${FEATURE_LIST_EXAMPLE.question}`,
-    `  Rejected: "${FEATURE_LIST_EXAMPLE.bad}"`,
-    `  Why: ${FEATURE_LIST_EXAMPLE.whyBad}`,
-    `  Better: "${FEATURE_LIST_EXAMPLE.good}"`,
-    `  Why: ${FEATURE_LIST_EXAMPLE.whyGood}`,
+    "Two failures to avoid, both from real runs. The first described everything and decided nothing:",
+    ...worked(FEATURE_LIST_EXAMPLE),
+    "",
+    "The second decided, and then narrated the deciding:",
+    ...worked(META_VOICE_EXAMPLE),
   ].join("\n");
 }
