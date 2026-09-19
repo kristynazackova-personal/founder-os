@@ -13,6 +13,7 @@
  * Pure strings. No DB, no env, no network.
  */
 import type { PmfFramework } from "./pmfFrameworks";
+import { answerGuidance } from "./pmfAnswers";
 
 export const PREFILL_STAGE = "goal";
 
@@ -30,10 +31,8 @@ export const FOUNDER_INTENT_FIELD = "your_outcome";
 
 export const PREFILL_RULES: string[] = [
   "Answer ONLY what the evidence supports. This is a description of their business, not a proposal for it.",
-  "Where the evidence does not say, write the question instead, starting with [to fill]. A blank you flag is useful; a plausible sentence they did not write is worse than nothing, because they will read it as a finding.",
   `Be especially careful with "${FOUNDER_INTENT_FIELD}". A website is marketing copy written for customers and will imply a revenue motive the founder may not hold. Unless they state what THEY want out of it, ask.`,
-  "Use their own words where they have them. This is their page and their document.",
-  "One or two sentences per field. Stage 1 is a summary, not a rewrite of the source.",
+  "Stage 1 is four decisions, not a precis of the source. The evidence is usually a page selling the product, and a faithful summary of it answers none of these four questions.",
   "Never use an em dash; use a hyphen.",
 ];
 
@@ -63,7 +62,9 @@ export function prefillPrompt(
     "Fill in these fields:",
     ...fields.map((x) => `- ${x.key} (${x.label}): ${x.prompt}`),
     "",
-    "Rules:",
+    answerGuidance(),
+    "",
+    "Also, for this stage:",
     ...PREFILL_RULES.map((r) => `- ${r}`),
     "",
     `Return ONLY JSON: {"values":{${fields.map((x) => `"${x.key}":"..."`).join(",")}}}`,

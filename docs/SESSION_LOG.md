@@ -795,3 +795,36 @@ less. The rule written into the file: never downgrade a purpose without the
 Opus output of that same call to compare against. The test asserts the routing,
 not which model a purpose has, so it survives the change rather than blocking
 it.
+
+---
+
+## 2026-09-19 - the answers were feature lists
+
+Reported from the deployment, for `one_sentence`: the model returned every
+input format, both product tracks and all four outputs. Accurate, and the
+wrong answer - the question asks what the product is FOR and it gave an
+inventory of what it can do.
+
+**The cause is not that field.** Fed a website or a business case, a model's
+safest move is a faithful summary. A field prompt that specifies only a SHAPE
+gets that summary poured into the shape. Most of the 27 prompts specified a
+shape and nothing else, so the same failure was waiting in all of them. Worse,
+`one_sentence` said "Mechanism, not benefit" - meant to stop "a coaching
+platform", but it is also an invitation to enumerate the machinery, which is
+exactly what came back.
+
+**Fix, in two halves.** `domain/pmfAnswers.ts` holds `ANSWER_RULES` plus the
+rejected answer as a worked example, and every generator sends it: prefill,
+doc fill, pressure-test, table rows. And all 27 field prompts were rewritten to
+name the DECISION the answer carries and the nearest wrong answer, instead of
+only the format. Those strings are shown in the form as well as sent to the
+model, so they had to stay readable as questions to a person.
+
+Keeping the real rejected sentence in the file, rather than paraphrasing it,
+is deliberate: a rule states a principle, an example shows the exact distance
+between right and wrong, and this failure is subtle enough that the rule alone
+reads as satisfied by the bad answer.
+
+Not verified against the live model: there is no Anthropic key in this
+sandbox. The prompts are unit-tested for content and the guidance renders, but
+whether the answers actually improve is the next real run's evidence.

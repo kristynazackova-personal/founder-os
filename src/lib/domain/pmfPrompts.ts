@@ -62,6 +62,7 @@ export const ROW_RULES: string[] = [
   "Name candidates the founder would recognise from their own earlier answers. Do not invent a segment, a pain or a solution they have never mentioned.",
   "Where a cell needs a judgement only they can make, write the question for that cell, starting with [to fill].",
   `At most ${MAX_ROWS} rows, and fewer is better. Three well-shaped rows beat ten generic ones.`,
+  "A row names ONE thing. A row that lists several formats, tracks, tiers or audiences at once is a feature list wearing a row's clothing, and it cannot be compared against the rows beside it.",
 ];
 
 export const TABLE_PROMPTS: Record<TableStageKey, TablePromptSpec> = {

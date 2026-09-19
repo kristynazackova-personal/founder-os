@@ -23,6 +23,7 @@ import { DEFAULT_FRAMEWORK, asFrameworkId, frameworkOf, type PmfFramework, type 
 import { parseTable, readTable, renderTableForPrompt, serializeTable, withRowLabelColumn, type PmfTable } from "../domain/pmfTable";
 import { columnPrompt, promptFor, rowPrompt, tableStageForField } from "../domain/pmfPrompts";
 import { PREFILL_STAGE, prefillFields, prefillPrompt } from "../domain/pmfPrefill";
+import { answerGuidance } from "../domain/pmfAnswers";
 import { sourceSummary } from "../domain/businessCase";
 import { extractUploadText, fetchWebsiteText } from "./businessCase";
 import { profileOf } from "./gates";
@@ -177,6 +178,8 @@ export function fillPrompt(f: PmfFramework, app: App, ctx: Awaited<ReturnType<ty
     prior,
     ask,
     "Return ONLY a JSON object: {\"values\": {\"<field key>\": \"<answer>\"}}. No prose outside it.",
+    "",
+    answerGuidance(),
     "",
     "Rules that matter more than completeness:",
     "- Where you do not know something about THIS business, write the question the founder should answer, prefixed exactly with [to fill]. Never invent a customer, a competitor's number, a revenue figure or an interview finding.",

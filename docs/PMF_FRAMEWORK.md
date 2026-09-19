@@ -135,6 +135,40 @@ for changing a row: have the Opus output for that same call to compare against.
 says so and points at the edit form, which also writes a version. Generation
 still works without a key - it just stops at the scaffold.
 
+## Every answer has to decide something
+
+`domain/pmfAnswers.ts` holds one set of rules that every generator sends -
+the stage-1 prefill, the doc fill, the pressure-test and the table rows. It
+exists because of a single observed failure, and it carries that failure as a
+worked example rather than only as a rule.
+
+Asked *"in one sentence, what does this product do"*, the model returned every
+input format, both product tracks and all four outputs. Nothing in it was
+false. It was still the wrong answer, because the question asks for an intent
+and it gave an inventory.
+
+The cause generalises. Given a website or a business case as evidence, a
+model's safest move is to summarise it faithfully - and a field prompt that
+specifies only a SHAPE ("one per line", "mechanism, not benefit") gets that
+summary poured into the shape. Accurate, complete, and deciding nothing, which
+is the one thing every question in this framework exists to make the founder
+do.
+
+Two fixes, and they work together:
+
+- **Each field's own prompt names the decision**, not just the format, plus
+  the nearest wrong answer. `one_sentence` used to read "Mechanism, not
+  benefit" - which is what invited the machinery to be enumerated - and now
+  reads "One kind of user, one change, one mechanism. Not the category, and
+  not a list of everything it can do."
+- **`ANSWER_RULES` covers what no single field can say**: the evidence is
+  evidence and not the answer; one idea per answer; name the primary rather
+  than listing all of them; say what it is FOR, not everything it can do.
+
+The field prompts are shown to the founder in the form AND sent to the model,
+so they have to read as good questions to a person. A unit test holds the line
+that none of them is shorter than a format instruction.
+
 ## Stage 1 is prefilled; nothing else is
 
 The build framework refuses to answer for the founder - that is `aiRole:
