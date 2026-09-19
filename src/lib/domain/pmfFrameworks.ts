@@ -232,7 +232,7 @@ const BUILD_STAGES: PmfStage[] = [
 ];
 
 const BUILD_FIELDS: PmfFieldDef[] = [
-  { key: "one_sentence", stage: "goal", label: "In one sentence, what does this product do", prompt: "One kind of user, one change, one mechanism. Not the category, and not a list of everything it can do." },
+  { key: "one_sentence", stage: "goal", label: "What does this product do", prompt: "One kind of user, one change, one mechanism. Not the category, and not a list of everything it can do. Two sentences if you need two - the test is whether you chose, not whether you were brief." },
   { key: "user_outcome", stage: "goal", label: "What outcome do you want for the user", prompt: "What is different in their day because this exists. Their change, not your feature restated." },
   { key: "your_outcome", stage: "goal", label: "What do YOU want out of it", prompt: "Revenue, usefulness, thank-yous, a job, a portfolio piece. Be honest, it changes every later decision." },
   { key: "six_months", stage: "goal", label: "Success in six months looks like", prompt: "One concrete picture you could turn out to be wrong about, not a range." },

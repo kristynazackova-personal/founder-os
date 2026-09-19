@@ -856,3 +856,42 @@ or red deliveries, and Railway is simply not hearing the pushes.
 `/api/health` reports `commit` from `RAILWAY_GIT_COMMIT_SHA`, which is the
 cheapest way to tell which build is actually serving - the build log names
 an image digest, not a commit. `cf4a558` went live at 00:32 UTC.
+
+---
+
+## 2026-09-19 (interview-isms) - "in one sentence" was grading the wrong thing
+
+Raised by the founder, and correct: this framework descends from the product
+design interview, where brevity is the point because you are timed and the
+interviewer has to follow you live. Nothing here is timed. The first field's
+label asked for the answer "in one sentence" for a reason that does not
+transfer.
+
+The constraint was replaced, not dropped. It was doing two jobs - forcing a
+CHOICE, which is the whole point of every question in the framework, and
+being SHORT, which was the interview's. Those come apart. The prompt now
+carries the choice ("one kind of user, one change, one mechanism") and says
+two sentences are fine; `ANSWER_RULES` rule 6 changed from a length rule to a
+shape rule, so the test is whether you listed, not whether you were brief.
+
+**The failure it was hiding.** Rule 3 said "name the PRIMARY one and drop the
+rest". Selvenn has couples coaching and life coaching: different person,
+different situation, different reason to pay. Squeezed into one sentence, the
+model either drops half the business or retreats to an umbrella ("helps
+people understand their relationships") too vague to derive segments from -
+and a segment list drawn across two products is not MECE, so every table
+below inherits it. A new rule makes that case a QUESTION back to the founder:
+name both, say the framework is filled in for one of them, ask which.
+
+The worked example now has to demonstrate it. `good` became the couples-only
+answer and a new `whyGood` explains why the second track was not bolted on.
+`FEATURE_LIST_EXAMPLE.question` lost its "in one sentence" too - it is
+rendered into every prompt, so leaving it would have reintroduced the
+constraint next to the rule removing it.
+
+The field KEY stays `one_sentence`: stored answers are keyed by it, and
+renaming it would orphan every existing one. Only the label a person reads
+changed.
+
+Not swept yet: the other 26 prompts may carry more interview conventions.
+MECE on the segment list is one, though it survives translation on merit.
