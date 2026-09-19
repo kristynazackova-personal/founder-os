@@ -303,6 +303,42 @@ export type AdSpend = typeof adSpend.$inferSelect;
  * so the founder can always see what the tool drafted and what they changed.
  * The newest row for an app is the live document.
  */
+/**
+ * One AI generation, running or finished.
+ *
+ * Generation used to happen inside the server action the browser was waiting
+ * on, which made a closed tab a cancelled job and a slow model a timeout in
+ * the founder's face. A job row is the handoff: the action starts the work and
+ * returns immediately, the work writes here when it finishes, and the page
+ * polls. Closing the browser now loses the notification, not the work.
+ *
+ * `result` is only for output that is not already a document version -
+ * segmentations, which are alternatives to choose between rather than a table
+ * to store. Everything else appends a `pmf_documents` version as before, and
+ * the job row just says it is done.
+ */
+export const pmfJobs = pgTable(
+  "pmf_jobs",
+  {
+    id: id(),
+    appId: uuid("app_id").notNull().references(() => apps.id, { onDelete: "cascade" }),
+    framework: text("framework").notNull(),
+    /** The table field this job is for, where it has one. */
+    field: text("field"),
+    /** doc | rewrite | prefill | table | rows | segmentations */
+    kind: text("kind").notNull(),
+    /** running | done | error */
+    status: text("status").notNull().default("running"),
+    /** What to tell the founder: the summary on success, the reason on failure. */
+    message: text("message"),
+    result: jsonb("result").$type<unknown>(),
+    createdAt: createdAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  // The page asks "is anything running for this app", so that is the index.
+  (t) => [index("pmf_jobs_app_idx").on(t.appId, t.createdAt)],
+);
+
 export const pmfDocuments = pgTable(
   "pmf_documents",
   {

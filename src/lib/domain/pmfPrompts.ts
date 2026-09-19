@@ -55,6 +55,7 @@ export const COLUMN_RULES: string[] = [
   "Every column carries its scale AND its anchors, written for this business. 'Severity 1-10' without anchors is two people scoring three points apart.",
   "A column must be answerable from what the founder can see this week. Anything needing data they do not have belongs in the assumptions block, not in a column that will sit empty.",
   "Say in one line why each column is here rather than one of the alternatives.",
+  "A column NAME carries no price, plan name, tier or other current configuration - not 'pay-strength at $5.99/week', just 'pay-strength'. Today's price is one product's current setting, and writing it into the question presumes the business model the table is supposed to help choose. It also silently rules out a segment that would pay differently: a professional reselling this to their own clients is a different price and still belongs in the table. Put the price in the anchors if a scale needs one.",
 ];
 
 /** Rules every generated ROW obeys. The first rule of the framework, restated for tables. */

@@ -9,7 +9,10 @@
  * here overwrites anything.
  */
 import { useActionState, useState } from "react";
-import { generatePmfAction, prefillPmfAction, rewritePmfAction, savePmfAction, type PmfFormState } from "@/app/actions/pmf";
+import { generatePmfAction, prefillPmfAction, rewritePmfAction, savePmfAction, type JobState, type PmfFormState } from "@/app/actions/pmf";
+import { useJob } from "./useJob";
+import { JobBanner } from "./JobBanner";
+import { jobWait } from "@/lib/domain/pmfJobKinds";
 import { ACCEPTED_UPLOAD_ATTR, ACCEPTED_UPLOAD_LABEL, MAX_UPLOAD_BYTES } from "@/lib/domain/businessCase";
 import { SOURCE_LABEL, isAnswered, isPlaceholder, type PmfDoc } from "@/lib/domain/pmfDoc";
 import { fieldsOfStage, frameworkOf, type PmfFrameworkId } from "@/lib/domain/pmfFrameworks";
@@ -24,14 +27,17 @@ function Status({ state }: { state: PmfFormState }) {
 }
 
 export function GenerateButton({ appId, framework, label }: { appId: string; framework: PmfFrameworkId; label: string }) {
-  const [state, action, pending] = useActionState<PmfFormState>(generatePmfAction.bind(null, appId, framework), undefined);
+  const [state, action, pending] = useActionState<JobState>(generatePmfAction.bind(null, appId, framework), undefined);
+  const job = useJob(appId, state);
   return (
-    <form action={action} className="flex flex-wrap items-center gap-3">
-      <button type="submit" className="btn btn-primary" disabled={pending}>
-        {pending ? "Filling it in…" : label}
-      </button>
-      <Status state={state} />
-    </form>
+    <div className="flex flex-col gap-2">
+      <form action={action} className="flex flex-wrap items-center gap-3">
+        <button type="submit" className="btn btn-primary" disabled={pending}>
+          {pending ? "Starting…" : `${label} (${jobWait("doc")})`}
+        </button>
+      </form>
+      <JobBanner state={state} job={job} />
+    </div>
   );
 }
 
@@ -44,7 +50,8 @@ export function GenerateButton({ appId, framework, label }: { appId: string; fra
  * nobody has read yet is how a worksheet becomes a wall of text.
  */
 export function PrefillPanel({ appId, framework, appUrl }: { appId: string; framework: PmfFrameworkId; appUrl: string | null }) {
-  const [state, action, pending] = useActionState<PmfFormState, FormData>(prefillPmfAction.bind(null, appId, framework), undefined);
+  const [state, action, pending] = useActionState<JobState, FormData>(prefillPmfAction.bind(null, appId, framework), undefined);
+  const job = useJob(appId, state);
   const [fileName, setFileName] = useState<string | null>(null);
 
   return (
@@ -106,10 +113,10 @@ export function PrefillPanel({ appId, framework, appUrl }: { appId: string; fram
 
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>
-          {pending ? "Reading it…" : "Fill in this stage"}
+          {pending ? "Starting…" : `Fill in this stage (${jobWait("prefill")})`}
         </button>
-        <Status state={state} />
       </div>
+      <JobBanner state={state} job={job} />
     </form>
   );
 }
@@ -187,7 +194,8 @@ export function StageAnswers({ appId, framework, stage, doc, prefill, appUrl }: 
 }
 
 export function RewriteBox({ appId, framework, canRewrite, pressureTest }: { appId: string; framework: PmfFrameworkId; canRewrite: boolean; pressureTest: boolean }) {
-  const [state, action, pending] = useActionState<PmfFormState, FormData>(rewritePmfAction.bind(null, appId, framework), undefined);
+  const [state, action, pending] = useActionState<JobState, FormData>(rewritePmfAction.bind(null, appId, framework), undefined);
+  const job = useJob(appId, state);
   return (
     <form action={action} className="flex flex-col gap-3">
       <label className="label" htmlFor="comment">
@@ -208,10 +216,12 @@ export function RewriteBox({ appId, framework, canRewrite, pressureTest }: { app
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending || !canRewrite}>
-          {pending ? "Working…" : pressureTest ? "Pressure-test as a new version" : "Rewrite as a new version"}
+          {pending
+            ? "Starting…"
+            : `${pressureTest ? "Pressure-test as a new version" : "Rewrite as a new version"} (${jobWait("rewrite")})`}
         </button>
-        <Status state={state} />
       </div>
+      <JobBanner state={state} job={job} />
     </form>
   );
 }

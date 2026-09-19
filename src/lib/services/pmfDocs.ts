@@ -26,7 +26,7 @@ import { columnPrompt, promptFor, rowPrompt, tableStageForField, type TablePromp
 import { PREFILL_STAGE, prefillFields, prefillPrompt } from "../domain/pmfPrefill";
 import { answerGuidance } from "../domain/pmfAnswers";
 import { sourceSummary } from "../domain/businessCase";
-import { extractUploadText, fetchWebsiteText } from "./businessCase";
+import { fetchWebsiteText } from "./businessCase";
 import { profileOf } from "./gates";
 import { aiConfigured, askForJson } from "./ai";
 import { latestAssessment } from "./diagnosis";
@@ -448,10 +448,19 @@ export type PrefillResult = { filled: string[]; asked: string[]; sources: string
  * than a guess - so the founder can see at a glance what it knew and what it
  * is asking them.
  */
+/**
+ * Text already pulled out of an upload.
+ *
+ * The extraction happens in the REQUEST, not in the background job, because a
+ * `File` from a form is backed by the request body: by the time a detached job
+ * runs, there may be nothing left to read. Text survives the handoff.
+ */
+export type PrefillDocument = { text: string | null; error: string | null };
+
 export async function prefillGoalStage(
   app: App,
   framework: PmfFrameworkId,
-  opts: { websiteUrl?: string | null; file?: File | null },
+  opts: { websiteUrl?: string | null; document?: PrefillDocument | null },
 ): Promise<PrefillResult> {
   const f = frameworkOf(framework);
   const keys = new Set(prefillFields(f).map((x) => x.key));
@@ -469,10 +478,9 @@ export async function prefillGoalStage(
     website = res.text;
     if (res.error) problems.push(res.error);
   }
-  if (opts.file && opts.file.size > 0) {
-    const res = await extractUploadText(opts.file);
-    document = res.text;
-    if (res.error) problems.push(res.error);
+  if (opts.document) {
+    document = opts.document.text;
+    if (opts.document.error) problems.push(opts.document.error);
   }
 
   const sources = sourceSummary({ website, document });
@@ -482,7 +490,7 @@ export async function prefillGoalStage(
 
   const ctx = await contextFor(app);
   const business = [app.name, ctx.scaffoldInput.industryLabel, ctx.scaffoldInput.natureLabel, app.url ?? ""].filter(Boolean).join(" \u00b7 ");
-  const res = await askForJson(prefillPrompt(f, { business, website, document }), { purpose: "prefill", timeoutMs: 60_000 });
+  const res = await askForJson(prefillPrompt(f, { business, website, document }), { purpose: "prefill" });
   const values = parseModelValues(f, res.json);
 
   // Whatever came back, only stage 1 is written. A model that answers a later

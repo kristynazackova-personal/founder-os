@@ -57,6 +57,13 @@
       "when": 1789709692162,
       "tag": "0007_equal_catseye",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789795368436,
+      "tag": "0008_daily_jocasta",
+      "breakpoints": true
     }
   ]
 }

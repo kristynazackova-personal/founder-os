@@ -55,6 +55,32 @@ export const MODEL_FOR: Record<AiPurpose, string> = {
   prefill: "claude-opus-5",
 };
 
+/**
+ * Purpose -> how long to wait, in ms.
+ *
+ * The 60 second default was one number for every call, and it timed out the
+ * segmentations one - reasonably, since that asks for four complete
+ * alternatives with their reasoning, over a prompt carrying the whole answer
+ * guidance. These calls all run as background jobs now, so nobody is watching
+ * a spinner and a generous ceiling costs nothing but a slower failure.
+ *
+ * Transport stays non-streaming on purpose: `max_tokens` is 16k, far inside
+ * what a single response can carry, so the problem was our own deadline
+ * rather than the provider's. If a call ever needs to exceed these, stream it
+ * rather than raising them again.
+ */
+export const TIMEOUT_FOR: Record<AiPurpose, number> = {
+  // Reads live search results before it can judge them.
+  gate_research: 180_000,
+  table_columns: 180_000,
+  table_rows: 180_000,
+  // Four whole segmentations, each with rows and an argument against itself.
+  segmentations: 420_000,
+  // Every field of the framework in one answer.
+  doc_fill: 300_000,
+  prefill: 180_000,
+};
+
 const DEFAULT_PURPOSE: AiPurpose = "doc_fill";
 
 /**
@@ -106,7 +132,7 @@ export async function askForJson(
         messages: [{ role: "user", content: prompt }],
         ...(opts.search ? { tools: [{ type: "web_search_20260209" as const, name: "web_search" as const }] } : {}),
       },
-      { timeout: opts.timeoutMs ?? 60_000 },
+      { timeout: opts.timeoutMs ?? TIMEOUT_FOR[opts.purpose ?? DEFAULT_PURPOSE] },
     );
 
     // A safety decline is a 200 with no usable content, so it has to be read

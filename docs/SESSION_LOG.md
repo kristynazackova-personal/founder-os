@@ -1086,3 +1086,60 @@ than stored.
 Scoped to `segment_list` on purpose (`SEGMENTATION_FIELD`). A pain is anchored
 to a step of a journey that is already written, so its axis is given; widen
 only if a second table turns out to have the same ambiguity.
+
+---
+
+## 2026-09-19 (jobs) - generation moved off the request
+
+Four problems from one run of the new compare feature, and the biggest one was
+architectural.
+
+**"The model took too long to answer."** `askForJson` had one 60 second
+deadline for every call, and the segmentations call asks for four complete
+alternatives, each argued for and against, over a prompt carrying the whole
+answer guidance. `TIMEOUT_FOR` is now per purpose (180s for most, 420s for
+segmentations). Transport stays non-streaming deliberately: `max_tokens` is
+16k, far inside what one response can carry, so the deadline was ours rather
+than the provider's. If a call ever needs more than these, stream it instead
+of raising them again.
+
+**Generation now runs as a background job** (`pmf_jobs`, migration `0008`,
+`services/pmfJobs.ts`). Every generation used to happen inside the server
+action the browser was awaiting, which made a closed tab a cancelled job.
+The action now starts the work, returns a job id, and the page polls
+`pmfJobAction` every 4 seconds. Notes:
+
+- **The process outliving the request is what makes this work** - a long-lived
+  Node server on Railway, not a frozen function. On a platform that froze it,
+  this needs a queue.
+- **`run` always stamps an outcome**, and `finish` swallows its own errors: an
+  unhandled rejection outside a request can take the process down, and a job
+  stuck on "running" is a much better failure than a restart.
+- **The job row is not the only copy.** Every kind still appends a
+  `pmf_documents` version, except segmentations, whose output is alternatives
+  to choose between rather than a table - those live on `result`. A lost job
+  row costs the notification, not the work. (This also reversed the earlier
+  "do not persist unpicked alternatives" call: it is incompatible with closing
+  the browser.)
+- **The prefill upload is read in the REQUEST**, not the job. A `File` from a
+  form is backed by the request body, which is gone by the time a detached job
+  runs, so `prefillGoalStage` now takes extracted text (`PrefillDocument`).
+- A reopened page rejoins nothing - the job id lived in the action's return
+  value. `runningJobs` exists for that and is not wired up yet.
+
+**Every button states the wait** ("Compare ways to split (about 3 minutes)")
+and the banner says the page can be closed. `domain/pmfJobKinds.ts` holds the
+durations, pure and separate from the service, because a client component that
+imported the job service would pull the database driver into the browser
+bundle.
+
+**Compare ways to split moved to the top** of the segment section, labelled
+Step 1, with the columns box as Step 2. Deriving parameters before the axis is
+settled is work the next choice throws away.
+
+**No price in a column name.** The run produced "Pay-strength at $5.99/week".
+Today's price is one product's current setting, and writing it into the
+question presumes the business model the table exists to help choose. It also
+quietly rules out a segment that would pay differently - the founder's example
+was coaches, who would resell this to their own clients. The price belongs in
+a scale's anchors, never the name.
