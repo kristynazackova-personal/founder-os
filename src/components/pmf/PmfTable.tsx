@@ -51,7 +51,28 @@ function Cell({ column, row, value }: { column: PmfColumn; row: PmfRow; value: s
       />
     );
   }
-  return <input name={name} defaultValue={value} className="input min-h-10 py-1 text-sm" aria-label={column.label} />;
+  // A text cell holds a whole segment description or a `[to fill]` question,
+  // and a single-line input shows the first three words of it. The founder is
+  // being asked to COMPARE these against each other, which they cannot do
+  // through a truncation, so it wraps and grows with its content.
+  return (
+    <textarea
+      name={name}
+      defaultValue={value}
+      rows={2}
+      ref={autoHeight}
+      onInput={(e) => autoHeight(e.currentTarget)}
+      className="textarea min-h-10 resize-y py-1 text-sm leading-snug"
+      aria-label={column.label}
+    />
+  );
+}
+
+/** Grow a textarea to its content. Runs on mount via the ref, and on input. */
+function autoHeight(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
 }
 
 export function FrameworkTable({
@@ -134,7 +155,9 @@ export function FrameworkTable({
                 {table.columns.map((c) => (
                   <th
                     key={c.key}
-                    className="border-b border-stone-200 px-2 py-1.5 text-left text-[11px] font-semibold tracking-wide text-[var(--muted)] uppercase"
+                    className={`border-b border-stone-200 px-2 py-1.5 text-left text-[11px] font-semibold tracking-wide text-[var(--muted)] uppercase ${
+                      c.kind === "text" ? "min-w-[22rem]" : "min-w-[8rem]"
+                    }`}
                   >
                     <span className="block whitespace-nowrap">{c.label}</span>
                     <span className="block text-[10px] font-normal normal-case">

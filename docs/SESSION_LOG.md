@@ -1034,3 +1034,11 @@ copied.
 Also renamed the empty-state button from "Choose the parameters" to
 **Generate with AI**: the old label described the first of its two calls and
 named neither the AI nor the rows.
+
+**Text cells were truncating.** The row label is the thing being compared, and
+it was a single-line `<input>` showing "Someone who" and nothing else. Every
+text cell is now a textarea that wraps and grows to its content on mount and
+on input, and text columns get `min-w-[22rem]` against `min-w-[8rem]` for the
+scoring ones - `.scroll-x` already handles the overflow on a narrow screen.
+A `[to fill]` question lands in a text cell too, which is the other reason a
+single line was never enough.
