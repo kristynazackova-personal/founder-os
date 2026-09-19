@@ -156,6 +156,19 @@ export const ANSWER_RULES: string[] = [
   "Where the evidence does not say, write the question instead, starting with [to fill]. A flagged blank is useful; a plausible sentence the founder did not write is worse than nothing, because they will read it as a finding.",
 ];
 
+/**
+ * The rules alone.
+ *
+ * Split out for the calls whose output is not prose: deriving a table's
+ * columns returns labels, anchors and a one-line reason, and the worked
+ * examples below are two paragraph-length answers to two stage-1 questions.
+ * The rules transfer to that call; a thousand words of example do not earn
+ * their place in it.
+ */
+export function answerRulesBlock(): string {
+  return ["How to answer, whatever the field:", ...ANSWER_RULES.map((r) => `- ${r}`)].join("\n");
+}
+
 /** The rules plus every worked example, for a prompt. */
 export function answerGuidance(): string {
   const worked = (e: WorkedExample): string[] => [
@@ -166,8 +179,7 @@ export function answerGuidance(): string {
   ];
 
   return [
-    "How to answer, whatever the field:",
-    ...ANSWER_RULES.map((r) => `- ${r}`),
+    answerRulesBlock(),
     "",
     "Real answers that were rejected, and what was accepted instead. Every rejected one was TRUE about the",
     "business and wrong anyway - read them for altitude and voice, not for facts:",

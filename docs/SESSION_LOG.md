@@ -975,3 +975,32 @@ The pattern across all three rounds: rules do not fix register, because a rule
 about register reads as already satisfied by the answer that breaks it. The
 rejected text is what shows the distance. Expect the next fix to be an example
 rather than a rule.
+
+---
+
+## 2026-09-19 (tables) - the answer rules were not reaching the tables
+
+Asked whether Target users has AI behind it. It does - `generateTable` makes
+two calls, columns then rows - and it was the only generator that never saw
+`answerGuidance()`. Three rounds of tuning had landed on the stage 1 prefill
+and the doc filler; the tables had one line echoed into `ROW_RULES` about a
+row that lists several tracks being "a feature list wearing a row's clothing",
+and nothing else.
+
+That gap was going to reproduce every failure we had just fixed, one table at
+a time. A row per product track is the same mistake as splitting one business
+into two, and a cell that narrates its own reasoning is as unusable as a
+paragraph that does.
+
+**Split, not bolted on.** `answerRulesBlock()` is the rules alone;
+`answerGuidance()` is the rules plus the worked examples. Columns get the
+rules - that call returns labels, anchors and a one-line reason, and two
+paragraph-length answers to two stage-1 questions would be most of its prompt
+for nothing. Rows get both, plus a line naming the one rule a cell does NOT
+inherit: length. A cell has to stay comparable against the rows beside it, and
+"length is not the test" is written for prose.
+
+Worth remembering as the shape here: a generator added later does not
+automatically pick up guidance added earlier, and nothing fails when it
+doesn't. The check is `grep answerGuidance src/lib` against the list of call
+sites in `ai.ts`'s `AiPurpose`.

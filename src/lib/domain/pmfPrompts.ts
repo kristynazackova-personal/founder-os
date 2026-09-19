@@ -19,6 +19,7 @@
  * Pure strings and pure functions. No DB, no env, no network.
  */
 import { MAX_COLUMNS, MAX_ROWS, MIN_COLUMNS } from "./pmfTable";
+import { answerGuidance, answerRulesBlock } from "./pmfAnswers";
 
 export type TableStageKey = "segment" | "problem" | "solutions";
 
@@ -169,6 +170,9 @@ export function columnPrompt(spec: TablePromptSpec, context: { business: string;
     "Rules:",
     bullets(COLUMN_RULES),
     "",
+    answerRulesBlock(),
+    "A column label and its anchors are read by the founder as part of their own worksheet, so the same rules apply to how they are worded.",
+    "",
     "Watch for:",
     bullets(spec.cautions),
     "",
@@ -197,6 +201,12 @@ export function rowPrompt(spec: TablePromptSpec, context: { business: string; an
     "",
     "Rules:",
     bullets(ROW_RULES),
+    "",
+    answerGuidance(),
+    "Those rules govern the WORDING of every cell. Two of them land hardest here: a row per product track is the",
+    "same mistake as splitting one business into two, and a cell that narrates your reasoning is unusable however",
+    "right it is. The one thing a cell does not inherit is length - it has to stay short enough to compare against",
+    "the rows beside it.",
     "",
     "How a cell is written, by column kind:",
     bullets([

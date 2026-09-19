@@ -4,6 +4,7 @@ import {
   renderTableForPrompt, withRowLabelColumn, type PmfColumn, type PmfTable,
 } from "@/lib/domain/pmfTable";
 import { COLUMN_RULES, ROW_RULES, TABLE_PROMPTS, columnPrompt, rowPrompt, tableStageForField } from "@/lib/domain/pmfPrompts";
+import { ANSWER_RULES, WORKED_EXAMPLES } from "@/lib/domain/pmfAnswers";
 import { PMF_FRAMEWORKS } from "@/lib/domain/pmfFrameworks";
 
 const COLS = [
@@ -247,5 +248,37 @@ describe("the problem table keeps the journey outside the product", () => {
     const spec = TABLE_PROMPTS.problem;
     expect(spec.rowShape).toContain("without this product in it");
     expect(spec.cautions.join(" ")).toContain("inside this product's own interface");
+  });
+});
+
+// The answer rules were tuned over three rounds against the stage 1 prefill
+// and the doc filler, and for a while the tables did not see them at all:
+// only one line of ROW_RULES echoed them. Every failure they fix - a voice
+// that narrates its own reasoning, a split into two products where there is
+// one - can land in a cell just as easily as in a paragraph.
+describe("the table prompts carry the answer rules", () => {
+  const cols = columnPrompt(TABLE_PROMPTS.segment, { business: "Selvenn", answers: "Goal: impact" });
+  const rows = rowPrompt(TABLE_PROMPTS.segment, { business: "Selvenn", answers: "", columns: "- seg (Segment, text)" });
+
+  it("gives both calls the rules", () => {
+    for (const p of [cols, rows]) {
+      for (const rule of ANSWER_RULES) expect(p).toContain(rule);
+    }
+  });
+
+  // Columns return labels, anchors and a one-line reason. Two paragraph-length
+  // worked answers to two stage 1 questions do not earn their place there.
+  it("gives the worked examples to the rows only", () => {
+    for (const e of WORKED_EXAMPLES) {
+      expect(rows).toContain(e.good);
+      expect(cols).not.toContain(e.good);
+    }
+  });
+
+  // A cell inherits the wording rules but not the length one: it has to stay
+  // comparable against the rows beside it.
+  it("says which rule a cell does not inherit", () => {
+    expect(rows).toMatch(/does not inherit is length/);
+    expect(rows).toMatch(/a row per product track/i);
   });
 });
